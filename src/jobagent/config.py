@@ -40,7 +40,7 @@ class Settings(BaseModel):
     database_url: str | None = None
     llm_provider: Literal["openai", "anthropic"] | None = None
     anthropic_api_key: str | None = None
-    anthropic_model: str = "claude-opus-5-5"
+    anthropic_model: str = "claude-sonnet-5-5"
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
     openai_api_key: str | None = None
     openai_model: str = "gpt-5.4-mini"
@@ -54,7 +54,7 @@ class Settings(BaseModel):
             database_url=os.getenv("DATABASE_URL"),
             llm_provider=(os.getenv("LLM_PROVIDER") or None),  # type: ignore[arg-type]
             anthropic_api_key=_env("ANTHROPIC_API_KEY"),
-            anthropic_model=os.getenv("ANTHROPIC_MODEL") or "claude-opus-5-5",
+            anthropic_model=os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-5-5",
             anthropic_effort=os.getenv("ANTHROPIC_EFFORT") or "medium",  # type: ignore[arg-type]
             openai_api_key=_env("OPENAI_API_KEY"),
             openai_model=os.getenv("OPENAI_MODEL") or "gpt-5.4-mini",

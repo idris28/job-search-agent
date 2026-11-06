@@ -47,13 +47,13 @@ jsa profile import path/to/resume.pdf
 | `DATABASE_URL` | everything | e.g. `postgresql://localhost/jobagent` (Homebrew) |
 | `BROWSERBASE_API_KEY` (+ optional `BROWSERBASE_PROJECT_ID`) | `generic` sources only | browserbase.com → Settings |
 | `LLM_PROVIDER` (optional) | pick `anthropic` or `openai` when both keys are set | |
-| `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT` (optional) | Claude model (default `claude-opus-5-5`) and effort (default `medium`) | |
+| `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT` (optional) | Claude model (default `claude-sonnet-5-5`) and effort (default `medium`) | |
 | `OPENAI_MODEL` (optional) | OpenAI model, default `gpt-5.4-mini` | |
 | `JOBAGENT_BROWSER=local` (optional) | use local Chromium instead of Browserbase while developing | |
 
 With only `ANTHROPIC_API_KEY` set, Claude is used automatically. Claude calls use structured
 outputs and server-side refusal fallback, so a declined request is retried on a fallback model.
-To spend less per run, set `ANTHROPIC_MODEL=claude-sonnet-5-5` or `claude-haiku-5-5`.
+For stronger scoring at about twice the cost, set `ANTHROPIC_MODEL=claude-opus-5-5`; for the cheapest runs, `claude-haiku-5-5`.
 
 A Browserbase session is opened only when a run includes a `generic` source.
 
