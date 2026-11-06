@@ -94,16 +94,17 @@ jsa runs                         # run history, tokens used, errors
 
 `jsa email` prepares recruiter outreach for your top shortlisted jobs. For each job it:
 1. opens the live posting in Browserbase and checks the job is still open,
-2. web-searches the company with Claude (recent news, engineering blog posts, a named recruiter or
-   hiring manager, a careers email) and keeps the sources,
-3. drafts a 110-160 word email following recruiter guidance: a short "Role | credential | skills"
-   subject, a greeting by name, an opener that uses one sourced company fact, three quantified
-   bullets mapped to the posting, a location/relocation/visa line, and one specific ask,
-4. drafts a follow-up for 5-7 days later.
+2. web-searches (Claude, once per country per run) what recruiters in that market say makes them
+   reply: what they scan first, expected details such as visa status and notice period, and common
+   mistakes. Sources are kept,
+3. drafts a 110-160 word email: a "Role | credential | skills" subject, a first line with your
+   title, years, stack and employers, 4-6 keywords from the posting, three quantified bullets,
+   location/relocation/visa/notice line, and one specific ask, plus a 5-7 day follow-up,
+4. reviews the draft as a busy recruiter in that country (score 1-10, first impression, issues)
+   and rewrites it until it scores `outreach.min_review_score` or `max_revisions` is reached.
 
-Output: `digests/emails-<date>.html` (open it in a browser; "Copy email" pastes into Gmail with
-formatting) and a Markdown copy. Set `outreach.notice_period` and `outreach.resume_link` in
-`config.yaml` to include them. Nothing is ever sent.
+Output: `digests/emails-<date>.html` (open in a browser; "Copy email" pastes into Gmail with
+formatting; each card shows the recruiter review) and a Markdown copy. Nothing is ever sent.
 
 Re-running is cheap: jobs are deduplicated by company, title, and location, and a job is only
 re-scored when its text changes. One failing source marks the run `partial` and the rest

@@ -156,7 +156,11 @@ def cmd_email(args, settings):
 
     cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
     outreach = cfg.outreach
+    from .filters import country_of
+
     research_on = outreach.research and not args.no_research
+    guidance_cache: dict[str, str | None] = {}
+    roles = ", ".join(cfg.search.roles) or "software engineer"
     llm = _llm(settings)
     browser = None if args.no_browse else LazyBrowser(settings)
     items: list[dict] = []
@@ -185,31 +189,49 @@ def cmd_email(args, settings):
                         live = browser.fetch(job["url"], wait_ms=1500).text
                     except Exception as ex:  # noqa: BLE001
                         print(f"  ! could not open posting: {str(ex).splitlines()[0]}")
-                notes = None
-                if research_on:
-                    print("  researching company...")
+                country = country_of(job["location"])
+                if research_on and country not in guidance_cache:
+                    print(f"  researching what recruiters in {country} look for...")
                     try:
-                        notes = llm.research_company(job["company"], job["title"], job["location"],
-                                                     outreach.max_searches)
+                        guidance_cache[country] = llm.research_email_content(
+                            roles, country, outreach.max_searches)
                     except Exception as ex:  # noqa: BLE001
                         print(f"  ! research failed: {str(ex).splitlines()[0]}")
+                        guidance_cache[country] = None
+                notes = guidance_cache.get(country)
                 print("  drafting email...")
-                e = llm.recruiter_email(p["resume_text"], posting.as_prompt_text(), live,
-                                        notes, outreach)
+                job_text = posting.as_prompt_text()
+                e = llm.recruiter_email(p["resume_text"], job_text, live, notes, outreach)
+                review = None
+                if outreach.review and not args.no_review:
+                    for attempt in range(outreach.max_revisions + 1):
+                        review = llm.review_email(e, job_text, p["resume_text"], country)
+                        print(f"  recruiter review: {review.score}/10"
+                              + ("" if review.score >= outreach.min_review_score
+                                 or attempt == outreach.max_revisions else ", revising..."))
+                        if review.score >= outreach.min_review_score or attempt == outreach.max_revisions:
+                            break
+                        e = llm.recruiter_email(p["resume_text"], job_text, live, notes, outreach,
+                                                previous=e, review=review)
                 body = e.plain_text()
                 db.save_outreach(conn, p["id"], jid, subject=e.subject, body=body,
                                  recruiter_name=e.recruiter_name, contact_email=e.contact_email,
                                  still_open=e.still_open, research=notes,
                                  follow_up_subject=e.follow_up_subject,
-                                 follow_up_body=e.follow_up_body)
+                                 follow_up_body=e.follow_up_body,
+                                 review_score=review.score if review else None,
+                                 review_notes=review.model_dump_json() if review else None)
                 status = "unchecked" if live is None else ("open" if e.still_open else "closed")
-                items.append({"job": job, "email": e, "status": status, "research": notes})
+                items.append({"job": job, "email": e, "status": status, "research": notes,
+                              "review": review})
                 label = {"open": "still open", "closed": "LOOKS CLOSED - check before sending",
                          "unchecked": "live page not checked"}[status]
                 md += [f"## #{jid} {job['title']} at {job['company']}",
                        f"{job['location'] or ''} · [posting]({job['url']}) · {label}",
                        f"To: {e.contact_email or '(no email on the posting - use the apply page or LinkedIn)'}"
                        + (f" · {e.recruiter_name}" if e.recruiter_name else ""),
+                       (f"Recruiter review: {review.score}/10. {review.first_impression}"
+                        if review else ""),
                        "", f"**Subject:** {e.subject}", "", "```", body, "```", "",
                        f"**Follow-up (after 5-7 days):** {e.follow_up_subject}", "", "```",
                        e.follow_up_body, "```", ""]
@@ -297,7 +319,8 @@ def build_parser() -> argparse.ArgumentParser:
     em.add_argument("job_ids", type=int, nargs="*", help="jobs to email (default: shortlisted)")
     em.add_argument("--limit", type=int, default=10, help="max shortlisted jobs when no ids given")
     em.add_argument("--no-browse", action="store_true", help="skip opening the live posting")
-    em.add_argument("--no-research", action="store_true", help="skip web research on the company")
+    em.add_argument("--no-research", action="store_true", help="skip web research on recruiter advice")
+    em.add_argument("--no-review", action="store_true", help="skip the recruiter-style review")
     em.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
     em.add_argument("--out", help="output path without extension (default: digests/emails-<date>)")
     em.set_defaults(fn=cmd_email)

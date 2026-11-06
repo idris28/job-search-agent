@@ -99,9 +99,9 @@ class ExtractedListings(BaseModel):
 
 class RecruiterEmail(BaseModel):
     still_open: bool = Field(description="False if the live page says the job is closed/expired/removed")
-    recruiter_name: str | None = Field(description="Recruiter/hiring manager named on the page or in research sources; never guessed")
-    contact_email: str | None = Field(description="An email address shown on the posting or official site for applying")
-    company_hook: str | None = Field(description="The one specific, sourced company fact the opener uses")
+    recruiter_name: str | None = Field(description="Recruiter named on the posting itself; never guessed")
+    contact_email: str | None = Field(description="An application email shown on the posting")
+    company_hook: str | None = Field(description="What the posting says about the team/product that the candidate fits")
     subject: str = Field(description="Under 60 characters: Role | credential | key skills")
     greeting: str
     opener: str = Field(description="One or two sentences: the role, where it was seen, and the company hook")
@@ -117,3 +117,12 @@ class RecruiterEmail(BaseModel):
         parts += [f"\u2022 {b}" for b in self.bullets]
         parts += ["", self.logistics, "", self.call_to_action, "", "Best regards,", *self.signature]
         return "\n".join(parts)
+
+
+class RecruiterReview(BaseModel):
+    first_impression: str
+    score: int = Field(description="1-10 likelihood the recruiter replies or forwards it")
+    would_reply: bool
+    strengths: list[str]
+    issues: list[str]
+    rewrite_instructions: list[str]

@@ -72,6 +72,8 @@ border:1px solid var(--line);background:var(--card);color:var(--ink);border-radi
 margin-right:6px}button:hover{border-color:var(--accent)}details{margin-top:10px;font-size:14px}
 summary{cursor:pointer;color:var(--muted)}pre{white-space:pre-wrap;font:13px/1.5 ui-monospace,Menlo,monospace;
 background:var(--bg);padding:10px 12px;border-radius:8px;margin:8px 0 0}
+.review{font-size:14px;margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--bg)}
+.review>span:last-of-type{color:var(--muted)}.review ul{margin:4px 0 8px;padding-left:20px}.review p{margin:6px 0 0}
 """
 
 _EMAIL_JS = """
@@ -106,12 +108,24 @@ def emails_html(items: list[dict], *, title: str) -> str:
                  '<span class="badge warn">Not checked</span>')
         to = _h(e.contact_email) if e.contact_email else "No email on the posting: use the apply page or LinkedIn"
         rec = f' · {_h(e.recruiter_name)}' if e.recruiter_name else ""
-        research = (f"<details><summary>Company research</summary><pre>{_h(it['research'])}</pre></details>"
-                    if it.get("research") else "")
+        research = (f"<details><summary>Recruiter guidance used (web research)</summary>"
+                    f"<pre>{_h(it['research'])}</pre></details>" if it.get("research") else "")
+        rv = it.get("review")
+        review = ""
+        if rv is not None:
+            cls = "ok" if rv.score >= 8 else "warn"
+            li = lambda xs: "".join(f"<li>{_h(x)}</li>" for x in xs)  # noqa: E731
+            review = (f'<div class="review"><span class="badge {cls}">Recruiter review {rv.score}/10</span> '
+                      f"<span>{_h(rv.first_impression)}</span>"
+                      f"<details><summary>Strengths and remaining issues</summary>"
+                      f"<p><b>Strengths</b></p><ul>{li(rv.strengths)}</ul>"
+                      + (f"<p><b>Issues</b></p><ul>{li(rv.issues)}</ul>" if rv.issues else "")
+                      + "</details></div>")
         cards.append(f"""
 <section class="card">
   <div class="head"><h2>#{j['id']} {_h(j['title'])} at {_h(j['company'])}</h2>{badge}</div>
   <div class="meta">{_h(j.get('location'))} · <a href="{_h(j['url'])}">View posting</a></div>
+  {review}
   <div class="row"><b>To</b>{to}{rec}</div>
   <div class="row"><b>Subject</b><span id="s{n}">{_h(e.subject)}</span></div>
   <div class="mail" id="b{n}">{email_body_html(e)}</div>

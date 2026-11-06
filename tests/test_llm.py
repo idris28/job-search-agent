@@ -137,7 +137,7 @@ def test_env_vars(monkeypatch):
     assert Settings.from_env().llm_model == "claude-opus-5-5"
 
 
-def test_claude_research_uses_web_search_and_resumes_pause():
+def test_claude_content_research_uses_web_search_and_resumes_pause():
     import anthropic
 
     replies = iter([("", "pause_turn"), ("- Acme builds X (https://acme.ae)", "end_turn")])
@@ -166,11 +166,13 @@ def test_claude_research_uses_web_search_and_resumes_pause():
     try:
         client = anthropic.Anthropic(api_key="k", base_url=f"http://127.0.0.1:{srv.server_port}",
                                      max_retries=0)
-        notes = ClaudeLLM("k", "claude-sonnet-5-5", client=client).research_company(
-            "Acme", "Java Engineer", "Dubai", max_searches=3)
+        notes = ClaudeLLM("k", "claude-sonnet-5-5", client=client).research_email_content(
+            "Senior Java Engineer", "UAE", max_searches=3)
     finally:
         srv.shutdown()
     assert notes == "- Acme builds X (https://acme.ae)"
     assert len(bodies) == 2
     assert bodies[0]["tools"] == [{"type": "web_search_20260209", "name": "web_search", "max_uses": 3}]
     assert bodies[1]["messages"][-1]["role"] == "assistant"
+    assert "UAE" in bodies[0]["messages"][0]["content"]
+    assert "Do not research specific companies or people" in bodies[0]["system"]

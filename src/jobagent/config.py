@@ -102,8 +102,11 @@ class OutreachPrefs(BaseModel):
     notice_period: str = ""      # e.g. "60 days, negotiable"; omitted from emails when empty
     resume_link: str = ""        # e.g. a Google Drive link; otherwise the email says "attached"
     resume_filename: str = ""    # e.g. "Alex_Morgan_Java_Engineer.pdf"
-    research: bool = True        # search the web for company news / hiring manager (Claude only)
-    max_searches: int = 4        # web searches per job
+    research: bool = True        # web-search recruiter advice per country (Claude only)
+    max_searches: int = 4        # web searches per country researched
+    review: bool = True          # have the model review each draft as a recruiter
+    min_review_score: int = 8    # revise drafts the recruiter review scores below this (1-10)
+    max_revisions: int = 2
 
 
 class MatchingPrefs(BaseModel):

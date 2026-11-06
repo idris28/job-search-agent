@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from .config import OutreachPrefs, SearchPrefs
 from .models import (CandidateProfile, ExtractedListings, JobPosting, MatchResult,
-                     RecruiterEmail)
+                     RecruiterEmail, RecruiterReview)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -41,52 +41,70 @@ job's stated needs. No clichés, no invented facts, no placeholders except [Hiri
 name is known. Plain text."""
 
 
-# Built from recruiter and hiring-manager guidance (Bayt Gulf cover-letter guide, Glassdoor,
-# JobRise India 2026, noon.ai reply-rate data, ATS Verification "apply to Dubai from abroad").
-RECRUITER_EMAIL_INSTRUCTIONS = """You write a cold email from a job candidate to the recruiter or
-hiring manager for one specific job. Inputs: the candidate's resume, the stored posting, the text of
-the live posting page (may be missing or show the job as closed), web research notes about the
-company (may be missing), and the candidate's outreach preferences.
+# Built from recruiter guidance: Bayt (Gulf), Agile Consultants UAE ("how recruiters actually read
+# your CV", "why you're not getting interview calls in the UAE"), UKG tech recruiting, Glassdoor,
+# JobRise India 2026, noon.ai reply-rate data. Recruiters decide in seconds, scanning for: current
+# title + years, stack match with the posting's keywords, a quantified result, location / visa /
+# notice period, and an easy next step.
+RECRUITER_EMAIL_INSTRUCTIONS = """You write a cold email from a job candidate to the recruiter for
+one specific job. Inputs: the resume, the stored posting, the live posting page text (may be missing
+or show the job closed), RECRUITER GUIDANCE notes from web research (what recruiters for this role
+and country say they look for), outreach preferences, and possibly a PREVIOUS DRAFT with a
+RECRUITER REVIEW to fix.
 
 FACTS
 - still_open: false only if the live page says the job is closed, expired or removed.
-- recruiter_name / contact_email: only if written on the posting or in a research source. Never
-  guess or construct names or addresses.
-- company_hook: one specific, recent, sourced fact (product launch, expansion, engineering blog
-  post, tech stack). Null if research has nothing solid. Never invent one.
+- recruiter_name / contact_email: only if written on the posting itself. Never guess.
+- company_hook: one specific thing the posting says about the team/product/problem that the
+  candidate's experience fits. Null if the posting is too thin.
 
-EMAIL (what recruiters say gets replies)
+CONTENT RECRUITERS LOOK FOR (put it where a 6-second skim finds it)
+1. First sentence: who you are in recruiter terms: current title, years of experience, core stack,
+   and the employers (e.g. "Software Engineer with 6+ years building Java/Spring Boot services at
+   IBM and Oracle"), plus the exact role you are applying for.
+2. Fit: mirror 4-6 exact keywords/technologies from the posting, but only ones the resume backs.
+3. Proof: exactly 3 bullets, each = requirement from the posting -> your quantified result
+   (numbers, scale, outcome, your own ownership). Under 25 words each. Never vague ("worked on
+   backend services").
+4. Logistics recruiters must know: current location, relocation to this job's country, visa
+   ("employer-sponsored work visa" for UAE/Saudi/Qatar), notice period if given, resume attached
+   or linked. Never mention salary.
+5. Easy next step: one specific, low-pressure ask (e.g. a 15-minute call this week).
+Follow the RECRUITER GUIDANCE notes where they add market-specific points.
+
+FORMAT
 - subject: under 60 characters, "<Role> | <credential> | <key skills>", e.g.
   "Senior Java Engineer | 6 yrs IBM & Oracle | Spring Boot".
-- greeting: "Hi <first name>," if a name is known, else "Hi <Company> Hiring Team,". Never
-  "Dear Sir/Madam", "To whom it may concern" or "Hi All".
-- opener: 1-2 sentences. Name the exact role and where it was seen, and use company_hook if there
-  is one, so it is clearly not a mass email. Do not start with "I am writing to express".
-- bullets: exactly 3. Each maps one requirement from the posting to a real, quantified result from
-  the resume (numbers, scale, outcome). Under 25 words each. No re-listing the whole CV.
-- logistics: one line with current location (from the resume), relocation willingness for this
-  job's country, "employer-sponsored work visa" for UAE/Saudi/Qatar roles, notice period if given
-  in the preferences, and that the resume is attached (or the resume link if given).
-- call_to_action: one specific, low-pressure ask, e.g. "Would you be open to a 15-minute call
-  this week?"
-- signature: name, phone with country code (note WhatsApp if it is an Indian mobile), email,
-  LinkedIn; copied exactly from the resume.
-- Total body (greeting through call_to_action) 110-160 words.
-- Tone: confident, warm, specific. Banned: "I am a fast learner", "team player", "perfect fit",
-  "Please find my CV attached", "I need this job", buzzword chains, exclamation marks.
-- follow_up: a 50-80 word nudge for 5-7 days later, adds one new relevant point, same thread
-  subject prefixed "Re: "."""
+- greeting: "Hi <first name>," if a name is on the posting, else "Hi <Company> Hiring Team,".
+  Never "Dear Sir/Madam", "To whom it may concern", "Hi All".
+- opener: 1-2 sentences covering point 1 and, if present, company_hook.
+- signature: name, phone with country code (note WhatsApp only for an Indian mobile), email,
+  LinkedIn, copied exactly from the resume.
+- Body (greeting through call_to_action) 110-160 words. Confident, warm, specific.
+- Banned: "I am writing to express", "fast learner", "team player", "perfect fit", "Please find my
+  CV attached", "I need this job", exclamation marks, invented facts.
+- follow_up: 50-80 words for 5-7 days later, adds one new relevant result, subject "Re: <subject>".
+- If a RECRUITER REVIEW is given, fix every issue it lists while keeping all facts true."""
 
-RESEARCH_INSTRUCTIONS = """You research an employer for a job candidate before they email the
-recruiter. Use web search. Find, with sources:
-1. What the company does and its size/region in one line.
-2. One or two recent (last 12 months) items: product launches, expansion, funding, awards, or
-   engineering blog posts / talks, especially about Java, cloud or platform work.
-3. The recruiter, talent-acquisition partner or engineering/hiring manager for this team, ONLY if
-   a public source (company site, LinkedIn post, job posting, blog) names them. Do not guess.
-4. Any public careers email for applications.
-Reply with short bullet notes, each ending with its source URL. Say "not found" for anything you
-could not verify. Under 200 words."""
+CONTENT_RESEARCH_INSTRUCTIONS = """Use web search to find current advice from recruiters, hiring
+managers and recruitment agencies about what CONTENT in a candidate's application or cold email
+makes recruiters reply, for the given role and country. Cover: what recruiters scan for first,
+which details are expected in that market (e.g. visa status, notice period, location, local
+experience), keyword/skill expectations for this kind of role, and common mistakes that get emails
+ignored. Do not research specific companies or people. Reply with 6-10 short bullet notes, each
+ending with its source URL. Under 220 words."""
+
+RECRUITER_REVIEW_INSTRUCTIONS = """You are a busy senior tech recruiter in {country} hiring for the
+role below. You get about 200 candidate emails a day and decide in seconds. Review the candidate's
+email as that recruiter would, against the job posting and the resume.
+- first_impression: what you took away in the first 6 seconds (subject + first lines).
+- score: 1-10 for how likely you are to reply or forward it to the hiring manager.
+- would_reply: true if you would reply or forward it.
+- strengths: what works.
+- issues: concrete problems (missing info you need, weak or vague bullets, keyword gaps vs the
+  posting, wrong tone, too long, cliches, anything untrue vs the resume). Empty if none.
+- rewrite_instructions: specific edits that would raise the score. Empty if score >= 9.
+Be honest and strict; do not inflate scores."""
 
 
 class BaseLLM:
@@ -139,14 +157,23 @@ class BaseLLM:
         payload = (f"PAGE URL: {page_url}\n\nPAGE TEXT:\n{page_text[:15000]}\n\nLINKS:\n{links_txt}")
         return self._parse(EXTRACT_INSTRUCTIONS, payload, ExtractedListings)
 
-    def research_company(self, company: str, title: str, location: str | None,
-                         max_searches: int = 4) -> str | None:
-        """Web research notes for the outreach email; providers without web search return None."""
+    def research_email_content(self, roles: str, country: str,
+                               max_searches: int = 4) -> str | None:
+        """Web-researched recruiter guidance; providers without web search return None."""
         return None
 
+    def review_email(self, email: RecruiterEmail, job_text: str, resume_text: str,
+                     country: str) -> RecruiterReview:
+        payload = (f"JOB POSTING:\n{job_text}\n\nCANDIDATE RESUME:\n{resume_text}"
+                   f"\n\nCANDIDATE EMAIL\nSubject: {email.subject}\n\n{email.plain_text()}")
+        return self._parse(RECRUITER_REVIEW_INSTRUCTIONS.format(country=country or "the region"),
+                           payload, RecruiterReview)
+
     def recruiter_email(self, resume_text: str, job_text: str, live_page_text: str | None,
-                        research_notes: str | None = None,
-                        outreach: OutreachPrefs | None = None) -> RecruiterEmail:
+                        guidance_notes: str | None = None,
+                        outreach: OutreachPrefs | None = None,
+                        previous: RecruiterEmail | None = None,
+                        review: RecruiterReview | None = None) -> RecruiterEmail:
         live = (live_page_text or "(live page could not be loaded)")[:15000]
         prefs = {}
         if outreach is not None:
@@ -154,8 +181,12 @@ class BaseLLM:
                      if k in ("notice_period", "resume_link", "resume_filename") and v}
         payload = (f"RESUME:\n{resume_text}\n\nSTORED JOB POSTING:\n{job_text}"
                    f"\n\nLIVE POSTING PAGE TEXT:\n{live}"
-                   f"\n\nCOMPANY RESEARCH NOTES:\n{research_notes or '(none)'}"
+                   f"\n\nRECRUITER GUIDANCE:\n{guidance_notes or '(none)'}"
                    f"\n\nOUTREACH PREFERENCES:\n{json.dumps(prefs) if prefs else '(none)'}")
+        if previous is not None and review is not None:
+            payload += (f"\n\nPREVIOUS DRAFT:\nSubject: {previous.subject}\n\n"
+                        f"{previous.plain_text()}\n\nRECRUITER REVIEW:\n"
+                        f"{review.model_dump_json(indent=1)}")
         return self._parse(RECRUITER_EMAIL_INSTRUCTIONS, payload, RecruiterEmail)
 
     def cover_letter(self, resume_text: str, job_text: str) -> str:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .llm import RESEARCH_INSTRUCTIONS, BaseLLM, T
+from .llm import CONTENT_RESEARCH_INSTRUCTIONS, BaseLLM, T
 
 # Server-side refusal fallback: if Claude declines a request on policy grounds, the API
 # re-runs it on a suitable fallback model inside the same call.
@@ -64,12 +64,12 @@ class ClaudeLLM(BaseLLM):
         self._check(resp)
         return "".join(b.text for b in resp.content if b.type == "text").strip()
 
-    def research_company(self, company: str, title: str, location: str | None,
-                         max_searches: int = 4) -> str | None:
-        """Claude's server-side web search; returns bullet notes with source URLs."""
-        user = (f"Company: {company}\nRole: {title}\nLocation: {location or 'n/a'}\n"
-                "Research this employer as instructed.")
-        common = self._common(RESEARCH_INSTRUCTIONS, user)
+    def research_email_content(self, roles: str, country: str,
+                               max_searches: int = 4) -> str | None:
+        """Claude's server-side web search for recruiter guidance; notes with source URLs."""
+        user = (f"Roles: {roles}\nCountry: {country}\n"
+                "Research what email content attracts recruiters for these roles here.")
+        common = self._common(CONTENT_RESEARCH_INSTRUCTIONS, user)
         tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": max_searches}]
         messages = common.pop("messages")
         resp = None

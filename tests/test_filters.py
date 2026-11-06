@@ -59,3 +59,12 @@ def test_company_exclusion():
         JobPosting(title="Java Engineer", company="Riyad Bank", url="u"), prefs)
     assert reject_reason(JobPosting(title="Java Engineer", company="Bankr Tech", url="u"), prefs) is None
     assert "banking" in PREFS.exclude_industries and "bank" in PREFS.exclude_company_keywords
+
+
+def test_country_of():
+    from jobagent.filters import country_of
+    assert country_of("Dubai - United Arab Emirates") == "UAE"
+    assert country_of("Riyadh - Saudi Arabia") == "Saudi Arabia"
+    assert country_of("Doha") == "Qatar"
+    assert country_of("Hybrid - Pune") == "India"
+    assert country_of(None) == "Remote"

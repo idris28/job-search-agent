@@ -48,3 +48,21 @@ def reject_reason(job: JobPosting, prefs: SearchPrefs, now: datetime | None = No
             return f"posted more than {prefs.max_age_days} days ago"
 
     return None
+
+
+_COUNTRIES = {
+    "UAE": ["uae", "united arab emirates", "dubai", "abu dhabi", "sharjah", "ajman"],
+    "Saudi Arabia": ["saudi", "ksa", "riyadh", "jeddah", "dammam", "khobar"],
+    "Qatar": ["qatar", "doha"],
+    "India": ["india", "ahmedabad", "gandhinagar", "bengaluru", "bangalore", "pune", "hyderabad",
+              "mumbai", "chennai", "gurugram", "gurgaon", "noida", "delhi", "kolkata"],
+}
+
+
+def country_of(location: str | None) -> str:
+    """Best-effort country for a job location; 'Remote' when nothing matches."""
+    loc = (location or "").lower()
+    for country, words in _COUNTRIES.items():
+        if _contains_any(loc, words):
+            return country
+    return "Remote"

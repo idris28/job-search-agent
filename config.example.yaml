@@ -66,8 +66,11 @@ outreach:
   notice_period: ""        # e.g. "60 days, negotiable"; left out of emails when empty
   resume_link: ""          # e.g. a Google Drive link; otherwise emails say the resume is attached
   resume_filename: "Alex_Morgan_Java_Engineer.pdf"
-  research: true           # web-search each company for news / hiring manager (Claude only)
-  max_searches: 4          # web searches per job (Anthropic bills web search per use)
+  research: true           # web-search what recruiters in each country look for (Claude only)
+  max_searches: 4          # web searches per country (Anthropic bills web search per use)
+  review: true             # review each draft as a recruiter would, then revise
+  min_review_score: 8      # revise drafts scored below this (1-10)
+  max_revisions: 2
 
 # Job board searches (kind: generic) open in Browserbase, so they need BROWSERBASE_API_KEY
 # (BROWSERBASE_PROJECT_ID is optional). Each search page is read by the LLM, then up to max_detail_pages job
