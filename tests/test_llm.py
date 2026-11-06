@@ -20,10 +20,12 @@ def test_score_job_sends_profile_prefs_and_clamps():
     llm = LLM("k", "gpt-test", client=SimpleNamespace(responses=fake))
     job = JobPosting(title="Java Engineer", company="Acme", url="u", location="Doha",
                      description="Spring Boot")
-    m = llm.score_job({"primary_skills": ["Java"]}, SearchPrefs(locations=["Doha"]), job)
+    m = llm.score_job({"primary_skills": ["Java"]},
+                      SearchPrefs(locations=["Doha"], exclude_industries=["banking"]), job)
     assert m.score == 100 and llm.tokens_used == 42
     call = fake.calls[0]
     assert call["model"] == "gpt-test" and call["text_format"] is MatchResult
+    assert "banking" in call["input"] and "excluded industries" in call["instructions"]
     assert "Doha" in call["input"] and "Spring Boot" in call["input"] and "Java" in call["input"]
 
 

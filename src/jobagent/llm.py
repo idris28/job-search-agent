@@ -25,6 +25,8 @@ candidate. Score 0-100:
   0-49   poor: wrong field, wrong level, or a hard dealbreaker.
 Weigh: core tech stack overlap, years/seniority match, domain, and the candidate's location and
 work-mode preferences. A hard location/visa conflict is a red flag and caps the score at 40.
+If the employer (or, for a staffing/consulting firm, the end client) is in one of the candidate's
+excluded industries, list that as a red flag, set verdict "poor", and cap the score at 30.
 Only list skills that actually appear in the job text as missing_skills. Be concise and specific."""
 
 EXTRACT_INSTRUCTIONS = """You are given the visible text and links of a careers/job search page.
@@ -74,6 +76,7 @@ class BaseLLM:
                 "target_roles": prefs.roles,
                 "preferred_locations": prefs.locations,
                 "open_to_remote": prefs.remote_ok,
+                "excluded_industries": prefs.exclude_industries,
                 "notes": prefs.notes,
             }, indent=1)
             + "\n\nJOB POSTING:\n" + job.as_prompt_text()

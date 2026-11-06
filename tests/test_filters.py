@@ -49,3 +49,13 @@ def test_fingerprint_dedupes_across_urls():
     a = JobPosting(title="Java Engineer", company="Acme Inc", url="https://a", location="Dubai")
     b = JobPosting(title="java  engineer", company="ACME inc.", url="https://b", location="dubai")
     assert a.fingerprint == b.fingerprint
+
+
+def test_company_exclusion():
+    prefs = SearchPrefs(exclude_company_keywords=["bank", "banking"])
+    assert "company" in reject_reason(
+        JobPosting(title="Java Engineer", company="Emirates NBD Bank", url="u"), prefs)
+    assert "company" in reject_reason(
+        JobPosting(title="Java Engineer", company="Riyad Bank", url="u"), prefs)
+    assert reject_reason(JobPosting(title="Java Engineer", company="Bankr Tech", url="u"), prefs) is None
+    assert "banking" in PREFS.exclude_industries and "bank" in PREFS.exclude_company_keywords

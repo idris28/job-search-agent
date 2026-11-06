@@ -24,6 +24,11 @@ def reject_reason(job: JobPosting, prefs: SearchPrefs, now: datetime | None = No
         if hit:
             return f"title contains excluded keyword '{hit}'"
 
+    if prefs.exclude_company_keywords:
+        hit = _contains_any(job.company, prefs.exclude_company_keywords)
+        if hit:
+            return f"company name contains excluded keyword '{hit}'"
+
     if prefs.include_title_keywords and not _contains_any(job.title, prefs.include_title_keywords):
         return "title matches none of include_title_keywords"
 

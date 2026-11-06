@@ -44,6 +44,11 @@ search:
                            full stack, full-stack, spring, api, sde]
   exclude_title_keywords: [intern, internship, manager, director, sales, recruiter, android, ios,
                            data scientist, qa, test engineer, marketing]
+  # Company names containing these words are dropped before scoring.
+  exclude_company_keywords: [bank, banking]
+  # The matcher marks jobs in these industries as "poor" (score <= 30), which catches
+  # employers whose name doesn't say "bank" and consultancies placing people at banks.
+  exclude_industries: [banking, retail banking, investment banking]
   max_age_days: 30
   notes: >
     Based in Ahmedabad, India. Open to relocating to the UAE, Saudi Arabia, or Qatar (would need
@@ -56,30 +61,52 @@ matching:
   max_jobs_to_score: 100    # cost cap per run
   concurrency: 4
 
-# Find a company's board token in its careers URL:
-#   boards.greenhouse.io/<board>   jobs.lever.co/<board>   jobs.ashbyhq.com/<board>
+# Job board searches (kind: generic) open in Browserbase, so they need BROWSERBASE_API_KEY and
+# BROWSERBASE_PROJECT_ID. Each search page is read by the LLM, then up to max_detail_pages job
+# pages are opened for full descriptions. Some boards use bot protection; check `jsa runs` and
+# disable a source that keeps failing.
 sources:
-  - kind: greenhouse
-    name: Example Company
-    board: examplecompany
-    enabled: false
-
-  - kind: lever
-    name: Example Lever Company
-    board: examplecompany
-    enabled: false
-    # extra: {api_base: "https://api.eu.lever.co"}   # for EU-hosted Lever boards
-
-  - kind: ashby
-    name: Example Ashby Company
-    board: examplecompany
-    enabled: false
-
-  # Any careers page or job search results page. Opened in Browserbase; the LLM picks out the
-  # postings, then up to max_detail_pages detail pages are visited for full descriptions.
+  # --- India ---
   - kind: generic
-    name: Example careers page
+    name: Naukri - Java backend
     urls:
-      - https://example.com/careers?location=Dubai
-    max_detail_pages: 20
-    enabled: false
+      - https://www.naukri.com/java-backend-developer-jobs?experience=6
+      - https://www.naukri.com/java-developer-jobs-in-ahmedabad?experience=6
+    max_detail_pages: 15
+
+  # --- UAE / Saudi Arabia / Qatar ---
+  - kind: generic
+    name: Naukrigulf - Java
+    urls:
+      - https://www.naukrigulf.com/java-developer-jobs-in-uae
+      - https://www.naukrigulf.com/java-developer-jobs-in-saudi-arabia
+      - https://www.naukrigulf.com/java-developer-jobs-in-qatar
+    max_detail_pages: 15
+
+  - kind: generic
+    name: Bayt - Java
+    urls:
+      - https://www.bayt.com/en/uae/jobs/java-developer-jobs/
+      - https://www.bayt.com/en/saudi-arabia/jobs/java-developer-jobs/
+      - https://www.bayt.com/en/qatar/jobs/java-developer-jobs/
+    max_detail_pages: 15
+
+  - kind: generic
+    name: GulfTalent - Java
+    urls:
+      - https://www.gulftalent.com/jobs/search?keywords=java+developer
+    max_detail_pages: 10
+
+  # --- Company boards (no browser needed). Add companies you like here. ---
+  # Find the token in the careers URL:
+  #   boards.greenhouse.io/<board>   jobs.lever.co/<board>   jobs.ashbyhq.com/<board>
+  # - kind: greenhouse
+  #   name: Example Company
+  #   board: examplecompany
+  # - kind: lever
+  #   name: Example Lever Company
+  #   board: examplecompany
+  #   extra: {api_base: "https://api.eu.lever.co"}   # for EU-hosted Lever boards
+  # - kind: ashby
+  #   name: Example Ashby Company
+  #   board: examplecompany

@@ -85,6 +85,10 @@ class SearchPrefs(BaseModel):
     remote_ok: bool = True
     include_title_keywords: list[str] = Field(default_factory=list)
     exclude_title_keywords: list[str] = Field(default_factory=list)
+    # Dropped before scoring when the company name contains one of these words (e.g. "bank").
+    exclude_company_keywords: list[str] = Field(default_factory=list)
+    # Industries the matcher should treat as a dealbreaker (e.g. "banking").
+    exclude_industries: list[str] = Field(default_factory=list)
     max_age_days: int | None = 30
     notes: str = ""  # free-text preferences passed to the matcher
 
