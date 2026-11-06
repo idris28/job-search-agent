@@ -95,3 +95,12 @@ class ExtractedListing(BaseModel):
 
 class ExtractedListings(BaseModel):
     listings: list[ExtractedListing]
+
+
+class RecruiterEmail(BaseModel):
+    still_open: bool = Field(description="False if the live page says the job is closed/expired/removed")
+    recruiter_name: str | None = Field(description="Recruiter or hiring manager named on the page, if any")
+    contact_email: str | None = Field(description="An email address shown on the page for applying, if any")
+    key_requirements: list[str] = Field(description="The 3-6 requirements the email addresses")
+    subject: str
+    body: str

@@ -146,6 +146,60 @@ def cmd_cover_letter(args, settings):
     print("\n(Draft saved to the application record. Review and edit before sending.)")
 
 
+def cmd_email(args, settings):
+    """Check each job's live posting and draft a recruiter email. Never sends anything."""
+    from datetime import date
+
+    from .browser import LazyBrowser
+    from .models import JobPosting
+
+    llm = _llm(settings)
+    browser = None if args.no_browse else LazyBrowser(settings)
+    out = [f"# Recruiter emails ({date.today():%Y-%m-%d})",
+           "_Drafts only. Review, edit, and send them yourself._", ""]
+    try:
+        with _conn(settings) as conn:
+            p = db.active_profile(conn)
+            if not p:
+                sys.exit("No profile yet. Run: jsa profile import <resume.pdf>")
+            ids = args.job_ids or db.shortlisted_job_ids(conn, p["id"], args.limit)
+            if not ids:
+                sys.exit("No job ids given and nothing is shortlisted.")
+            for jid in ids:
+                job = db.get_job(conn, jid)
+                if not job:
+                    print(f"! No job {jid}, skipping")
+                    continue
+                posting = JobPosting(**{k: job[k] for k in (
+                    "title", "company", "url", "location", "remote_type", "description")})
+                live = None
+                if browser:
+                    try:
+                        live = browser.fetch(job["url"], wait_ms=1500).text
+                    except Exception as e:  # noqa: BLE001
+                        print(f"! Could not open live posting for job {jid}: {e}")
+                print(f"Drafting email for #{jid} {job['title']} at {job['company']}...")
+                e = llm.recruiter_email(p["resume_text"], posting.as_prompt_text(), live)
+                db.save_outreach(conn, p["id"], jid, subject=e.subject, body=e.body,
+                                 recruiter_name=e.recruiter_name, contact_email=e.contact_email,
+                                 still_open=e.still_open)
+                status = ("still open" if e.still_open else "LOOKS CLOSED - check before sending")
+                if live is None:
+                    status = "live page not checked"
+                out += [f"## #{jid} {job['title']} at {job['company']}",
+                        f"{job['location'] or ''} · [posting]({job['url']}) · {status}",
+                        f"To: {e.contact_email or '(no email on the posting - use the apply page or LinkedIn)'}"
+                        + (f" · Recruiter: {e.recruiter_name}" if e.recruiter_name else ""),
+                        "", f"**Subject:** {e.subject}", "", "```", e.body, "```", ""]
+    finally:
+        if browser:
+            browser.close()
+    path = Path(args.out or f"digests/emails-{date.today():%Y-%m-%d}.md")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(out))
+    print(f"\nWrote {len(ids)} draft(s) to {path}")
+
+
 def cmd_digest(args, settings):
     with _conn(settings) as conn:
         rows = db.top_matches(conn, _profile_id(conn), min_score=args.min_score,
@@ -213,6 +267,13 @@ def build_parser() -> argparse.ArgumentParser:
     cl = sub.add_parser("cover-letter", help="draft a cover letter for a job")
     cl.add_argument("job_id", type=int)
     cl.set_defaults(fn=cmd_cover_letter)
+
+    em = sub.add_parser("email", help="check live postings and draft recruiter emails (never sends)")
+    em.add_argument("job_ids", type=int, nargs="*", help="jobs to email (default: shortlisted)")
+    em.add_argument("--limit", type=int, default=10, help="max shortlisted jobs when no ids given")
+    em.add_argument("--no-browse", action="store_true", help="skip opening the live posting")
+    em.add_argument("--out", help="Markdown file to write (default: digests/emails-<date>.md)")
+    em.set_defaults(fn=cmd_email)
 
     d = sub.add_parser("digest", help="write a Markdown digest of top matches")
     d.add_argument("--min-score", type=int, default=75)

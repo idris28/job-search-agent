@@ -267,6 +267,28 @@ def shortlist_many(conn, profile_id: int, job_ids: Iterable[int]) -> int:
     return n
 
 
+def save_outreach(conn, profile_id: int, job_id: int, *, subject: str, body: str,
+                  recruiter_name: str | None, contact_email: str | None, still_open: bool) -> None:
+    set_application_status_if_missing(conn, profile_id, job_id)
+    conn.execute(
+        """UPDATE applications SET outreach_subject = %s, outreach_body = %s, recruiter_name = %s,
+               contact_email = %s, posting_open = %s, posting_checked_at = now(), updated_at = now()
+           WHERE profile_id = %s AND job_id = %s""",
+        (subject, body, recruiter_name, contact_email, still_open, profile_id, job_id),
+    )
+
+
+def shortlisted_job_ids(conn, profile_id: int, limit: int) -> list[int]:
+    rows = conn.execute(
+        """SELECT a.job_id FROM applications a
+           LEFT JOIN job_matches m ON m.job_id = a.job_id AND m.profile_id = a.profile_id
+           WHERE a.profile_id = %s AND a.status = 'shortlisted'
+           ORDER BY m.score DESC NULLS LAST LIMIT %s""",
+        (profile_id, limit),
+    ).fetchall()
+    return [r["job_id"] for r in rows]
+
+
 def list_applications(conn, profile_id: int) -> list[dict]:
     return conn.execute(
         """SELECT a.id, a.status, a.applied_at, a.updated_at, a.notes, j.id AS job_id,

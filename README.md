@@ -84,11 +84,17 @@ jsa run --source "Acme" --no-score
 jsa jobs --min-score 75          # best matches across all runs
 jsa show 42 --full               # one job, with matched skills, gaps, red flags
 jsa cover-letter 42              # draft, saved on the application record
+jsa email                        # recruiter emails for your top shortlisted jobs
+jsa email 94 96                  # ...or for specific jobs; --no-browse skips the live check
 jsa status 42 applied --note "via referral"
 jsa applications                 # your pipeline
 jsa digest --out digests/today.md
 jsa runs                         # run history, tokens used, errors
 ```
+
+`jsa email` opens each job's live posting in Browserbase, checks it is still open, picks up any
+recruiter name or application email written on the page, and drafts a short email from your
+resume. Drafts go to `digests/emails-<date>.md` and the application record. Nothing is sent.
 
 Re-running is cheap: jobs are deduplicated by company, title, and location, and a job is only
 re-scored when its text changes. One failing source marks the run `partial` and the rest

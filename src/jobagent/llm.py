@@ -9,7 +9,8 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from .config import SearchPrefs
-from .models import CandidateProfile, ExtractedListings, JobPosting, MatchResult
+from .models import (CandidateProfile, ExtractedListings, JobPosting, MatchResult,
+                     RecruiterEmail)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -38,6 +39,25 @@ COVER_LETTER_INSTRUCTIONS = """Write a concise, specific cover letter (under 250
 candidate and job. Lead with the strongest 2-3 relevant achievements from the resume, mapped to the
 job's stated needs. No clichés, no invented facts, no placeholders except [Hiring Manager] if no
 name is known. Plain text."""
+
+
+RECRUITER_EMAIL_INSTRUCTIONS = """You write a short, recruiter-friendly outreach email from a job
+candidate. You get the candidate's resume, the stored job posting, and the text of the live posting
+page (which may be missing or show the job as closed).
+
+From the live page, report whether the job still looks open, and any recruiter/hiring-manager name
+and application email that is actually written there (never guess or invent contacts).
+
+Then write the email:
+- Subject: role title + the candidate's strongest hook (e.g. "Senior Java Engineer - 6 yrs Spring
+  Boot, IBM & Oracle"). Under 80 characters.
+- Body: under 170 words, plain text. Greet the recruiter by name if known, otherwise "Hi,".
+  One line on the role and where it was seen. 3 short bullet points mapping the candidate's real,
+  quantified achievements to the job's key requirements. One line on location/availability (the
+  candidate is in Ahmedabad and open to relocating; mention notice period only if in the resume).
+  A clear, low-pressure ask (a short call), and a sign-off with the candidate's name, phone, email
+  and LinkedIn exactly as written in the resume.
+- Use only facts from the resume. No clichés ("I am writing to express"), no exaggeration."""
 
 
 class BaseLLM:
@@ -89,6 +109,13 @@ class BaseLLM:
         links_txt = "\n".join(f"- {l['text']} -> {l['href']}" for l in links[:400])
         payload = (f"PAGE URL: {page_url}\n\nPAGE TEXT:\n{page_text[:15000]}\n\nLINKS:\n{links_txt}")
         return self._parse(EXTRACT_INSTRUCTIONS, payload, ExtractedListings)
+
+    def recruiter_email(self, resume_text: str, job_text: str,
+                        live_page_text: str | None) -> RecruiterEmail:
+        live = (live_page_text or "(live page could not be loaded)")[:15000]
+        payload = (f"RESUME:\n{resume_text}\n\nSTORED JOB POSTING:\n{job_text}"
+                   f"\n\nLIVE POSTING PAGE TEXT:\n{live}")
+        return self._parse(RECRUITER_EMAIL_INSTRUCTIONS, payload, RecruiterEmail)
 
     def cover_letter(self, resume_text: str, job_text: str) -> str:
         return self._text(COVER_LETTER_INSTRUCTIONS, f"RESUME:\n{resume_text}\n\nJOB:\n{job_text}")
