@@ -69,11 +69,14 @@ def open_browser(settings: Settings) -> Iterator[Browser]:
                 browser.close()
             return
 
-        settings.require("browserbase_api_key", "browserbase_project_id")
+        settings.require("browserbase_api_key")
         from browserbase import Browserbase
 
         bb = Browserbase(api_key=settings.browserbase_api_key)
-        session = bb.sessions.create(project_id=settings.browserbase_project_id)
+        # Project ID is optional: Browserbase uses the API key's project when it is omitted.
+        params = ({"project_id": settings.browserbase_project_id}
+                  if settings.browserbase_project_id else {})
+        session = bb.sessions.create(**params)
         log.info("Browserbase session %s (replay: https://browserbase.com/sessions/%s)",
                  session.id, session.id)
         browser = pw.chromium.connect_over_cdp(session.connect_url)

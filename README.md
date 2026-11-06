@@ -45,7 +45,7 @@ jsa profile import path/to/resume.pdf
 |---|---|---|
 | `ANTHROPIC_API_KEY` **or** `OPENAI_API_KEY` | profile import, scoring, cover letters, page extraction | console.anthropic.com → API keys, or platform.openai.com/api-keys |
 | `DATABASE_URL` | everything | e.g. `postgresql://localhost/jobagent` (Homebrew) |
-| `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID` | `generic` sources only | browserbase.com → Settings |
+| `BROWSERBASE_API_KEY` (+ optional `BROWSERBASE_PROJECT_ID`) | `generic` sources only | browserbase.com → Settings |
 | `LLM_PROVIDER` (optional) | pick `anthropic` or `openai` when both keys are set | |
 | `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT` (optional) | Claude model (default `claude-opus-5-5`) and effort (default `medium`) | |
 | `OPENAI_MODEL` (optional) | OpenAI model, default `gpt-5.4-mini` | |

@@ -61,8 +61,8 @@ matching:
   max_jobs_to_score: 100    # cost cap per run
   concurrency: 4
 
-# Job board searches (kind: generic) open in Browserbase, so they need BROWSERBASE_API_KEY and
-# BROWSERBASE_PROJECT_ID. Each search page is read by the LLM, then up to max_detail_pages job
+# Job board searches (kind: generic) open in Browserbase, so they need BROWSERBASE_API_KEY
+# (BROWSERBASE_PROJECT_ID is optional). Each search page is read by the LLM, then up to max_detail_pages job
 # pages are opened for full descriptions. Some boards use bot protection; check `jsa runs` and
 # disable a source that keeps failing.
 sources:
