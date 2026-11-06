@@ -17,3 +17,13 @@ def test_missing_env_is_a_clear_error(monkeypatch, tmp_path):
     with pytest.raises(SystemExit) as e:
         main(["runs"])
     assert "DATABASE_URL" in str(e.value)
+
+
+def test_placeholder_keys_are_ignored(monkeypatch):
+    from jobagent.config import Settings
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-...")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-real")
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    s = Settings.from_env()
+    assert s.openai_api_key is None and s.resolved_llm_provider() == "anthropic"

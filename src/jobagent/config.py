@@ -14,6 +14,14 @@ class ConfigError(RuntimeError):
     pass
 
 
+def _env(name: str) -> str | None:
+    """Read an env var, treating empty values and template placeholders like 'sk-...' as unset."""
+    v = (os.getenv(name) or "").strip()
+    if not v or v.endswith("...") or v in ("changeme", "your-key-here"):
+        return None
+    return v
+
+
 def load_dotenv(path: str | Path = ".env") -> None:
     """Minimal .env loader: KEY=VALUE lines, does not override real env vars."""
     p = Path(path)
@@ -45,13 +53,13 @@ class Settings(BaseModel):
         return cls(
             database_url=os.getenv("DATABASE_URL"),
             llm_provider=(os.getenv("LLM_PROVIDER") or None),  # type: ignore[arg-type]
-            anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
+            anthropic_api_key=_env("ANTHROPIC_API_KEY"),
             anthropic_model=os.getenv("ANTHROPIC_MODEL") or "claude-opus-5-5",
             anthropic_effort=os.getenv("ANTHROPIC_EFFORT") or "medium",  # type: ignore[arg-type]
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
+            openai_api_key=_env("OPENAI_API_KEY"),
             openai_model=os.getenv("OPENAI_MODEL") or "gpt-5.4-mini",
-            browserbase_api_key=os.getenv("BROWSERBASE_API_KEY"),
-            browserbase_project_id=os.getenv("BROWSERBASE_PROJECT_ID"),
+            browserbase_api_key=_env("BROWSERBASE_API_KEY"),
+            browserbase_project_id=_env("BROWSERBASE_PROJECT_ID"),
             browser=os.getenv("JOBAGENT_BROWSER", "browserbase"),  # type: ignore[arg-type]
         )
 
