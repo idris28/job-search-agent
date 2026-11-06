@@ -268,13 +268,18 @@ def shortlist_many(conn, profile_id: int, job_ids: Iterable[int]) -> int:
 
 
 def save_outreach(conn, profile_id: int, job_id: int, *, subject: str, body: str,
-                  recruiter_name: str | None, contact_email: str | None, still_open: bool) -> None:
+                  recruiter_name: str | None, contact_email: str | None, still_open: bool,
+                  research: str | None = None, follow_up_subject: str | None = None,
+                  follow_up_body: str | None = None) -> None:
     set_application_status_if_missing(conn, profile_id, job_id)
     conn.execute(
         """UPDATE applications SET outreach_subject = %s, outreach_body = %s, recruiter_name = %s,
-               contact_email = %s, posting_open = %s, posting_checked_at = now(), updated_at = now()
+               contact_email = %s, posting_open = %s, posting_checked_at = now(),
+               company_research = %s, follow_up_subject = %s, follow_up_body = %s,
+               updated_at = now()
            WHERE profile_id = %s AND job_id = %s""",
-        (subject, body, recruiter_name, contact_email, still_open, profile_id, job_id),
+        (subject, body, recruiter_name, contact_email, still_open, research,
+         follow_up_subject, follow_up_body, profile_id, job_id),
     )
 
 

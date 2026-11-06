@@ -47,3 +47,84 @@ def digest_markdown(matches: list[dict], *, title: str = "Job matches") -> str:
             out.append(f"**Red flags:** {', '.join(m['red_flags'])}")
         out.append("")
     return "\n".join(out)
+
+
+# --- recruiter email preview (HTML) -------------------------------------------
+
+_EMAIL_CSS = """
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2430;--muted:#5d6b7e;--line:#e3e7ed;--accent:#2457d6;
+--ok:#1e7d4f;--okbg:#e6f4ec;--warn:#9a4b00;--warnbg:#fdf0e1}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--card:#1b2029;--ink:#e7ebf1;--muted:#9aa6b6;
+--line:#2c3442;--accent:#7ea2ff;--ok:#6fd3a0;--okbg:#173327;--warn:#ffb46b;--warnbg:#3a2a17}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:32px 16px 64px}h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 28px}.card{background:var(--card);border:1px solid var(--line);
+border-radius:12px;padding:20px 22px;margin:0 0 22px}.head{display:flex;justify-content:space-between;
+gap:12px;flex-wrap:wrap;align-items:baseline}.head h2{font-size:17px;margin:0}.meta{color:var(--muted);
+font-size:13px;margin:4px 0 12px}.meta a{color:var(--accent)}.badge{font-size:12px;font-weight:600;
+padding:3px 9px;border-radius:999px}.ok{color:var(--ok);background:var(--okbg)}.warn{color:var(--warn);
+background:var(--warnbg)}.row{font-size:14px;margin:2px 0}.row b{display:inline-block;width:64px;
+color:var(--muted);font-weight:500}.mail{border:1px solid var(--line);border-radius:10px;padding:16px 18px;
+margin:12px 0}.mail p{margin:0 0 10px}.mail ul{margin:0 0 10px;padding-left:20px}.mail li{margin:0 0 4px}
+.sig{color:var(--muted);font-size:14px;line-height:1.45}button{font:inherit;font-size:13px;cursor:pointer;
+border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 11px;
+margin-right:6px}button:hover{border-color:var(--accent)}details{margin-top:10px;font-size:14px}
+summary{cursor:pointer;color:var(--muted)}pre{white-space:pre-wrap;font:13px/1.5 ui-monospace,Menlo,monospace;
+background:var(--bg);padding:10px 12px;border-radius:8px;margin:8px 0 0}
+"""
+
+_EMAIL_JS = """
+function cp(id,btn){const el=document.getElementById(id);const html=el.innerHTML,text=el.innerText;
+const done=()=>{const t=btn.textContent;btn.textContent='Copied';setTimeout(()=>btn.textContent=t,1200)};
+try{navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),
+'text/plain':new Blob([text],{type:'text/plain'})})]).then(done,()=>navigator.clipboard.writeText(text).then(done))}
+catch(e){navigator.clipboard.writeText(text).then(done)}}
+"""
+
+
+def _h(s) -> str:
+    import html as _html
+    return _html.escape(str(s or ""))
+
+
+def email_body_html(e) -> str:
+    bullets = "".join(f"<li>{_h(b)}</li>" for b in e.bullets)
+    sig = "<br>".join(_h(x) for x in e.signature)
+    return (f"<p>{_h(e.greeting)}</p><p>{_h(e.opener)}</p><ul>{bullets}</ul>"
+            f"<p>{_h(e.logistics)}</p><p>{_h(e.call_to_action)}</p>"
+            f'<p class="sig">Best regards,<br>{sig}</p>')
+
+
+def emails_html(items: list[dict], *, title: str) -> str:
+    """items: {job, email (RecruiterEmail), status, research}"""
+    cards = []
+    for n, it in enumerate(items):
+        j, e = it["job"], it["email"]
+        badge = ('<span class="badge ok">Still open</span>' if it["status"] == "open" else
+                 '<span class="badge warn">Looks closed</span>' if it["status"] == "closed" else
+                 '<span class="badge warn">Not checked</span>')
+        to = _h(e.contact_email) if e.contact_email else "No email on the posting: use the apply page or LinkedIn"
+        rec = f' · {_h(e.recruiter_name)}' if e.recruiter_name else ""
+        research = (f"<details><summary>Company research</summary><pre>{_h(it['research'])}</pre></details>"
+                    if it.get("research") else "")
+        cards.append(f"""
+<section class="card">
+  <div class="head"><h2>#{j['id']} {_h(j['title'])} at {_h(j['company'])}</h2>{badge}</div>
+  <div class="meta">{_h(j.get('location'))} · <a href="{_h(j['url'])}">View posting</a></div>
+  <div class="row"><b>To</b>{to}{rec}</div>
+  <div class="row"><b>Subject</b><span id="s{n}">{_h(e.subject)}</span></div>
+  <div class="mail" id="b{n}">{email_body_html(e)}</div>
+  <button onclick="cp('s{n}',this)">Copy subject</button><button onclick="cp('b{n}',this)">Copy email</button>
+  <details><summary>Follow-up for 5–7 days later</summary>
+    <div class="row" style="margin-top:8px"><b>Subject</b><span id="fs{n}">{_h(e.follow_up_subject)}</span></div>
+    <div class="mail" id="fb{n}"><p>{_h(e.follow_up_body)}</p></div>
+    <button onclick="cp('fs{n}',this)">Copy subject</button><button onclick="cp('fb{n}',this)">Copy follow-up</button>
+  </details>{research}
+</section>""")
+    return (f'<!doctype html><html lang="en"><head><meta charset="utf-8">'
+            f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>{_h(title)}</title>'
+            f"<style>{_EMAIL_CSS}</style></head><body><main><h1>{_h(title)}</h1>"
+            f'<p class="sub">Drafts only. Review, edit, and send them yourself. "Copy email" keeps the '
+            f"formatting when pasted into Gmail or Outlook.</p>{''.join(cards)}</main>"
+            f"<script>{_EMAIL_JS}</script></body></html>")

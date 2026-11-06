@@ -135,3 +135,42 @@ def test_env_vars(monkeypatch):
     monkeypatch.delenv("LLM_MODEL")
     monkeypatch.setenv("ANTHROPIC_MODEL", "claude-opus-5-5")  # legacy name still works
     assert Settings.from_env().llm_model == "claude-opus-5-5"
+
+
+def test_claude_research_uses_web_search_and_resumes_pause():
+    import anthropic
+
+    replies = iter([("", "pause_turn"), ("- Acme builds X (https://acme.ae)", "end_turn")])
+    bodies = []
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            bodies.append(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+            text, stop = next(replies)
+            content = [{"type": "text", "text": text}] if text else []
+            body = json.dumps({"id": "m", "type": "message", "role": "assistant",
+                               "model": "claude-sonnet-5-5", "content": content,
+                               "stop_reason": stop, "stop_sequence": None,
+                               "usage": {"input_tokens": 5, "output_tokens": 5}}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        client = anthropic.Anthropic(api_key="k", base_url=f"http://127.0.0.1:{srv.server_port}",
+                                     max_retries=0)
+        notes = ClaudeLLM("k", "claude-sonnet-5-5", client=client).research_company(
+            "Acme", "Java Engineer", "Dubai", max_searches=3)
+    finally:
+        srv.shutdown()
+    assert notes == "- Acme builds X (https://acme.ae)"
+    assert len(bodies) == 2
+    assert bodies[0]["tools"] == [{"type": "web_search_20260209", "name": "web_search", "max_uses": 3}]
+    assert bodies[1]["messages"][-1]["role"] == "assistant"

@@ -98,6 +98,14 @@ class SearchPrefs(BaseModel):
     notes: str = ""  # free-text preferences passed to the matcher
 
 
+class OutreachPrefs(BaseModel):
+    notice_period: str = ""      # e.g. "60 days, negotiable"; omitted from emails when empty
+    resume_link: str = ""        # e.g. a Google Drive link; otherwise the email says "attached"
+    resume_filename: str = ""    # e.g. "Alex_Morgan_Java_Engineer.pdf"
+    research: bool = True        # search the web for company news / hiring manager (Claude only)
+    max_searches: int = 4        # web searches per job
+
+
 class MatchingPrefs(BaseModel):
     shortlist_min_score: int = 75
     max_jobs_to_score: int = 100
@@ -123,6 +131,7 @@ class SourceConfig(BaseModel):
 class AgentConfig(BaseModel):
     search: SearchPrefs = Field(default_factory=SearchPrefs)
     matching: MatchingPrefs = Field(default_factory=MatchingPrefs)
+    outreach: OutreachPrefs = Field(default_factory=OutreachPrefs)
     sources: list[SourceConfig] = Field(default_factory=list)
 
     @classmethod

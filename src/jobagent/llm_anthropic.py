@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .llm import BaseLLM, T
+from .llm import RESEARCH_INSTRUCTIONS, BaseLLM, T
 
 # Server-side refusal fallback: if Claude declines a request on policy grounds, the API
 # re-runs it on a suitable fallback model inside the same call.
@@ -63,3 +63,23 @@ class ClaudeLLM(BaseLLM):
         self._count(resp)
         self._check(resp)
         return "".join(b.text for b in resp.content if b.type == "text").strip()
+
+    def research_company(self, company: str, title: str, location: str | None,
+                         max_searches: int = 4) -> str | None:
+        """Claude's server-side web search; returns bullet notes with source URLs."""
+        user = (f"Company: {company}\nRole: {title}\nLocation: {location or 'n/a'}\n"
+                "Research this employer as instructed.")
+        common = self._common(RESEARCH_INSTRUCTIONS, user)
+        tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": max_searches}]
+        messages = common.pop("messages")
+        resp = None
+        for _ in range(4):  # resume server-side pauses (pause_turn), bounded
+            resp = self.client.beta.messages.create(**common, messages=messages, tools=tools)
+            self._count(resp)
+            if resp.stop_reason != "pause_turn":
+                break
+            messages = [messages[0], {"role": "assistant", "content": resp.content}]
+        if resp is None or resp.stop_reason == "refusal":
+            return None
+        text = "".join(b.text for b in resp.content if b.type == "text").strip()
+        return text or None

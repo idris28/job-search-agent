@@ -92,9 +92,18 @@ jsa digest --out digests/today.md
 jsa runs                         # run history, tokens used, errors
 ```
 
-`jsa email` opens each job's live posting in Browserbase, checks it is still open, picks up any
-recruiter name or application email written on the page, and drafts a short email from your
-resume. Drafts go to `digests/emails-<date>.md` and the application record. Nothing is sent.
+`jsa email` prepares recruiter outreach for your top shortlisted jobs. For each job it:
+1. opens the live posting in Browserbase and checks the job is still open,
+2. web-searches the company with Claude (recent news, engineering blog posts, a named recruiter or
+   hiring manager, a careers email) and keeps the sources,
+3. drafts a 110-160 word email following recruiter guidance: a short "Role | credential | skills"
+   subject, a greeting by name, an opener that uses one sourced company fact, three quantified
+   bullets mapped to the posting, a location/relocation/visa line, and one specific ask,
+4. drafts a follow-up for 5-7 days later.
+
+Output: `digests/emails-<date>.html` (open it in a browser; "Copy email" pastes into Gmail with
+formatting) and a Markdown copy. Set `outreach.notice_period` and `outreach.resume_link` in
+`config.yaml` to include them. Nothing is ever sent.
 
 Re-running is cheap: jobs are deduplicated by company, title, and location, and a job is only
 re-scored when its text changes. One failing source marks the run `partial` and the rest

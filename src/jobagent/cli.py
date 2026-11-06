@@ -147,16 +147,21 @@ def cmd_cover_letter(args, settings):
 
 
 def cmd_email(args, settings):
-    """Check each job's live posting and draft a recruiter email. Never sends anything."""
+    """Check live postings, research each company, draft recruiter emails. Never sends."""
     from datetime import date
 
     from .browser import LazyBrowser
     from .models import JobPosting
+    from .report import emails_html
 
+    cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+    outreach = cfg.outreach
+    research_on = outreach.research and not args.no_research
     llm = _llm(settings)
     browser = None if args.no_browse else LazyBrowser(settings)
-    out = [f"# Recruiter emails ({date.today():%Y-%m-%d})",
-           "_Drafts only. Review, edit, and send them yourself._", ""]
+    items: list[dict] = []
+    md = [f"# Recruiter emails ({date.today():%Y-%m-%d})",
+          "_Drafts only. Review, edit, and send them yourself._", ""]
     try:
         with _conn(settings) as conn:
             p = db.active_profile(conn)
@@ -170,34 +175,54 @@ def cmd_email(args, settings):
                 if not job:
                     print(f"! No job {jid}, skipping")
                     continue
+                print(f"#{jid} {job['title']} at {job['company']}")
                 posting = JobPosting(**{k: job[k] for k in (
                     "title", "company", "url", "location", "remote_type", "description")})
                 live = None
                 if browser:
+                    print("  checking live posting...")
                     try:
                         live = browser.fetch(job["url"], wait_ms=1500).text
-                    except Exception as e:  # noqa: BLE001
-                        print(f"! Could not open live posting for job {jid}: {e}")
-                print(f"Drafting email for #{jid} {job['title']} at {job['company']}...")
-                e = llm.recruiter_email(p["resume_text"], posting.as_prompt_text(), live)
-                db.save_outreach(conn, p["id"], jid, subject=e.subject, body=e.body,
+                    except Exception as ex:  # noqa: BLE001
+                        print(f"  ! could not open posting: {str(ex).splitlines()[0]}")
+                notes = None
+                if research_on:
+                    print("  researching company...")
+                    try:
+                        notes = llm.research_company(job["company"], job["title"], job["location"],
+                                                     outreach.max_searches)
+                    except Exception as ex:  # noqa: BLE001
+                        print(f"  ! research failed: {str(ex).splitlines()[0]}")
+                print("  drafting email...")
+                e = llm.recruiter_email(p["resume_text"], posting.as_prompt_text(), live,
+                                        notes, outreach)
+                body = e.plain_text()
+                db.save_outreach(conn, p["id"], jid, subject=e.subject, body=body,
                                  recruiter_name=e.recruiter_name, contact_email=e.contact_email,
-                                 still_open=e.still_open)
-                status = ("still open" if e.still_open else "LOOKS CLOSED - check before sending")
-                if live is None:
-                    status = "live page not checked"
-                out += [f"## #{jid} {job['title']} at {job['company']}",
-                        f"{job['location'] or ''} · [posting]({job['url']}) · {status}",
-                        f"To: {e.contact_email or '(no email on the posting - use the apply page or LinkedIn)'}"
-                        + (f" · Recruiter: {e.recruiter_name}" if e.recruiter_name else ""),
-                        "", f"**Subject:** {e.subject}", "", "```", e.body, "```", ""]
+                                 still_open=e.still_open, research=notes,
+                                 follow_up_subject=e.follow_up_subject,
+                                 follow_up_body=e.follow_up_body)
+                status = "unchecked" if live is None else ("open" if e.still_open else "closed")
+                items.append({"job": job, "email": e, "status": status, "research": notes})
+                label = {"open": "still open", "closed": "LOOKS CLOSED - check before sending",
+                         "unchecked": "live page not checked"}[status]
+                md += [f"## #{jid} {job['title']} at {job['company']}",
+                       f"{job['location'] or ''} · [posting]({job['url']}) · {label}",
+                       f"To: {e.contact_email or '(no email on the posting - use the apply page or LinkedIn)'}"
+                       + (f" · {e.recruiter_name}" if e.recruiter_name else ""),
+                       "", f"**Subject:** {e.subject}", "", "```", body, "```", "",
+                       f"**Follow-up (after 5-7 days):** {e.follow_up_subject}", "", "```",
+                       e.follow_up_body, "```", ""]
     finally:
         if browser:
             browser.close()
-    path = Path(args.out or f"digests/emails-{date.today():%Y-%m-%d}.md")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(out))
-    print(f"\nWrote {len(ids)} draft(s) to {path}")
+    stem = Path(args.out or f"digests/emails-{date.today():%Y-%m-%d}").with_suffix("")
+    stem.parent.mkdir(parents=True, exist_ok=True)
+    stem.with_suffix(".md").write_text("\n".join(md))
+    stem.with_suffix(".html").write_text(
+        emails_html(items, title=f"Recruiter emails · {date.today():%d %b %Y}"))
+    print(f"\nWrote {len(items)} draft(s): {stem.with_suffix('.html')} (open this) "
+          f"and {stem.with_suffix('.md')}")
 
 
 def cmd_digest(args, settings):
@@ -272,7 +297,9 @@ def build_parser() -> argparse.ArgumentParser:
     em.add_argument("job_ids", type=int, nargs="*", help="jobs to email (default: shortlisted)")
     em.add_argument("--limit", type=int, default=10, help="max shortlisted jobs when no ids given")
     em.add_argument("--no-browse", action="store_true", help="skip opening the live posting")
-    em.add_argument("--out", help="Markdown file to write (default: digests/emails-<date>.md)")
+    em.add_argument("--no-research", action="store_true", help="skip web research on the company")
+    em.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    em.add_argument("--out", help="output path without extension (default: digests/emails-<date>)")
     em.set_defaults(fn=cmd_email)
 
     d = sub.add_parser("digest", help="write a Markdown digest of top matches")

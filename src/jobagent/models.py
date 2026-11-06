@@ -99,8 +99,21 @@ class ExtractedListings(BaseModel):
 
 class RecruiterEmail(BaseModel):
     still_open: bool = Field(description="False if the live page says the job is closed/expired/removed")
-    recruiter_name: str | None = Field(description="Recruiter or hiring manager named on the page, if any")
-    contact_email: str | None = Field(description="An email address shown on the page for applying, if any")
-    key_requirements: list[str] = Field(description="The 3-6 requirements the email addresses")
-    subject: str
-    body: str
+    recruiter_name: str | None = Field(description="Recruiter/hiring manager named on the page or in research sources; never guessed")
+    contact_email: str | None = Field(description="An email address shown on the posting or official site for applying")
+    company_hook: str | None = Field(description="The one specific, sourced company fact the opener uses")
+    subject: str = Field(description="Under 60 characters: Role | credential | key skills")
+    greeting: str
+    opener: str = Field(description="One or two sentences: the role, where it was seen, and the company hook")
+    bullets: list[str] = Field(description="Exactly 3 quantified achievements mapped to the job's needs")
+    logistics: str = Field(description="Location, relocation, visa and notice-period line")
+    call_to_action: str
+    signature: list[str] = Field(description="Name, phone (with country code), email, LinkedIn, one per line")
+    follow_up_subject: str
+    follow_up_body: str = Field(description="Polite 50-80 word follow-up to send after 5-7 days with no reply")
+
+    def plain_text(self) -> str:
+        parts = [self.greeting, "", self.opener, ""]
+        parts += [f"\u2022 {b}" for b in self.bullets]
+        parts += ["", self.logistics, "", self.call_to_action, "", "Best regards,", *self.signature]
+        return "\n".join(parts)
