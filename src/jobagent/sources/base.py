@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+import html
+import re
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Callable
+
+import httpx
+
+from ..browser import Browser
+from ..config import ConfigError, SourceConfig
+from ..models import JobPosting, RemoteType
+
+
+@dataclass
+class SourceContext:
+    """What an adapter may use. Tests pass fakes for all three."""
+
+    http: httpx.Client
+    browser: Browser
+    llm: object  # jobagent.llm.LLM
+    log: Callable[[str], None] = lambda msg: None
+
+
+class Source(ABC):
+    needs_browser = False
+
+    def __init__(self, cfg: SourceConfig):
+        self.cfg = cfg
+
+    @classmethod
+    def validate(cls, cfg: SourceConfig) -> None:
+        if not cfg.board:
+            raise ConfigError(f"Source '{cfg.name}' ({cfg.kind}) needs a 'board' value")
+
+    @abstractmethod
+    def fetch(self, ctx: SourceContext) -> list[JobPosting]: ...
+
+
+_TAG_RE = re.compile(r"<[^>]+>")
+_BLOCK_RE = re.compile(r"</?(p|div|br|li|ul|ol|h[1-6]|tr)[^>]*>", re.I)
+
+
+def html_to_text(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    s = html.unescape(raw)  # Greenhouse double-encodes
+    s = _BLOCK_RE.sub("\n", s)
+    s = _TAG_RE.sub("", s)
+    s = html.unescape(s)
+    s = re.sub(r"[ \t\xa0]+", " ", s)
+    s = re.sub(r"\n\s*\n+", "\n\n", s)
+    return s.strip()
+
+
+def guess_remote_type(*texts: str | None) -> RemoteType:
+    blob = " ".join(t for t in texts if t).lower()
+    if "hybrid" in blob:
+        return "hybrid"
+    if "remote" in blob or "work from home" in blob or "wfh" in blob:
+        return "remote"
+    if "on-site" in blob or "onsite" in blob or "in office" in blob:
+        return "onsite"
+    return "unknown"

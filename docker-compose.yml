@@ -1,0 +1,12 @@
+# Local PostgreSQL for the agent: `docker compose up -d`
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: jobagent
+      POSTGRES_PASSWORD: jobagent
+      POSTGRES_DB: jobagent
+    ports: ["5432:5432"]
+    volumes: [jobagent-pg:/var/lib/postgresql/data]
+volumes:
+  jobagent-pg:

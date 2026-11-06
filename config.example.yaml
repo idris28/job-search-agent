@@ -1,0 +1,85 @@
+# Copy to config.yaml and edit. Secrets go in .env, not here.
+
+search:
+  roles:
+    - Senior Software Engineer (Java)
+    - Backend Engineer
+    - Platform Engineer
+    - Full-Stack Engineer (Java / React)
+  # Matched as whole words against the job's location. Countries plus major cities, because
+  # many boards list only the city.
+  locations:
+    # India
+    - India
+    - Ahmedabad
+    - Gandhinagar
+    - Bengaluru
+    - Bangalore
+    - Pune
+    - Hyderabad
+    - Mumbai
+    - Chennai
+    - Gurugram
+    - Gurgaon
+    - Noida
+    - Delhi
+    # UAE
+    - UAE
+    - United Arab Emirates
+    - Dubai
+    - Abu Dhabi
+    - Sharjah
+    # Saudi Arabia
+    - Saudi Arabia
+    - KSA
+    - Riyadh
+    - Jeddah
+    - Dammam
+    - Khobar
+    # Qatar
+    - Qatar
+    - Doha
+  remote_ok: true
+  include_title_keywords: [java, backend, back-end, platform, software engineer, software developer,
+                           full stack, full-stack, spring, api, sde]
+  exclude_title_keywords: [intern, internship, manager, director, sales, recruiter, android, ios,
+                           data scientist, qa, test engineer, marketing]
+  max_age_days: 30
+  notes: >
+    Based in Ahmedabad, India. Open to relocating to the UAE, Saudi Arabia, or Qatar (would need
+    employer visa sponsorship there; this is normal for Gulf roles and is not a red flag). Remote
+    roles are fine only if they hire from India or the Gulf. Prefers Java/Spring backend or
+    platform work; also open to full-stack with React.
+
+matching:
+  shortlist_min_score: 75   # auto-shortlist jobs at or above this score
+  max_jobs_to_score: 100    # cost cap per run
+  concurrency: 4
+
+# Find a company's board token in its careers URL:
+#   boards.greenhouse.io/<board>   jobs.lever.co/<board>   jobs.ashbyhq.com/<board>
+sources:
+  - kind: greenhouse
+    name: Example Company
+    board: examplecompany
+    enabled: false
+
+  - kind: lever
+    name: Example Lever Company
+    board: examplecompany
+    enabled: false
+    # extra: {api_base: "https://api.eu.lever.co"}   # for EU-hosted Lever boards
+
+  - kind: ashby
+    name: Example Ashby Company
+    board: examplecompany
+    enabled: false
+
+  # Any careers page or job search results page. Opened in Browserbase; the LLM picks out the
+  # postings, then up to max_detail_pages detail pages are visited for full descriptions.
+  - kind: generic
+    name: Example careers page
+    urls:
+      - https://example.com/careers?location=Dubai
+    max_detail_pages: 20
+    enabled: false
