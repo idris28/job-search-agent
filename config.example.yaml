@@ -96,6 +96,9 @@ sources:
     urls:
       - https://www.gulftalent.com/jobs/search?keywords=java+developer
     max_detail_pages: 10
+    # Returned an empty page on the first run (likely bot protection or a changed URL).
+    # To retry, paste the URL of a GulfTalent search from your own browser above.
+    enabled: false
 
   # --- Company boards (no browser needed). Add companies you like here. ---
   # Find the token in the careers URL:
