@@ -43,19 +43,17 @@ jsa profile import path/to/resume.pdf
 
 | Variable | Needed for | Where to get it |
 |---|---|---|
-| `ANTHROPIC_API_KEY` **or** `OPENAI_API_KEY` | profile import, scoring, cover letters, page extraction | console.anthropic.com → API keys, or platform.openai.com/api-keys |
+| `LLM_MODEL` | which model scores jobs, e.g. `claude-sonnet-5-5`, `claude-opus-5-5`, `gpt-5.4-mini` | |
+| `LLM_PROVIDER` (optional) | `anthropic` or `openai`; inferred from `LLM_MODEL` when omitted | |
+| `LLM_EFFORT` (optional) | Claude reasoning effort: `low` … `max` | |
+| `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | the key for your provider | console.anthropic.com → API Keys, or platform.openai.com/api-keys |
 | `DATABASE_URL` | everything | e.g. `postgresql://localhost/jobagent` (Homebrew) |
 | `BROWSERBASE_API_KEY` (+ optional `BROWSERBASE_PROJECT_ID`) | `generic` sources only | browserbase.com → Settings |
-| `LLM_PROVIDER` (optional) | pick `anthropic` or `openai` when both keys are set | |
-| `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT` (optional) | Claude model (default `claude-sonnet-5-5`) and effort (default `medium`) | |
-| `OPENAI_MODEL` (optional) | OpenAI model, default `gpt-5.4-mini` | |
 | `JOBAGENT_BROWSER=local` (optional) | use local Chromium instead of Browserbase while developing | |
 
-With only `ANTHROPIC_API_KEY` set, Claude is used automatically. Claude calls use structured
-outputs and server-side refusal fallback, so a declined request is retried on a fallback model.
-For stronger scoring at about twice the cost, set `ANTHROPIC_MODEL=claude-opus-5-5`; for the cheapest runs, `claude-haiku-5-5`.
-
-A Browserbase session is opened only when a run includes a `generic` source.
+The model is set only in `.env`; nothing is hard-coded. To switch, change `LLM_MODEL` (and the
+API key if you change provider). Claude calls use structured outputs and server-side refusal
+fallback, so a declined request is retried on a fallback model.
 
 ## Configuring the search
 

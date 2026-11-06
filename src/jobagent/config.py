@@ -38,12 +38,12 @@ def load_dotenv(path: str | Path = ".env") -> None:
 
 class Settings(BaseModel):
     database_url: str | None = None
+    # Which AI to use is configured only in .env: LLM_PROVIDER, LLM_MODEL, LLM_EFFORT.
     llm_provider: Literal["openai", "anthropic"] | None = None
+    llm_model: str | None = None
+    llm_effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
     anthropic_api_key: str | None = None
-    anthropic_model: str = "claude-sonnet-5-5"
-    anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
     openai_api_key: str | None = None
-    openai_model: str = "gpt-5.4-mini"
     browserbase_api_key: str | None = None
     browserbase_project_id: str | None = None
     browser: Literal["browserbase", "local"] = "browserbase"
@@ -52,21 +52,26 @@ class Settings(BaseModel):
     def from_env(cls) -> "Settings":
         return cls(
             database_url=os.getenv("DATABASE_URL"),
-            llm_provider=(os.getenv("LLM_PROVIDER") or None),  # type: ignore[arg-type]
+            llm_provider=(_env("LLM_PROVIDER") or None),  # type: ignore[arg-type]
+            # ANTHROPIC_MODEL / OPENAI_MODEL are accepted for older .env files.
+            llm_model=(_env("LLM_MODEL") or _env("ANTHROPIC_MODEL") or _env("OPENAI_MODEL")),
+            llm_effort=(_env("LLM_EFFORT") or _env("ANTHROPIC_EFFORT")),  # type: ignore[arg-type]
             anthropic_api_key=_env("ANTHROPIC_API_KEY"),
-            anthropic_model=os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-5-5",
-            anthropic_effort=os.getenv("ANTHROPIC_EFFORT") or "medium",  # type: ignore[arg-type]
             openai_api_key=_env("OPENAI_API_KEY"),
-            openai_model=os.getenv("OPENAI_MODEL") or "gpt-5.4-mini",
             browserbase_api_key=_env("BROWSERBASE_API_KEY"),
             browserbase_project_id=_env("BROWSERBASE_PROJECT_ID"),
             browser=os.getenv("JOBAGENT_BROWSER", "browserbase"),  # type: ignore[arg-type]
         )
 
     def resolved_llm_provider(self) -> str:
-        """LLM_PROVIDER if set; otherwise Claude when only an Anthropic key is present."""
+        """LLM_PROVIDER if set; else inferred from LLM_MODEL; else from which key is present."""
         if self.llm_provider:
             return self.llm_provider
+        model = (self.llm_model or "").lower()
+        if model.startswith("claude"):
+            return "anthropic"
+        if model.startswith(("gpt", "o1", "o3", "o4", "chatgpt")):
+            return "openai"
         if self.anthropic_api_key and not self.openai_api_key:
             return "anthropic"
         return "openai"

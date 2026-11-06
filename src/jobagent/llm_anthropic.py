@@ -10,7 +10,7 @@ _FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 
 class ClaudeLLM(BaseLLM):
-    def __init__(self, api_key: str, model: str, *, effort: str = "medium", client=None):
+    def __init__(self, api_key: str, model: str, *, effort: str | None = None, client=None):
         super().__init__()
         if client is None:
             import anthropic
@@ -21,7 +21,9 @@ class ClaudeLLM(BaseLLM):
         self.effort = effort
 
     def _common(self, instructions: str, user_input: str) -> dict:
+        extra = {"output_config": {"effort": self.effort}} if self.effort else {}
         return dict(
+            **extra,
             model=self.model,
             max_tokens=16000,
             system=instructions,
@@ -47,7 +49,6 @@ class ClaudeLLM(BaseLLM):
         resp = self.client.beta.messages.parse(
             **self._common(instructions, user_input),
             output_format=schema,
-            output_config={"effort": self.effort},
         )
         self._count(resp)
         self._check(resp)
@@ -58,7 +59,6 @@ class ClaudeLLM(BaseLLM):
     def _text(self, instructions: str, user_input: str) -> str:
         resp = self.client.beta.messages.create(
             **self._common(instructions, user_input),
-            output_config={"effort": self.effort},
         )
         self._count(resp)
         self._check(resp)

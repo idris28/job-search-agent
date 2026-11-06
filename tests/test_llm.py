@@ -79,7 +79,7 @@ def test_claude_score_job_request_shape():
     try:
         client = anthropic.Anthropic(api_key="k", base_url=f"http://127.0.0.1:{srv.server_port}",
                                      max_retries=0)
-        llm = ClaudeLLM("k", "claude-opus-5-5", client=client)
+        llm = ClaudeLLM("k", "claude-opus-5-5", effort="medium", client=client)
         job = JobPosting(title="Java Engineer", company="Acme", url="u", location="Riyadh")
         m = llm.score_job({"primary_skills": ["Java"]}, SearchPrefs(locations=["Riyadh"]), job)
     finally:
@@ -107,9 +107,31 @@ def test_claude_refusal_raises():
 
 
 def test_provider_selection():
-    assert isinstance(make_llm(Settings(anthropic_api_key="a")), ClaudeLLM)
-    assert isinstance(make_llm(Settings(openai_api_key="o")), OpenAILLM)
-    both = Settings(anthropic_api_key="a", openai_api_key="o", llm_provider="anthropic")
-    assert isinstance(make_llm(both), ClaudeLLM)
+    # Provider follows the model name, so swapping LLM_MODEL in .env is enough.
+    assert isinstance(make_llm(Settings(llm_model="claude-sonnet-5-5", anthropic_api_key="a",
+                                        openai_api_key="o")), ClaudeLLM)
+    assert isinstance(make_llm(Settings(llm_model="gpt-5.4-mini", anthropic_api_key="a",
+                                        openai_api_key="o")), OpenAILLM)
+    llm = make_llm(Settings(llm_model="claude-haiku-5-5", llm_effort="low", anthropic_api_key="a"))
+    assert llm.model == "claude-haiku-5-5" and llm.effort == "low"
+    # Explicit LLM_PROVIDER wins.
+    assert isinstance(make_llm(Settings(llm_model="my-custom", llm_provider="anthropic",
+                                        anthropic_api_key="a")), ClaudeLLM)
+    with pytest.raises(ConfigError, match="LLM_MODEL"):
+        make_llm(Settings(anthropic_api_key="a"))
+    with pytest.raises(ConfigError, match="ANTHROPIC_API_KEY"):
+        make_llm(Settings(llm_model="claude-sonnet-5-5", openai_api_key="o"))
     with pytest.raises(ConfigError):
         make_llm(Settings())
+
+
+def test_env_vars(monkeypatch):
+    for k in ("LLM_PROVIDER", "ANTHROPIC_MODEL", "OPENAI_MODEL", "ANTHROPIC_EFFORT"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("LLM_MODEL", "claude-sonnet-5-5")
+    monkeypatch.setenv("LLM_EFFORT", "medium")
+    s = Settings.from_env()
+    assert (s.llm_model, s.llm_effort) == ("claude-sonnet-5-5", "medium")
+    monkeypatch.delenv("LLM_MODEL")
+    monkeypatch.setenv("ANTHROPIC_MODEL", "claude-opus-5-5")  # legacy name still works
+    assert Settings.from_env().llm_model == "claude-opus-5-5"

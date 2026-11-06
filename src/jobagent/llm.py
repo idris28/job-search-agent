@@ -138,12 +138,14 @@ def make_llm(settings) -> BaseLLM:
 
     if not (settings.anthropic_api_key or settings.openai_api_key):
         raise ConfigError("Set ANTHROPIC_API_KEY (Claude) or OPENAI_API_KEY in .env")
+    if not settings.llm_model:
+        raise ConfigError("Set LLM_MODEL in .env, e.g. LLM_MODEL=claude-sonnet-5-5 "
+                          "or LLM_MODEL=gpt-5.4-mini")
     provider = settings.resolved_llm_provider()
     if provider == "anthropic":
         from .llm_anthropic import ClaudeLLM
 
         settings.require("anthropic_api_key")
-        return ClaudeLLM(settings.anthropic_api_key, settings.anthropic_model,
-                         effort=settings.anthropic_effort)
+        return ClaudeLLM(settings.anthropic_api_key, settings.llm_model, effort=settings.llm_effort)
     settings.require("openai_api_key")
-    return OpenAILLM(settings.openai_api_key, settings.openai_model)
+    return OpenAILLM(settings.openai_api_key, settings.llm_model)
