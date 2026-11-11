@@ -45,6 +45,8 @@ class Settings(BaseModel):
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
     browserbase_api_key: str | None = None
+    gmail_address: str | None = None
+    gmail_app_password: str | None = None
     browserbase_project_id: str | None = None
     browser: Literal["browserbase", "local"] = "browserbase"
 
@@ -59,6 +61,8 @@ class Settings(BaseModel):
             anthropic_api_key=_env("ANTHROPIC_API_KEY"),
             openai_api_key=_env("OPENAI_API_KEY"),
             browserbase_api_key=_env("BROWSERBASE_API_KEY"),
+            gmail_address=_env("GMAIL_ADDRESS"),
+            gmail_app_password=_env("GMAIL_APP_PASSWORD"),
             browserbase_project_id=_env("BROWSERBASE_PROJECT_ID"),
             browser=os.getenv("JOBAGENT_BROWSER", "browserbase"),  # type: ignore[arg-type]
         )
@@ -104,6 +108,7 @@ class OutreachPrefs(BaseModel):
     resume_filename: str = ""    # e.g. "Alex_Morgan_Java_Engineer.pdf"
     email: str = ""              # contact email for the sign-off; the resume's when empty
     linkedin_url: str = ""       # shown in emails as a clickable "LinkedIn" link
+    resume_path: str = ""        # CV file attached to Gmail drafts (`jsa email --gmail-drafts`)
     research: bool = True        # web-search recruiter advice per country (Claude only)
     max_searches: int = 4        # web searches per country researched
     review: bool = True          # have the model review each draft as a recruiter

@@ -75,7 +75,7 @@ def test_email_shortlisted(conn, monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)  # away from the repo's email_template.txt: built-in format
     out = tmp_path / "emails"
     args = SimpleNamespace(job_ids=[], limit=10, no_browse=False, no_research=False, no_review=False,
-                           config=str(tmp_path / "missing.yaml"), out=str(out))
+                           gmail_drafts=False, config=str(tmp_path / "missing.yaml"), out=str(out))
     cli.cmd_email(args, Settings(database_url=TEST_DB))
 
     md = (tmp_path / "emails.md").read_text()
@@ -145,6 +145,7 @@ def test_email_fills_the_users_template(conn, monkeypatch, tmp_path):
     llm = TemplateLLM()
     monkeypatch.setattr(cli, "_llm", lambda s: llm)
     args = SimpleNamespace(job_ids=[], limit=10, no_browse=True, no_research=False, no_review=False,
+                           gmail_drafts=False,
                            config=str(tmp_path / "missing.yaml"), out=str(tmp_path / "emails"))
     cli.cmd_email(args, Settings(database_url=TEST_DB))
 

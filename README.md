@@ -106,6 +106,20 @@ jsa runs                         # run history, tokens used, errors
 Output: `digests/emails-<date>.html` (open in a browser; "Copy email" pastes into Gmail with
 formatting; each card shows the recruiter review) and a Markdown copy. Nothing is ever sent.
 
+**Gmail drafts.** `jsa email --gmail-drafts` also saves each draft that has a recipient address
+into your Gmail Drafts folder, with the CV from `outreach.resume_path` attached. It needs
+`GMAIL_ADDRESS` and `GMAIL_APP_PASSWORD` (a Google app password) in `.env`. It never sends: you
+review and press Send in Gmail. Jobs with no address on the posting, a closed posting or an
+unfilled placeholder are listed with their apply link instead.
+
+**Applying on Bayt.** `jsa apply-login` opens the agent's own browser window so you can sign in to
+Bayt yourself (the agent never types your password). After that, `jsa apply` clicks Bayt's
+**Easy Apply** for your shortlisted Bayt jobs and marks them applied only when the site confirms.
+It hands a job back to you when the button leads to another company's site, the site asks
+questions, or you are signed out, and it stops altogether at a CAPTCHA or bot check.
+`--dry-run` checks each posting without clicking. Bayt's terms may not allow automated
+applications; use it at your own risk.
+
 **Your own wording.** When `email_template.txt` is in the folder you run `jsa` from, step 3
 fills in that template instead of using the format above. Text in `[square brackets]` is replaced
 for each job. A blank can be a label such as `[Job Title]` or a short description of what to
