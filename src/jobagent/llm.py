@@ -102,8 +102,11 @@ BODY: the template, made specific to this job
 - Replace every [placeholder] with what it asks for, for THIS job. A placeholder is either a
   label ("[Job Title]") or a short description of what to write there. Job title and company: as
   the posting gives them. Everything about the candidate (years, employers, skills, experience,
-  achievements, results): from the resume. When they can join and what is attached: from the
-  outreach preferences.
+  achievements, results): from the resume. When they can join, what is attached, and their
+  email address and LinkedIn URL: from the outreach preferences (for the email address, the
+  resume's if the preferences give none).
+- Write a LinkedIn URL as the link [LinkedIn](URL), never as a bare URL. Copy any [text](URL)
+  link already in the template unchanged.
 - Make it specific to the posting. Skills and areas of experience: the ones this posting asks for
   that the resume shows, by name or by work that plainly involves them, most important first and
   in the posting's own terms where they mean the same thing. Leave out anything the resume does
@@ -220,7 +223,8 @@ class BaseLLM:
         prefs = {}
         if outreach is not None:
             prefs = {k: v for k, v in outreach.model_dump().items()
-                     if k in ("notice_period", "resume_link", "resume_filename") and v}
+                     if k in ("notice_period", "resume_link", "resume_filename", "email",
+                              "linkedin_url") and v}
         payload = (f"RESUME:\n{resume_text}\n\nSTORED JOB POSTING:\n{job_text}"
                    f"\n\nLIVE POSTING PAGE TEXT:\n{live}")
         prefs_text = f"\n\nOUTREACH PREFERENCES:\n{json.dumps(prefs) if prefs else '(none)'}"

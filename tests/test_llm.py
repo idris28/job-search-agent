@@ -35,7 +35,7 @@ def test_recruiter_email_fills_the_candidates_template_when_given():
 
     fake = FakeResponses("parsed")
     llm = LLM("k", "gpt-test", client=SimpleNamespace(responses=fake))
-    prefs = OutreachPrefs(notice_period="30 days")
+    prefs = OutreachPrefs(notice_period="30 days", linkedin_url="https://l/in/x")
     assert llm.recruiter_email("RESUME", "JOB", None, "GUIDANCE", prefs,
                                template="Dear [Company Name],") == "parsed"
     call = fake.calls[0]
@@ -44,7 +44,8 @@ def test_recruiter_email_fills_the_candidates_template_when_given():
     assert call["input"] == (
         "TEMPLATE:\nDear [Company Name],\n\nRESUME:\nRESUME\n\nSTORED JOB POSTING:\nJOB"
         "\n\nLIVE POSTING PAGE TEXT:\n(live page could not be loaded)"
-        '\n\nOUTREACH PREFERENCES:\n{"notice_period": "30 days"}')  # guidance is not sent
+        '\n\nOUTREACH PREFERENCES:\n{"notice_period": "30 days", "linkedin_url": "https://l/in/x"}')  # guidance is not sent
+    assert "[LinkedIn](URL)" in call["instructions"]
 
     # Without a template the built-in recruiter format is asked for, exactly as before.
     llm.recruiter_email("RESUME", "JOB", None, "GUIDANCE")

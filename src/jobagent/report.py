@@ -96,8 +96,10 @@ def _h(s) -> str:
 def _paragraphs_html(text: str | None) -> str:
     """Plain text as <p> blocks: a blank line starts a new paragraph, other line breaks stay."""
     paragraphs = [p for p in re.split(r"\n\s*\n", (text or "").strip()) if p.strip()]
-    return "".join("<p>" + "<br>".join(_h(line.strip()) for line in p.splitlines()) + "</p>"
+    html = "".join("<p>" + "<br>".join(_h(line.strip()) for line in p.splitlines()) + "</p>"
                    for p in paragraphs)
+    # [LinkedIn](https://...) becomes a clickable link, which survives "Copy email" into Gmail.
+    return re.sub(r"\[([^\[\]<>]+)\]\((https?://[^\s()<>\"]+)\)", r'<a href="\2">\1</a>', html)
 
 
 def email_body_html(e) -> str:

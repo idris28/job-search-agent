@@ -166,6 +166,10 @@ def test_template_email_preview_keeps_paragraphs_and_line_breaks():
     assert email_body_html(e) == ("<p>Dear Hiring Team,</p><p>I build &lt;Java&gt; services.</p>"
                                   "<p>Best regards,<br>Alex Morgan<br>+91 1</p>")
     assert e.plain_text().endswith("+91 1")
+    linked = filled("Best regards,\nAlex\n[LinkedIn](https://www.linkedin.com/in/x-1/)")
+    assert email_body_html(linked) == ('<p>Best regards,<br>Alex<br>'
+                                       '<a href="https://www.linkedin.com/in/x-1/">LinkedIn</a></p>')
+    assert unfilled_placeholders(linked.body) == []  # a link is not an unfilled blank
 
 
 def test_unfilled_placeholders():

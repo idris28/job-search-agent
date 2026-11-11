@@ -136,7 +136,7 @@ class TemplateEmail(BaseModel):
 
 
 # "[Job Title]" or a described blank like "[4 or 5 areas of my experience ...]", but not "[1]".
-_PLACEHOLDER_RE = re.compile(r"\[[A-Za-z0-9][^\[\]\n]{2,199}\]")
+_PLACEHOLDER_RE = re.compile(r"\[[A-Za-z0-9][^\[\]\n]{2,199}\](?!\()")  # not a [text](url) link
 
 
 def unfilled_placeholders(text: str) -> list[str]:
