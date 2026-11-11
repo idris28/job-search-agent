@@ -1,6 +1,6 @@
 """Apply to jobs on Bayt with its own "Easy Apply" button, in a browser the user logged into.
 
-The browser is a visible local Chromium with its own profile folder, so the login the user does
+The browser is a visible Google Chrome window with its own profile folder, so the login the user does
 once (`jsa apply-login`) is reused. The agent never types credentials, and it stops and hands a
 job back whenever the site asks for anything beyond the one click: a sign-in, a CAPTCHA or bot
 check, extra questions, or another company's site.
@@ -64,12 +64,14 @@ def read_outcome(page_text: str, url: str) -> ApplyResult:
 
 @contextmanager
 def user_browser():
-    """A visible Chromium that keeps its cookies in PROFILE_DIR between runs."""
+    """A visible Google Chrome that keeps its cookies in PROFILE_DIR between runs."""
     from playwright.sync_api import sync_playwright
 
     PROFILE_DIR.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as pw:
-        context = pw.chromium.launch_persistent_context(str(PROFILE_DIR), headless=False)
+        # Google Chrome itself (not the bundled Chromium), still with the agent's own profile.
+        context = pw.chromium.launch_persistent_context(str(PROFILE_DIR), headless=False,
+                                                        channel="chrome")
         try:
             yield context.pages[0] if context.pages else context.new_page()
         finally:
