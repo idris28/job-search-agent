@@ -29,6 +29,33 @@ def test_score_job_sends_profile_prefs_and_clamps():
     assert "Doha" in call["input"] and "Spring Boot" in call["input"] and "Java" in call["input"]
 
 
+def test_recruiter_email_fills_the_candidates_template_when_given():
+    from jobagent.config import OutreachPrefs
+    from jobagent.models import RecruiterEmail, TemplateEmail
+
+    fake = FakeResponses("parsed")
+    llm = LLM("k", "gpt-test", client=SimpleNamespace(responses=fake))
+    prefs = OutreachPrefs(notice_period="30 days")
+    assert llm.recruiter_email("RESUME", "JOB", None, "GUIDANCE", prefs,
+                               template="Dear [Company Name],") == "parsed"
+    call = fake.calls[0]
+    assert call["text_format"] is TemplateEmail
+    assert "Replace every [placeholder]" in call["instructions"]
+    assert call["input"] == (
+        "TEMPLATE:\nDear [Company Name],\n\nRESUME:\nRESUME\n\nSTORED JOB POSTING:\nJOB"
+        "\n\nLIVE POSTING PAGE TEXT:\n(live page could not be loaded)"
+        '\n\nOUTREACH PREFERENCES:\n{"notice_period": "30 days"}')  # guidance is not sent
+
+    # Without a template the built-in recruiter format is asked for, exactly as before.
+    llm.recruiter_email("RESUME", "JOB", None, "GUIDANCE")
+    call = fake.calls[1]
+    assert call["text_format"] is RecruiterEmail and "6-second skim" in call["instructions"]
+    assert call["input"] == (
+        "RESUME:\nRESUME\n\nSTORED JOB POSTING:\nJOB"
+        "\n\nLIVE POSTING PAGE TEXT:\n(live page could not be loaded)"
+        "\n\nRECRUITER GUIDANCE:\nGUIDANCE\n\nOUTREACH PREFERENCES:\n(none)")
+
+
 # --- Claude provider ----------------------------------------------------------
 
 import json

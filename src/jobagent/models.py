@@ -119,6 +119,31 @@ class RecruiterEmail(BaseModel):
         return "\n".join(parts)
 
 
+class TemplateEmail(BaseModel):
+    """An email written by filling in the candidate's own template for one job."""
+
+    still_open: bool = Field(description="False if the live page says the job is closed/expired/removed")
+    recruiter_name: str | None = Field(description="Recruiter named on the posting itself; never guessed")
+    contact_email: str | None = Field(description="An application email shown on the posting")
+    subject: str = Field(description="Under 60 characters: Role | credential | key skills")
+    body: str = Field(description="The template from greeting to sign-off with every placeholder "
+                                  "filled in for this job; paragraphs separated by a blank line")
+    follow_up_subject: str
+    follow_up_body: str = Field(description="Polite 50-80 word follow-up to send after 5-7 days with no reply")
+
+    def plain_text(self) -> str:
+        return self.body.strip()
+
+
+# "[Job Title]" or a described blank like "[4 or 5 areas of my experience ...]", but not "[1]".
+_PLACEHOLDER_RE = re.compile(r"\[[A-Za-z0-9][^\[\]\n]{2,199}\]")
+
+
+def unfilled_placeholders(text: str) -> list[str]:
+    """Template blanks such as "[Company Name]" that are still in a draft."""
+    return list(dict.fromkeys(_PLACEHOLDER_RE.findall(text)))
+
+
 class RecruiterReview(BaseModel):
     first_impression: str
     score: int = Field(description="1-10 likelihood the recruiter replies or forwards it")

@@ -2,8 +2,10 @@ from types import SimpleNamespace
 
 from jobagent import cli, db
 from jobagent.browser import PageContent
-from jobagent.config import Settings
-from jobagent.models import JobPosting, RecruiterEmail, RecruiterReview
+from jobagent.config import OutreachPrefs, Settings
+from jobagent.models import (JobPosting, RecruiterEmail, RecruiterReview, TemplateEmail,
+                             unfilled_placeholders)
+from jobagent.report import email_body_html
 
 from conftest import TEST_DB
 
@@ -30,7 +32,8 @@ class EmailLLM:
                                rewrite_instructions=[] if score >= 8 else ["add notice period"])
 
     def recruiter_email(self, resume, job_text, live, notes=None, outreach=None,
-                        previous=None, review=None):
+                        previous=None, review=None, template=None):
+        assert template is None  # no email_template.txt where this test runs
         self.calls.append((job_text, live, notes))
         if review is not None:
             self.revised.append(review.issues)
@@ -69,6 +72,7 @@ def test_email_shortlisted(conn, monkeypatch, tmp_path):
     llm = EmailLLM()
     monkeypatch.setattr(cli, "_llm", lambda s: llm)
     monkeypatch.setattr("jobagent.browser.LazyBrowser", FakeLazy)
+    monkeypatch.chdir(tmp_path)  # away from the repo's email_template.txt: built-in format
     out = tmp_path / "emails"
     args = SimpleNamespace(job_ids=[], limit=10, no_browse=False, no_research=False, no_review=False,
                            config=str(tmp_path / "missing.yaml"), out=str(out))
@@ -93,3 +97,89 @@ def test_email_shortlisted(conn, monkeypatch, tmp_path):
     assert [r["posting_open"] for r in rows] == [True, False]
     assert all(r["outreach_subject"] for r in rows)
     assert all(live for _, live, _ in llm.calls)
+
+
+# --- the user's own template ----------------------------------------------------
+
+TEMPLATE = """Dear Hiring Team,
+
+My name is [Your Name], and I'm applying for the [Job Title] position at [Company Name].
+
+Best regards,
+[Your Full Name]
+[LinkedIn Profile]"""
+
+
+def filled(body):
+    return TemplateEmail(still_open=True, recruiter_name=None, contact_email=None,
+                         subject="Java Engineer | 6 yrs", body=body,
+                         follow_up_subject="Re: Java Engineer | 6 yrs",
+                         follow_up_body="Dear Hiring Team,\n\nFollowing up on my application.")
+
+
+class TemplateLLM:
+    """Has no research or review methods: with a template, jsa email must not call them."""
+
+    model = "fake"
+
+    def __init__(self):
+        self.templates = []
+
+    def recruiter_email(self, resume, job_text, live, notes=None, outreach=None,
+                        previous=None, review=None, template=None):
+        assert notes is None and previous is None and review is None
+        self.templates.append(template)
+        # The LinkedIn line is left unfilled on purpose.
+        return filled("Dear Hiring Team,\n\nMy name is Alex Morgan, and I'm applying for the "
+                      "Java Engineer position at Acme <UAE>.\n\nBest regards,\nAlex Morgan\n"
+                      "[LinkedIn Profile]")
+
+
+def test_email_fills_the_users_template(conn, monkeypatch, tmp_path):
+    pid = db.save_profile(conn, "Alex", "resume text", {})
+    jid, _ = db.upsert_job(conn, JobPosting(title="Java Engineer", company="Acme <UAE>",
+                                            url="https://x/1", location="Dubai"), None, None)
+    db.set_application_status(conn, pid, jid, "shortlisted")
+    (tmp_path / "email_template.txt").write_text(TEMPLATE)
+    monkeypatch.chdir(tmp_path)  # the template is picked up from where jsa runs
+    llm = TemplateLLM()
+    monkeypatch.setattr(cli, "_llm", lambda s: llm)
+    args = SimpleNamespace(job_ids=[], limit=10, no_browse=True, no_research=False, no_review=False,
+                           config=str(tmp_path / "missing.yaml"), out=str(tmp_path / "emails"))
+    cli.cmd_email(args, Settings(database_url=TEST_DB))
+
+    assert llm.templates == [TEMPLATE]  # one draft call for the job, nothing else
+    md = (tmp_path / "emails.md").read_text()
+    html = (tmp_path / "emails.html").read_text()
+    assert "applying for the Java Engineer position at Acme <UAE>." in md
+    assert "position at Acme &lt;UAE&gt;.</p>" in html
+    assert "<p>Best regards,<br>Alex Morgan<br>[LinkedIn Profile]</p>" in html
+    assert "Fill in before sending: [LinkedIn Profile]" in html
+    assert "**Fill in before sending:** [LinkedIn Profile]" in md
+    assert "<p>Dear Hiring Team,</p><p>Following up on my application.</p>" in html
+    saved = conn.execute("SELECT outreach_body FROM applications").fetchone()["outreach_body"]
+    assert saved.startswith("Dear Hiring Team,") and saved.endswith("[LinkedIn Profile]")
+
+
+def test_template_email_preview_keeps_paragraphs_and_line_breaks():
+    e = filled("Dear Hiring Team,\n\nI build <Java> services.\n\n\nBest regards,\nAlex Morgan\n+91 1\n")
+    assert email_body_html(e) == ("<p>Dear Hiring Team,</p><p>I build &lt;Java&gt; services.</p>"
+                                  "<p>Best regards,<br>Alex Morgan<br>+91 1</p>")
+    assert e.plain_text().endswith("+91 1")
+
+
+def test_unfilled_placeholders():
+    assert unfilled_placeholders("Dear [Company Name], the [Job Title] role at [Company Name]") \
+        == ["[Company Name]", "[Job Title]"]
+    described = "[4 or 5 areas of my experience that matter most for this job]"
+    assert unfilled_placeholders(f"My experience includes {described}.") == [described]
+    assert unfilled_placeholders("6+ years (Java) at IBM, see note [1] and []") == []
+
+
+def test_template_file_setting(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert OutreachPrefs().template() is None  # no file: built-in format
+    (tmp_path / "email_template.txt").write_text("Dear [Company Name],\n\n")
+    assert OutreachPrefs().template() == "Dear [Company Name],"
+    assert OutreachPrefs(template_file="").template() is None  # switched off in config.yaml
+    assert OutreachPrefs(template_file="other.txt").template() is None

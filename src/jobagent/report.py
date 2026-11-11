@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
+
+from .models import TemplateEmail
 
 
 def _trunc(s: str | None, n: int) -> str:
@@ -90,7 +93,16 @@ def _h(s) -> str:
     return _html.escape(str(s or ""))
 
 
+def _paragraphs_html(text: str | None) -> str:
+    """Plain text as <p> blocks: a blank line starts a new paragraph, other line breaks stay."""
+    paragraphs = [p for p in re.split(r"\n\s*\n", (text or "").strip()) if p.strip()]
+    return "".join("<p>" + "<br>".join(_h(line.strip()) for line in p.splitlines()) + "</p>"
+                   for p in paragraphs)
+
+
 def email_body_html(e) -> str:
+    if isinstance(e, TemplateEmail):  # the filled-in template is the whole email
+        return _paragraphs_html(e.body)
     bullets = "".join(f"<li>{_h(b)}</li>" for b in e.bullets)
     sig = "<br>".join(_h(x) for x in e.signature)
     return (f"<p>{_h(e.greeting)}</p><p>{_h(e.opener)}</p><ul>{bullets}</ul>"
@@ -99,10 +111,12 @@ def email_body_html(e) -> str:
 
 
 def emails_html(items: list[dict], *, title: str) -> str:
-    """items: {job, email (RecruiterEmail), status, research}"""
+    """items: {job, email (RecruiterEmail or TemplateEmail), status, research, review, unfilled}"""
     cards = []
     for n, it in enumerate(items):
         j, e = it["job"], it["email"]
+        unfilled = (f'<div class="row"><span class="badge warn">Fill in before sending: '
+                    f'{_h(", ".join(it["unfilled"]))}</span></div>' if it.get("unfilled") else "")
         badge = ('<span class="badge ok">Still open</span>' if it["status"] == "open" else
                  '<span class="badge warn">Looks closed</span>' if it["status"] == "closed" else
                  '<span class="badge warn">Not checked</span>')
@@ -125,14 +139,14 @@ def emails_html(items: list[dict], *, title: str) -> str:
 <section class="card">
   <div class="head"><h2>#{j['id']} {_h(j['title'])} at {_h(j['company'])}</h2>{badge}</div>
   <div class="meta">{_h(j.get('location'))} · <a href="{_h(j['url'])}">View posting</a></div>
-  {review}
+  {review}{unfilled}
   <div class="row"><b>To</b>{to}{rec}</div>
   <div class="row"><b>Subject</b><span id="s{n}">{_h(e.subject)}</span></div>
   <div class="mail" id="b{n}">{email_body_html(e)}</div>
   <button onclick="cp('s{n}',this)">Copy subject</button><button onclick="cp('b{n}',this)">Copy email</button>
   <details><summary>Follow-up for 5–7 days later</summary>
     <div class="row" style="margin-top:8px"><b>Subject</b><span id="fs{n}">{_h(e.follow_up_subject)}</span></div>
-    <div class="mail" id="fb{n}"><p>{_h(e.follow_up_body)}</p></div>
+    <div class="mail" id="fb{n}">{_paragraphs_html(e.follow_up_body)}</div>
     <button onclick="cp('fs{n}',this)">Copy subject</button><button onclick="cp('fb{n}',this)">Copy follow-up</button>
   </details>{research}
 </section>""")

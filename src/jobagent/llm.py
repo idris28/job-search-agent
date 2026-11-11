@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from .config import OutreachPrefs, SearchPrefs
 from .models import (CandidateProfile, ExtractedListings, JobPosting, MatchResult,
-                     RecruiterEmail, RecruiterReview)
+                     RecruiterEmail, RecruiterReview, TemplateEmail)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -85,6 +85,45 @@ FORMAT
   CV attached", "I need this job", exclamation marks, invented facts.
 - follow_up: 50-80 words for 5-7 days later, adds one new relevant result, subject "Re: <subject>".
 - If a RECRUITER REVIEW is given, fix every issue it lists while keeping all facts true."""
+
+# Used instead of RECRUITER_EMAIL_INSTRUCTIONS when the candidate supplies their own template
+# (outreach.template_file): the layout and wording are theirs, only the blanks are ours.
+TEMPLATE_EMAIL_INSTRUCTIONS = """You fill in a job candidate's own email TEMPLATE for one specific
+job. Inputs: the template, the resume, the stored posting, the live posting page text (may be
+missing or show the job closed) and outreach preferences.
+
+FACTS
+- still_open: false only if the live page says the job is closed, expired or removed.
+- recruiter_name / contact_email: only if written on the posting itself. Never guess.
+
+BODY: the template, made specific to this job
+- Keep the template as the candidate wrote it: the same greeting, paragraphs, sentences and
+  sign-off, in the same order. Do not add, remove, merge or rephrase them.
+- Replace every [placeholder] with what it asks for, for THIS job. A placeholder is either a
+  label ("[Job Title]") or a short description of what to write there. Job title and company: as
+  the posting gives them. Everything about the candidate (years, employers, skills, experience,
+  achievements, results): from the resume. When they can join and what is attached: from the
+  outreach preferences.
+- Make it specific to the posting. Skills and areas of experience: the ones this posting asks for
+  that the resume shows, by name or by work that plainly involves them, most important first and
+  in the posting's own terms where they mean the same thing. Leave out anything the resume does
+  not show, however prominent in the posting. An achievement with its result or metric: one
+  resume statement that gives both, the one closest to what this posting stresses; never join
+  separate achievements into one claim or suggest one result caused another. Never invent or
+  inflate anything.
+- Keep each detail as brief as its sentence needs, so the email stays short and reads naturally.
+- Change the template's fixed words only where they would be untrue or ungrammatical for this
+  candidate and job (for example "previous role" when the achievement is from the current role).
+- If there is nothing true to put in a placeholder (for example no LinkedIn URL in the resume, or
+  no notice period in the preferences), leave that line, sentence or phrase out. Never output a
+  square-bracket placeholder.
+- Separate paragraphs with one blank line; keep the sign-off lines on consecutive lines.
+
+SUBJECT AND FOLLOW-UP
+- subject: under 60 characters, "<Role> | <credential> | <key skills>", e.g.
+  "Senior Java Engineer | 6 yrs IBM & Oracle | Spring Boot".
+- follow_up: 50-80 words for 5-7 days later, in the template's tone with its greeting and
+  sign-off, adding one new relevant result; subject "Re: <subject>"."""
 
 CONTENT_RESEARCH_INSTRUCTIONS = """Use web search to find current advice from recruiters, hiring
 managers and recruitment agencies about what CONTENT in a candidate's application or cold email
@@ -173,16 +212,22 @@ class BaseLLM:
                         guidance_notes: str | None = None,
                         outreach: OutreachPrefs | None = None,
                         previous: RecruiterEmail | None = None,
-                        review: RecruiterReview | None = None) -> RecruiterEmail:
+                        review: RecruiterReview | None = None,
+                        template: str | None = None) -> RecruiterEmail | TemplateEmail:
+        """Draft the email for one job. With a template, the candidate's own wording is filled in
+        for the job; guidance notes and reviews shape wording, so they are not used then."""
         live = (live_page_text or "(live page could not be loaded)")[:15000]
         prefs = {}
         if outreach is not None:
             prefs = {k: v for k, v in outreach.model_dump().items()
                      if k in ("notice_period", "resume_link", "resume_filename") and v}
         payload = (f"RESUME:\n{resume_text}\n\nSTORED JOB POSTING:\n{job_text}"
-                   f"\n\nLIVE POSTING PAGE TEXT:\n{live}"
-                   f"\n\nRECRUITER GUIDANCE:\n{guidance_notes or '(none)'}"
-                   f"\n\nOUTREACH PREFERENCES:\n{json.dumps(prefs) if prefs else '(none)'}")
+                   f"\n\nLIVE POSTING PAGE TEXT:\n{live}")
+        prefs_text = f"\n\nOUTREACH PREFERENCES:\n{json.dumps(prefs) if prefs else '(none)'}"
+        if template:
+            return self._parse(TEMPLATE_EMAIL_INSTRUCTIONS,
+                               f"TEMPLATE:\n{template}\n\n{payload}{prefs_text}", TemplateEmail)
+        payload += f"\n\nRECRUITER GUIDANCE:\n{guidance_notes or '(none)'}{prefs_text}"
         if previous is not None and review is not None:
             payload += (f"\n\nPREVIOUS DRAFT:\nSubject: {previous.subject}\n\n"
                         f"{previous.plain_text()}\n\nRECRUITER REVIEW:\n"

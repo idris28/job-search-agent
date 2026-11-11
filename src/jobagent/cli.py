@@ -151,14 +151,24 @@ def cmd_email(args, settings):
     from datetime import date
 
     from .browser import LazyBrowser
-    from .models import JobPosting
+    from .models import JobPosting, unfilled_placeholders
     from .report import emails_html
 
     cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
     outreach = cfg.outreach
+    template = outreach.template()
+    if template:
+        print(f"Email format: your template ({outreach.template_file}); "
+              "web research and recruiter review are skipped")
+    else:
+        print("Email format: built-in"
+              + (f" ({outreach.template_file} not found)" if outreach.template_file else ""))
     from .filters import country_of
 
-    research_on = outreach.research and not args.no_research
+    # Research and review exist to shape the wording. With a template the wording is the
+    # candidate's own and fixed, so both would only add paid calls.
+    research_on = outreach.research and not args.no_research and not template
+    review_on = outreach.review and not args.no_review and not template
     guidance_cache: dict[str, str | None] = {}
     roles = ", ".join(cfg.search.roles) or "software engineer"
     llm = _llm(settings)
@@ -201,9 +211,10 @@ def cmd_email(args, settings):
                 notes = guidance_cache.get(country)
                 print("  drafting email...")
                 job_text = posting.as_prompt_text()
-                e = llm.recruiter_email(p["resume_text"], job_text, live, notes, outreach)
+                e = llm.recruiter_email(p["resume_text"], job_text, live, notes, outreach,
+                                        template=template)
                 review = None
-                if outreach.review and not args.no_review:
+                if review_on:
                     for attempt in range(outreach.max_revisions + 1):
                         review = llm.review_email(e, job_text, p["resume_text"], country)
                         print(f"  recruiter review: {review.score}/10"
@@ -214,6 +225,9 @@ def cmd_email(args, settings):
                         e = llm.recruiter_email(p["resume_text"], job_text, live, notes, outreach,
                                                 previous=e, review=review)
                 body = e.plain_text()
+                unfilled = unfilled_placeholders(f"{e.subject}\n{body}\n{e.follow_up_body}")
+                if unfilled:
+                    print(f"  ! fill in before sending: {', '.join(unfilled)}")
                 db.save_outreach(conn, p["id"], jid, subject=e.subject, body=body,
                                  recruiter_name=e.recruiter_name, contact_email=e.contact_email,
                                  still_open=e.still_open, research=notes,
@@ -223,7 +237,7 @@ def cmd_email(args, settings):
                                  review_notes=review.model_dump_json() if review else None)
                 status = "unchecked" if live is None else ("open" if e.still_open else "closed")
                 items.append({"job": job, "email": e, "status": status, "research": notes,
-                              "review": review})
+                              "review": review, "unfilled": unfilled})
                 label = {"open": "still open", "closed": "LOOKS CLOSED - check before sending",
                          "unchecked": "live page not checked"}[status]
                 md += [f"## #{jid} {job['title']} at {job['company']}",
@@ -232,6 +246,7 @@ def cmd_email(args, settings):
                        + (f" · {e.recruiter_name}" if e.recruiter_name else ""),
                        (f"Recruiter review: {review.score}/10. {review.first_impression}"
                         if review else ""),
+                       (f"**Fill in before sending:** {', '.join(unfilled)}" if unfilled else ""),
                        "", f"**Subject:** {e.subject}", "", "```", body, "```", "",
                        f"**Follow-up (after 5-7 days):** {e.follow_up_subject}", "", "```",
                        e.follow_up_body, "```", ""]

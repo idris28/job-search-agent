@@ -106,6 +106,17 @@ jsa runs                         # run history, tokens used, errors
 Output: `digests/emails-<date>.html` (open in a browser; "Copy email" pastes into Gmail with
 formatting; each card shows the recruiter review) and a Markdown copy. Nothing is ever sent.
 
+**Your own wording.** When `email_template.txt` is in the folder you run `jsa` from, step 3
+fills in that template instead of using the format above. Text in `[square brackets]` is replaced
+for each job. A blank can be a label such as `[Job Title]` or a short description of what to
+write, such as `[the skills this job asks for that my resume backs]`. The job title and company
+come from the posting; your skills, experience and employers come from your resume, chosen to
+match what that posting asks for, and when you can join comes from `outreach.notice_period`. The
+rest of the template is kept as you wrote it. Steps 2 and 4 are skipped, since they exist to shape
+wording that is now fixed, so a template draft is one model call per job. The preview flags any
+placeholder that was left unfilled. Edit the file to change the wording; delete it, or set
+`outreach.template_file: ""` in `config.yaml`, to go back to the built-in format.
+
 Re-running is cheap: jobs are deduplicated by company, title, and location, and a job is only
 re-scored when its text changes. One failing source marks the run `partial` and the rest
 continue. Details are in the `run_events` table.

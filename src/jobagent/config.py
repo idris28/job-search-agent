@@ -107,6 +107,15 @@ class OutreachPrefs(BaseModel):
     review: bool = True          # have the model review each draft as a recruiter
     min_review_score: int = 8    # revise drafts the recruiter review scores below this (1-10)
     max_revisions: int = 2
+    # Your own email wording with [placeholders], filled in for each job. When the file is
+    # missing (or this is ""), emails use the built-in recruiter-style format instead.
+    template_file: str = "email_template.txt"
+
+    def template(self) -> str | None:
+        p = Path(self.template_file) if self.template_file else None
+        if p is None or not p.is_file():
+            return None
+        return p.read_text(encoding="utf-8").strip() or None
 
 
 class MatchingPrefs(BaseModel):

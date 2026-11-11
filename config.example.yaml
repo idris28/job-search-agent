@@ -71,6 +71,10 @@ outreach:
   review: true             # review each draft as a recruiter would, then revise
   min_review_score: 8      # revise drafts scored below this (1-10)
   max_revisions: 2
+  # Your own email wording. Each draft is this file filled in for the job: text in
+  # [square brackets] is replaced, the rest is kept as written (research and review above are
+  # then skipped). Remove the file or set this to "" to use the built-in format instead.
+  template_file: email_template.txt
 
 # Job board searches (kind: generic) open in Browserbase, so they need BROWSERBASE_API_KEY
 # (BROWSERBASE_PROJECT_ID is optional). Each search page is read by the LLM, then up to max_detail_pages job
