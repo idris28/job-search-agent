@@ -42,8 +42,22 @@ class PlaywrightBrowser:
     def __init__(self, page):
         self._page = page
 
+    def _await_error_page(self) -> None:
+        """After a load fails with a network error, Chromium shows its own error page a moment
+        later, and a goto issued before that lands gets cancelled by it ("interrupted by another
+        navigation"). Wait for the error page so the next fetch on this page is safe."""
+        for _ in range(50):  # it normally lands within ~10 ms; give up after about a second
+            if self._page.url.startswith("chrome-error://"):
+                return
+            self._page.wait_for_timeout(20)
+
     def fetch(self, url: str, *, wait_ms: int = 2500) -> PageContent:
-        self._page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+        try:
+            self._page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+        except Exception as e:  # noqa: BLE001
+            if "net::ERR" in str(e):
+                self._await_error_page()
+            raise
         try:
             self._page.wait_for_load_state("networkidle", timeout=10_000)
         except Exception:  # noqa: BLE001 - many job sites never go fully idle
@@ -88,21 +102,42 @@ def open_browser(settings: Settings) -> Iterator[Browser]:
             browser.close()  # ends the Browserbase session
 
 
+def _session_ended(e: Exception) -> bool:
+    """True for Playwright's error once the browser behind the page is gone, which for
+    Browserbase means the session reached its timeout."""
+    return type(e).__name__ == "TargetClosedError" or "has been closed" in str(e)
+
+
 class LazyBrowser:
-    """Only opens a Browserbase session if some source actually needs one."""
+    """Opens a browser session only when a source needs one, and a new one if it ends mid-run."""
 
     def __init__(self, settings: Settings):
         self._settings = settings
         self._cm = None
         self._browser: Browser | None = None
+        self.sessions_opened = 0
+
+    def _open(self) -> Browser:
+        cm = open_browser(self._settings)
+        self._browser = cm.__enter__()
+        self._cm = cm
+        self.sessions_opened += 1
+        return self._browser
 
     def fetch(self, url: str, *, wait_ms: int = 2500) -> PageContent:
-        if self._browser is None:
-            self._cm = open_browser(self._settings)
-            self._browser = self._cm.__enter__()
-        return self._browser.fetch(url, wait_ms=wait_ms)
+        browser = self._browser or self._open()
+        try:
+            return browser.fetch(url, wait_ms=wait_ms)
+        except Exception as e:  # noqa: BLE001
+            if not _session_ended(e):
+                raise
+        # An ended session never comes back, so without a new one every remaining fetch of the
+        # run would fail the same way. Retried once: if the new session ends too, give up.
+        log.warning("Browser session ended mid-run; opening a new one for %s", url)
+        self.close()
+        return self._open().fetch(url, wait_ms=wait_ms)
 
     def close(self) -> None:
-        if self._cm is not None:
-            self._cm.__exit__(None, None, None)
-            self._cm = self._browser = None
+        cm, self._cm, self._browser = self._cm, None, None
+        if cm is not None:
+            cm.__exit__(None, None, None)
