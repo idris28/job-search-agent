@@ -14,16 +14,18 @@ or emails without you asking it to.
 ```
 1. Collect      2. Filter        3. Score          4. Shortlist      5. Act
 job boards  ->  location,    ->  AI compares   ->  score 75+     ->  email, apply,
-(Browserbase)   title, age       job to resume     is shortlisted    track status
+and feeds       title, age       job to resume     is shortlisted    track status
 ```
 
 1. **Collect.** `jsa run` reads every source listed in `config.yaml`. Job boards (Naukri,
-   Naukrigulf, Bayt) are opened in a cloud browser called Browserbase, and an AI model reads each
-   page and picks out the jobs, including how long ago each was posted. Company career pages
-   (Okta, Databricks and others) are read from their public feeds, with no browser. The same job
-   found on two boards is stored once.
+   Naukrigulf, Bayt) are opened in a browser: Browserbase in the cloud, or Chromium on this Mac
+   when `.env` has `JOBAGENT_BROWSER=local`. An AI model reads each page and picks out the jobs,
+   including how long ago each was posted. Company career pages (Okta, Databricks, Amazon,
+   Microsoft, the Workday companies and others) are read from their public feeds, with no browser.
+   The same job found on two boards is stored once.
 2. **Filter.** Jobs are dropped for free, before any scoring, if the location is not on your list,
-   the title has an excluded word, the company is a bank, or the job is older than 7 days.
+   the title has an excluded word, the company is a bank, or the job is older than
+   `search.max_age_days`.
 3. **Score.** The AI model (Claude) compares each remaining job with your resume and gives a score
    from 0 to 100, with matched skills, gaps and red flags.
 4. **Shortlist.** Jobs scoring 75 or more are shortlisted automatically.
@@ -31,7 +33,8 @@ job boards  ->  location,    ->  AI compares   ->  score 75+     ->  email, appl
    when they are due, and record what happened.
 
 A run stops early if it reaches the spending limits in `config.yaml` (AI tokens and browser
-minutes); whatever is left waits for the next run.
+minutes); whatever is left waits for the next run. A run you stop is recorded the same way, and
+the jobs it had already scored well enough are shortlisted.
 
 Everything is stored in a PostgreSQL database on your Mac, so nothing is lost between runs and a
 job is never scored or emailed twice.
@@ -43,6 +46,8 @@ job is never scored or emailed twice.
 | `.env` | Your secret keys (AI model, Browserbase, database, Gmail). Never shared. |
 | `config.yaml` | Your search: roles, locations, keywords, job boards, email settings. |
 | `email_template.txt` | The wording of your recruiter email. Text in `[brackets]` is filled in per job. |
+| `cover_letter_template.txt` | Your cover letter, filled in the same way. |
+| `general_email_template.txt` | The email for HR addresses that have no job posting. |
 | `digests/` | Where email previews, daily digests and the daily log are written. |
 | PostgreSQL database `jobagent` | Every job, score, application and draft. |
 
@@ -69,23 +74,24 @@ the website; this table maps its buttons to commands:
 | On the page | What it does | Same as |
 |---|---|---|
 | **Find new jobs** (and the arrow next to it) | Searches every site, or one site, or collects without scoring; also runs the morning routine | `jsa run`, `jsa run --source`, `--no-score`, `jsa daily` |
-| The six cards across the top | How many jobs are at each stage; click one to see those jobs. While a task runs, the cards it is working on glow and a strip under them shows its latest message, with a Stop button | |
-| The round buttons down the left | One-click actions from any screen: search, add a post, draft, find addresses, send, follow up, morning routine, digest. The last two switch between the light and dark look | |
+| The six numbers across the top | How many jobs are at each stage; click one to see those jobs. While a task runs, a blue line moves under the numbers it is working on and a strip under them shows its latest message, with a Stop button | |
+| **Actions**, in the menu on the left | One-click actions from any screen: add a post, add HR addresses, draft, look for addresses, save drafts to Gmail, send, follow up, morning routine, digest. **Light** and **Dark** at the bottom switch the look | `jsa add`, `jsa add-contacts`, `jsa email`, `jsa contacts`, `jsa send`, `jsa followups`, `jsa daily`, `jsa digest` |
 | The filter bar and table | Filter by country, score, posting age and next step; search by name; click a column heading to sort; click a job to open it in a panel on the right | `jsa jobs` |
 | **Shortlist** | Draft emails, look for addresses, save drafts to Gmail, send the ready emails | `jsa email`, `jsa contacts`, `jsa send --gmail-drafts`, `jsa send` |
 | A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; an **Apply on the job site** button that opens the posting and asks afterwards whether you applied; buttons for applied, skipped, interview, offer, rejected | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa apply` |
 | **In progress**, **Follow-ups** | Applications under way (choose "Set aside" in the Stage filter for skipped and rejected jobs); follow-ups that are due, with a button to send them | `jsa applications`, `jsa followups` |
 | **All matches** | Every scored job, with the score filter and a digest download | `jsa jobs`, `jsa digest` |
-| **Add a job from a post** | Paste a LinkedIn post; it is read, scored and shortlisted | `jsa add` |
-| The panels beside and below the table | A ring showing your jobs by stage, your top matches, where the jobs are by country, and the next steps worth taking, each with a button | |
+| **Add from a post** | Paste a LinkedIn post; it is read, scored and shortlisted | `jsa add` |
+| The panels beside and below the table | One mark for each job on your lists, coloured by stage; your top matches; where the jobs are by country; and the next steps worth taking, each with a button | |
 | **Insights** | Your week, the skills you miss most, which sites deliver | `jsa progress`, `jsa gaps` |
-| **Activity** | The full output of the running or last task, and past searches | `jsa runs` |
-| **Settings** | Setup checklist, resume import, the daily schedule, the email template, duplicate jobs, a test notification, and **Stop Job Search** | `jsa profile import`, `jsa schedule`, `jsa dedupe`, `jsa notify-test`, `jsa migrate` |
+| **Activity** | The full output of the running or last task, and past searches with the reason any was only partly finished | `jsa runs` |
+| **Settings** | Setup checklist, resume import, the morning routine, your three templates, duplicate jobs, a test notification, and **Stop Job Search** | `jsa profile import`, `jsa schedule`, `jsa dedupe`, `jsa notify-test`, `jsa migrate` |
 | **All actions** (Cmd-K) | A searchable list of every action | |
 
 Good to know:
 
-- One task runs at a time. **Stop** ends it; what it already saved is kept.
+- One task runs at a time. **Stop** ends it; what it already saved is kept, and a stopped search is
+  listed in Activity as Partly finished.
 - Sending always asks first. "Send ready emails" sends the drafts as they are saved, including your
   edits; it does not write them again.
 - If the database needs an update after new features arrive, the page says so and offers one button.
@@ -107,7 +113,7 @@ Good to know:
 
 | Command | What it does |
 |---|---|
-| `jsa run` | Collects jobs from every job board in `config.yaml`, filters and scores them, and prints the best new ones. Uses paid Browserbase time and AI calls. |
+| `jsa run` | Collects jobs from every job board in `config.yaml`, filters and scores them, and prints the best new ones. Uses AI calls, and Browserbase time unless the browser is local. |
 | `jsa run --source "Bayt - Java"` | Runs only the one source with that name. |
 | `jsa run --no-score` | Collects jobs but skips scoring, so no scoring calls are made. |
 | `jsa add` | Adds a job from text you paste, such as a LinkedIn post asking for CVs by email. Paste the text, press Enter, then Ctrl-D. It reads the role, company and email address, scores the job and shortlists it. |
@@ -125,7 +131,7 @@ Good to know:
 | `jsa show 343 --full` | Also prints the full job description. |
 | `jsa digest --out digests/today.md` | Writes a readable summary of the top matches to a file. Without `--out` it prints to the screen. |
 | `jsa digest --run-id 3` | Only jobs first seen in run number 3. |
-| `jsa runs` | Shows past runs: when, how many jobs found and scored, tokens used, and errors. |
+| `jsa runs` | Shows past runs: when, how many jobs found and scored, tokens used, and the reason a run failed or was only partly finished. |
 | `jsa gaps` | Lists the skills job postings ask for most often that your resume doesn't show. `--days`, `--min-score` and `--limit` adjust it. |
 | `jsa progress` | A summary of the last 7 days: shortlisted, applied, emails and follow-ups sent, interviews, your reply rate, and results per site. `--days 30` widens it. |
 | `jsa dedupe` | Shows jobs that are stored more than once. Changes nothing. |
@@ -139,13 +145,13 @@ Good to know:
 | `jsa email 343` | Drafts for one job. You can list several numbers. |
 | `jsa email --gmail-drafts` | Also saves each ready email into your Gmail Drafts with your CV attached, for you to review and send. |
 | `jsa email --send` | Sends each ready email from your Gmail with your CV attached, then marks the job as applied so it is never emailed again. |
-| `jsa email --no-browse` | Skips the live check of the posting (no Browserbase use). |
+| `jsa email --no-browse` | Skips the live check of the posting (no browser use). |
 | `jsa email --limit 5` | Changes how many shortlisted jobs are drafted. |
 | `jsa contacts` | For shortlisted jobs with no address, searches each company's own website for a published application address. Uses AI web search. An address is kept only if it is really printed on that page. |
 | `jsa contacts 343` | The same for specific jobs. |
 | `jsa email --general` | Also uses a general inbox (such as `info@`) found by `jsa contacts`. Without it, general inboxes are never emailed. |
 | `jsa cover-letter 343` | Writes a cover letter for one job and saves it with the application. It fills in your own letter from `cover_letter_template.txt` (text in [square brackets] is replaced for the job); without that file it writes a short built-in letter. |
-| `jsa followups` | Lists emails sent 6 or more days ago that have had no follow-up. |
+| `jsa followups` | Lists emails sent `outreach.follow_up_days` or more days ago that have had no follow-up. |
 | `jsa followups --send` | Sends the stored follow-up email for each one that is due. |
 | `jsa followups --done 343` | Records a follow-up you sent yourself, so it stops being listed. |
 
@@ -214,13 +220,14 @@ by email.
 
 ## Settings you are most likely to change
 
-All in `config.yaml`:
+All in `config.yaml`. A number in brackets is what applies until you set your own; the website shows
+your current values under Settings, "Limits in force".
 
 | Setting | Meaning |
 |---|---|
 | `search.roles`, `search.locations` | What you are looking for and where. |
-| `search.max_age_days` | Only jobs posted within this many days (7). |
-| `search.min_salary_lpa` | Lowest salary you accept, in lakhs a year (20). Jobs stating less are dropped; jobs that don't state pay are kept. |
+| `search.max_age_days` | Only jobs posted within this many days (30; the example file uses 7). |
+| `search.min_salary_lpa` | Lowest salary you accept, in lakhs a year (none). Jobs stating less are dropped; jobs that don't state pay are kept. |
 | `search.exclude_company_keywords`, `exclude_industries` | Companies and industries to leave out (banking). |
 | `matching.shortlist_min_score` | Score at which a job is shortlisted (75). |
 | `outreach.notice_period` | When you can join; shown in emails. |
@@ -236,7 +243,7 @@ All in `config.yaml`:
 
 ## Notifications
 
-After each run, new jobs scoring 85 or more are sent to you in one message. It goes to Telegram if
+After each run, new jobs scoring `matching.notify_min_score` or more (85) are sent to you in one message. It goes to Telegram if
 `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are in `.env`; otherwise to your own Gmail address if
 Gmail is set up; otherwise nothing is sent. To use Telegram, create a bot with @BotFather, send it
 a message, and put its token and your chat id in `.env`. Check it with `jsa notify-test`.
@@ -251,7 +258,8 @@ page. Treat an estimate as a rough guide, not a fact; it never lowers a score on
 
 - **AI model calls** (Claude): `jsa contacts`, the "add a job" form on the web page, `jsa daily`, `jsa run` (reading pages and scoring), `jsa email`, `jsa add`,
   `jsa cover-letter` and `jsa profile import`.
-- **Browserbase time**: `jsa daily`, `jsa run`, and the live posting check in `jsa email`.
+- **Browserbase time**: `jsa daily`, `jsa run`, and the live posting check in `jsa email`. None of it
+  is used when `.env` has `JOBAGENT_BROWSER=local`: the pages open in Chromium on this Mac.
 
 Everything else (`jobs`, `show`, `apply`, `status`, `applications`, `digest`, `runs`, `migrate`)
 is free.
@@ -292,8 +300,11 @@ Adobe says "Computer Scientist", Salesforce says "Member of Technical Staff".
   why `jsa apply` opens the page in your own browser.
 - Most job board postings show no email address, so `--send` only covers the ones that do, plus
   posts you add with `jsa add`.
-- Only the first 15 job pages per site are opened in full each run; the newest postings go first.
-- `--send` stops at 10 emails a day and waits 20 seconds between them; both are settings.
+- Only the first few job pages per site are opened in full each run (`max_detail_pages` on each
+  source); the newest postings go first.
+- `--send` stops at the daily limit and waits between emails; both are settings
+  (`outreach.max_sends_per_day`, `send_pause_seconds`).
 - The daily schedule only runs while the Mac is awake.
-- After any update to the agent, run `jsa migrate` once; until then every command stops and says so.
+- After an update that changes the database, run `jsa migrate` once, or click **Update the database**
+  on the website; until then every command stops and says so.
 - A job whose posting age the site does not show is kept and listed last.

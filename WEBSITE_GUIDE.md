@@ -62,7 +62,7 @@ cross).
 6. **Apply on the site where there is no address.** Open the job and click **Apply on the job
    site**. The posting opens in a new tab; apply there. When you come back, the page asks "Did you
    apply?" Answer **Yes, I applied** and the job moves to In progress.
-7. **Follow up.** When an email has had no reply for six days (the number is in `config.yaml`), the job appears under **Follow-ups**
+7. **Follow up.** When an email has had no reply for the number of days set in `config.yaml` (the Follow-ups screen says how many), the job appears under **Follow-ups**
    and the menu shows a number beside it. Click **Send follow-ups**.
 
 The **Next steps** panel at the bottom of the page always shows which of these is waiting, with a
@@ -161,7 +161,7 @@ email and cover letter leave the name out: "applying for the Java Developer posi
 |---|---|---|
 | **Shortlist** | Jobs worth acting on. The last column says what each one needs: no draft yet, no address yet, or ready to send. | Draft emails, Look for addresses, Save drafts to Gmail, Send ready emails |
 | **In progress** | Jobs you applied to, interviews and offers. Choose **Set aside** in the Stage filter to see jobs you skipped and rejections. | |
-| **Follow-ups** | Emails with no reply after six days. | Send follow-ups |
+| **Follow-ups** | Emails with no reply after the number of days you set. | Send follow-ups |
 | **All matches** | Every job that was scored, not only the shortlist. Starts at score 70 or more; change the Score filter to see the rest. Open one and click **Add to shortlist** to act on it. | Download digest |
 | **Insights** | Your last seven days, the skills job postings ask for most that your resume lacks, and which sites deliver. | |
 | **Activity** | Everything the running or last task reported, and a list of past searches. When a search is only **Partly finished**, the Problem column says why: a spending limit was reached, some sites could not be read, or it was stopped. | |
@@ -174,7 +174,8 @@ email and cover letter leave the name out: "applying for the Java Developer posi
 - **Send ready emails** and **Send email** send from your Gmail with your CV attached. Both ask you to
   confirm first.
 - Emails are sent exactly as saved, including your edits.
-- At most 10 emails go out per day, 20 seconds apart. Both numbers are in `config.yaml`.
+- Only so many emails go out per day, with a pause between them. Both numbers are in `config.yaml`,
+  and Settings shows them under **Limits in force**.
 - A job is never emailed twice: once sent, it is marked applied.
 - If only a general inbox (such as info@) was found, **Send ready emails** leaves that job out. You can
   still open the job and send it yourself.

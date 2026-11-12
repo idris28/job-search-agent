@@ -17,7 +17,7 @@ sequenceDiagram
     participant CLI as jsa (cli.py)
     participant Pipe as Pipeline (pipeline.py)
     participant Src as Sources (sources/)
-    participant Web as Browserbase browser (browser.py)
+    participant Web as Browser, Browserbase or local (browser.py)
     participant Feeds as Company career feeds
     participant AI as AI model (llm.py)
     participant Filt as Rule filters (filters.py)
@@ -31,7 +31,7 @@ sequenceDiagram
     User->>CLI: jsa run
     CLI->>DB: pending_migrations() - stop if the database is behind
     CLI->>Pipe: run_agent(config, AI, browser)
-    Pipe->>DB: active_profile(), start_run()
+    Pipe->>DB: active_profile(), start_run() - also takes this run's lock
     loop each source in config.yaml
         Note over Pipe: Skipped if the token or browser-minute limit is reached
         Pipe->>Src: build_source().fetch()
@@ -41,17 +41,18 @@ sequenceDiagram
             Note over Web: If the session ends mid-run, a new one is opened and the page is retried
             Src->>AI: extract_listings(page)
             AI-->>Src: jobs with title, link, location, posted age
-            Src->>Web: fetch(job page) for up to 15 jobs, newest first
+            Src->>Web: fetch(job page) for up to max_detail_pages jobs, newest first
             Web-->>Src: full description
-        else company career feed (Greenhouse, Lever, Ashby)
+        else company career feed (Greenhouse, Lever, Ashby, Amazon, Microsoft, Workday)
             Src->>Feeds: HTTP GET the public feed
             Feeds-->>Src: every open job with its posting date
+            Note over Src: The three big feeds are asked for your countries only
         end
         Src-->>Pipe: JobPosting list
         loop each JobPosting
             Pipe->>DB: upsert_job() - once per job, also across boards (match_key)
             Pipe->>Filt: reject_reason(job)
-            Filt-->>Pipe: keep, or drop for location, title, bank, older than 7 days
+            Filt-->>Pipe: keep, or drop for location, title, bank, older than max_age_days
         end
     end
     Pipe->>DB: existing_match_hash() - skip jobs already scored
@@ -60,7 +61,7 @@ sequenceDiagram
         AI-->>Pipe: score 0-100, matched skills, gaps, red flags
         Pipe->>DB: save_match()
     end
-    Pipe->>DB: shortlist_many(score 75 or more), finish_run(counts, tokens)
+    Pipe->>DB: shortlist_many(score 75 or more), finish_run(counts, tokens, the reason if partial)
     Pipe-->>CLI: RunSummary
     CLI-->>User: top new matches, newest first
     end
@@ -125,7 +126,7 @@ sequenceDiagram
     Note over User,Mail: 5. jsa followups - chase emails with no reply
     User->>CLI: jsa followups [--send]
     CLI->>DB: followups_due(follow_up_days)
-    DB-->>CLI: emails sent 6+ days ago with no follow-up
+    DB-->>CLI: emails sent follow_up_days ago with no follow-up
     CLI-->>User: list of follow-ups due today
     opt --send
         CLI->>DB: sends_today() - same daily cap
@@ -153,12 +154,20 @@ Not in the diagram:
   `static/app.html` and a JSON API on `http://127.0.0.1:8765`. Quick changes (status, notes, saving
   or sending one draft) happen in the request. Anything slow is started as a `jsa` child process by
   `TaskRunner`, one at a time, and the page polls its output; so the page runs exactly the same
-  code as the terminal commands.
+  code as the terminal commands. The page talks to the API with a key written into it when it
+  loads, and the server answers only on this machine. **Stop** sends the child a terminate
+  signal and ends it outright if it has not finished tidying up after 15 seconds.
+  [DESIGN.md](DESIGN.md) records how the page looks and reads.
 - `jsa contacts` runs between parts 1 and 3: the AI web-searches for a published application
   address, `contacts.py` verifies it on the company's page, and `save_contact()` stores it for
   `jsa email` to use.
+- `jsa add-contacts` stores HR addresses that have no posting as general applications; `jsa email`
+  drafts them from their own template, writing the email once for each country and reusing it.
+- `jsa send` delivers drafts that are already saved, without writing them again; the page uses it.
+- `jsa cover-letter` fills in the cover letter template for one job.
 - `jsa gaps`, `jsa progress` and `jsa dedupe` only read (or tidy) the database.
-- After `jsa run` and `jsa daily`, `notifier.py` sends jobs scoring 85 or more to Telegram or email.
+- After `jsa run` and `jsa daily`, `notifier.py` sends jobs scoring `notify_min_score` or more to
+  Telegram or email.
 
 ## Reading the diagram
 
@@ -185,7 +194,7 @@ Not in the diagram:
 | Preview | `src/jobagent/report.py` | Terminal tables, the Markdown digest, the HTML email preview |
 | Gmail | `src/jobagent/mailer.py` | Builds the message; saves it to Drafts or sends it |
 | Web app | `src/jobagent/web.py`, `static/app.html`, `Job Search.app` | Every command as a button: a JSON API, a runner that executes `jsa` commands as tasks, and a double-click launcher |
-| Shared actions | `src/jobagent/actions.py` | Add a pasted job and send a stored draft, used by both the commands and the web page |
+| Shared actions | `src/jobagent/actions.py` | Add a pasted job, add HR addresses and send a stored draft, used by both the commands and the web page |
 | Contact check | `src/jobagent/contacts.py` | Confirms a found application address is printed on the company's own page |
 | Notifications | `src/jobagent/notifier.py` | Sends strong new matches to Telegram, or to your own email |
 | Schedule | `src/jobagent/scheduler.py` | The macOS launchd job that runs `jsa daily` each morning |
@@ -208,7 +217,12 @@ Not in the diagram:
   delivery happens only with `--gmail-drafts` or `--send`, and sending stops at the daily cap.
 - **Addresses are found, never guessed.** `jsa contacts` asks the AI to search, but an address is
   stored only after `contacts.py` fetches the page itself and finds the address printed there.
+- **A run always gets an end.** A terminate signal is handled like Ctrl-C, so a stopped run
+  shortlists what it scored and records where it ended. A run also holds a PostgreSQL advisory lock
+  while it works; the lock goes when its program does, so a row still marked running with no lock
+  is known to be dead and is closed the next time runs are listed or a run starts. A run that is
+  only partly finished stores the reason: the limit reached, or the sites that could not be read.
 - **The database must be current.** Every command checks for pending updates first and says
-  "Run: jsa migrate" instead of failing halfway.
+  "Run: jsa migrate" instead of failing halfway; the page offers a button for the same.
 - **The agent never logs in to job sites.** They block automated browsers, so applying on a site
   is done by you in your own browser.

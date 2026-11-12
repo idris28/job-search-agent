@@ -1,16 +1,17 @@
 # AI Job Search Agent
 
 Finds jobs, scores each one against your resume with Claude or OpenAI, and tracks your applications in
-PostgreSQL. Job pages that need a real browser are opened with Browserbase.
+PostgreSQL. Job pages that need a real browser are opened with Browserbase, or with Chromium on your
+own machine.
 
 ```
 sources ──► collect ──► dedupe + store ──► rule filters ──► LLM scoring   ──► shortlist + digest
-(Greenhouse, Lever, Ashby APIs;        (jobs)        (location,     (job_matches)     (applications)
- any careers page via Browserbase)                    title, age)
+(company job feeds over HTTP;          (jobs)        (location,     (job_matches)     (applications)
+ any careers page via a browser)                      title, age)
 ```
 
-The agent never applies for you. It shortlists strong matches, drafts cover letters on request,
-and records the status you set.
+The agent never applies for you. It shortlists strong matches, drafts emails and cover letters on
+request, sends an email only when you tell it to, and records the status you set.
 
 ## Setup
 
@@ -48,8 +49,10 @@ jsa profile import path/to/resume.pdf
 | `LLM_EFFORT` (optional) | Claude reasoning effort: `low` … `max` | |
 | `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | the key for your provider | console.anthropic.com → API Keys, or platform.openai.com/api-keys |
 | `DATABASE_URL` | everything | e.g. `postgresql://localhost/jobagent` (Homebrew) |
-| `BROWSERBASE_API_KEY` (+ optional `BROWSERBASE_PROJECT_ID`) | `generic` sources only | browserbase.com → Settings |
-| `JOBAGENT_BROWSER=local` (optional) | use local Chromium instead of Browserbase while developing | |
+| `BROWSERBASE_API_KEY` (+ optional `BROWSERBASE_PROJECT_ID`) | `generic` sources, unless the browser is local | browserbase.com → Settings |
+| `JOBAGENT_BROWSER=local` (optional) | open job pages in Chromium on this machine instead of Browserbase; no Browserbase key is needed | |
+| `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` (optional) | sending emails, saving Gmail drafts, the morning summary | a Google app password: myaccount.google.com/apppasswords |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | phone notifications | a bot from @BotFather |
 
 The model is set only in `.env`; nothing is hard-coded. To switch, change `LLM_MODEL` (and the
 API key if you change provider). Claude calls use structured outputs and server-side refusal
@@ -60,8 +63,10 @@ fallback, so a declined request is retried on a fallback model.
 Everything lives in `config.yaml` (see `config.example.yaml`):
 
 - `search.locations` is preset for India, the UAE, Saudi Arabia, and Qatar (countries and major
-  cities). Jobs with another location are dropped before scoring. Remote jobs and jobs with no
-  location go through, and the matcher decides from the description.
+  cities). Jobs with another location are dropped before scoring. A job with no location goes
+  through, and the matcher decides from the description. A remote job goes through when it says
+  only "Remote", names one of your places, or names a wide region such as "Worldwide" or "APAC";
+  one tied to another country ("Remote, Brazil") is dropped.
 - `search.include_title_keywords` and `exclude_title_keywords` are whole-word filters on the title.
 - `search.min_salary_lpa` drops rupee jobs that state a salary below it (lakhs a year). Jobs with
   no stated salary are kept, and the matcher flags pay stated in another currency.
@@ -94,7 +99,7 @@ jsa email 94 96                  # ...or for specific jobs; --no-browse skips th
 jsa status 42 applied --note "via referral"
 jsa applications                 # your pipeline
 jsa digest --out digests/today.md
-jsa runs                         # run history, tokens used, errors
+jsa runs                         # run history, tokens used, and why a run was only partial
 ```
 
 `jsa email` prepares recruiter outreach for your top shortlisted jobs. For each job it:
@@ -109,7 +114,8 @@ jsa runs                         # run history, tokens used, errors
    and rewrites it until it scores `outreach.min_review_score` or `max_revisions` is reached.
 
 Output: `digests/emails-<date>.html` (open in a browser; "Copy email" pastes into Gmail with
-formatting; each card shows the recruiter review) and a Markdown copy. Nothing is ever sent.
+formatting; each email is shown on a sheet, with the recruiter review above it) and a Markdown copy.
+Nothing is sent unless you add `--send`.
 
 **Finding an address.** `jsa contacts` web-searches each shortlisted company's own site for a
 published application address (Claude only). `contacts.py` then fetches the page and keeps the
@@ -148,9 +154,10 @@ run it daily; `jsa schedule status` and `jsa schedule remove` manage it.
 
 **No terminal needed.** Double-click `Job Search.app` in the project folder, or run `jsa web`. A page
 opens on this Mac only (http://127.0.0.1:8765) where every command is a button: search, draft, find
-addresses, send, follow up, schedule the daily run, import a resume, update the database. Slow
+addresses, send, follow up, schedule the morning routine, import a resume, update the database. Slow
 commands run as one background task at a time, with live progress and a Stop button. GUIDE.md has the
-full map of buttons to commands, and WEBSITE_GUIDE.md explains how to use the website. `jsa send` sends saved drafts as they are (the page uses it).
+full map of buttons to commands, WEBSITE_GUIDE.md explains how to use the website, and DESIGN.md
+records how the page should look and read. `jsa send` sends saved drafts as they are (the page uses it).
 
 **New jobs first.** The agent reads how long ago each job was posted ("2 days ago") from the
 job boards. `search.max_age_days` (7 in the example) drops older postings, and lists, emails and
@@ -198,8 +205,8 @@ shortlists what it had already scored and records where it ended. A run whose pr
 before it could do that is given its end the next time runs are listed or a new run starts.
 Details are in the `run_events` table.
 
-To run it daily, schedule `jsa run && jsa digest --out digests/$(date +%F).md` with cron or a
-CI scheduler.
+To run it daily on a Mac, use `jsa schedule install` (see "Every morning" above). On another
+system, schedule `jsa daily` with cron.
 
 ## Database
 
@@ -230,16 +237,28 @@ src/jobagent/
   pipeline.py   one run: collect → store → filter → score → shortlist
   sources/      greenhouse, lever, ashby (ats.py); amazon, microsoft, workday (big.py); generic (Browserbase + LLM)
   mailer.py     Gmail: save drafts or send
-  actions.py    add a pasted job, send a stored draft (shared by the CLI and the web page)
+  actions.py    add a pasted job, add HR addresses, send a stored draft (shared by the CLI and the web page)
   contacts.py   check a found application address against the company's own page
   notifier.py   Telegram or email message about strong new matches
   web.py        local web app: JSON API, and a runner that executes jsa commands as tasks
   static/       the page itself (app.html)
   scheduler.py  macOS launchd job for `jsa daily`
   browser.py    Browserbase session (or local Chromium) behind one fetch() interface
+  report.py     terminal tables, the Markdown digest, the HTML email preview
+  resume.py     reads the resume file (PDF or text)
+  config.py     .env secrets and config.yaml
   llm.py        shared prompts + OpenAI provider: profile, match score, listing extraction, cover letter
   llm_anthropic.py  Claude provider for the same tasks
   filters.py    rule-based pre-filter
   db.py         Postgres queries and migration runner
   models.py     JobPosting and LLM output schemas
 ```
+
+## Documents
+
+| File | For |
+|---|---|
+| `GUIDE.md` | every `jsa` command, and which button on the website does the same |
+| `WEBSITE_GUIDE.md` | using the website, screen by screen |
+| `ARCHITECTURE.md` | how the parts fit together; `app-flow.html` and `architecture-live.html` are the same as pictures |
+| `DESIGN.md` | how the website looks and reads: colours, type, spacing, wording |

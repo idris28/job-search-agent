@@ -63,7 +63,7 @@ matching:
   max_jobs_to_score: 100    # cost cap per run
   notify_min_score: 85      # message you about new jobs scoring this or more (0 = off)
   max_tokens_per_run: 600000        # stop a run after this many AI tokens (0 = no limit)
-  max_browser_minutes_per_run: 30   # stop collecting after this much Browserbase time (0 = no limit)
+  max_browser_minutes_per_run: 30   # stop collecting after this much browser time (0 = no limit)
   concurrency: 4
 
 # Recruiter emails (`jsa email`)
@@ -98,8 +98,9 @@ outreach:
   # "Add HR addresses" on the website).
   general_template_file: general_email_template.txt
 
-# Job board searches (kind: generic) open in Browserbase, so they need BROWSERBASE_API_KEY
-# (BROWSERBASE_PROJECT_ID is optional). Each search page is read by the LLM, then up to max_detail_pages job
+# Job board searches (kind: generic) open in a browser. By default that is Browserbase, which needs
+# BROWSERBASE_API_KEY (BROWSERBASE_PROJECT_ID is optional); with JOBAGENT_BROWSER=local in .env it is
+# Chromium on this machine, which needs no key. Each search page is read by the LLM, then up to max_detail_pages job
 # pages are opened for full descriptions. Some boards use bot protection; check `jsa runs` and
 # disable a source that keeps failing.
 sources:
@@ -138,7 +139,7 @@ sources:
     enabled: false
 
   # --- More job sites (added 12 Nov 2026) ---
-  # These pages responded when checked, but have not yet been read through Browserbase. Run one
+  # These pages responded when checked, but have not yet been read through the browser. Run one
   # with `jsa run --source "<name>" --no-score` and set `enabled: false` on any that return nothing.
   - kind: generic
     name: Hirist - Java
