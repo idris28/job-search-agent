@@ -94,6 +94,10 @@ Use this when you have an employer's HR or careers address but no specific vacan
 4. Draft and send them like any other job: **Draft emails**, read each one, then **Send email** or
    **Send ready**. The same daily limit applies, and follow-ups work the same way.
 
+**Draft emails** writes all of them in one go. The email is written once for each country and reused
+for every address there, with the employer's name swapped in, so many addresses cost only a few AI
+calls.
+
 The email comes from its own template, "Your general application email" in Settings. It asks about
 openings instead of applying for a position. If you gave no employer name, the email leaves the name
 out. To see only these, choose **General applications** in the Next step filter.

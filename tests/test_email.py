@@ -354,3 +354,42 @@ def test_general_applications_use_their_own_template(conn, monkeypatch, tmp_path
     drafted = conn.execute("SELECT a.contact_email, a.outreach_subject FROM applications a JOIN jobs j ON j.id = a.job_id"
                            " WHERE j.url LIKE 'general:%'").fetchone()
     assert drafted["contact_email"] == "hr@acme.sa" and drafted["outreach_subject"]  # the typed address is kept
+
+
+def test_general_applications_share_one_written_email(conn, monkeypatch, tmp_path):
+    from jobagent.actions import add_hr_contacts
+    from jobagent.config import AgentConfig
+
+    db.save_profile(conn, "Alex", "resume text", {})
+    add_hr_contacts(conn, AgentConfig(), "Acme Gulf, hr@acme.sa\nBeta & Sons, jobs@beta.sa\ncareers@gamma.sa", "Saudi Arabia")
+    add_hr_contacts(conn, AgentConfig(), "Delta Dubai, hr@delta.ae", "UAE")
+    (tmp_path / "general_email_template.txt").write_text("Dear Hiring Team,\n\nOpenings at [Company Name]?")
+    monkeypatch.chdir(tmp_path)
+    calls = []
+
+    class OnceLLM:
+        model = "fake"
+
+        def recruiter_email(self, resume, job_text, live, notes=None, outreach=None,
+                            previous=None, review=None, template=None):
+            company = job_text.splitlines()[1].removeprefix("Company: ")
+            calls.append(company)
+            where = "" if company.startswith("(") else f" at {company}"
+            return TemplateEmail(still_open=True, recruiter_name=None, contact_email=None,
+                                 subject="Software Engineer | 6 yrs", body=f"Dear Hiring Team,\n\nAny openings{where}?",
+                                 follow_up_subject="Re: Software Engineer | 6 yrs",
+                                 follow_up_body=f"Dear Hiring Team,\n\nFollowing up{where}.")
+
+    monkeypatch.setattr(cli, "_llm", lambda s: OnceLLM())
+    args = SimpleNamespace(job_ids=[], limit=10, no_browse=True, no_research=False, no_review=False,
+                           gmail_drafts=False, send=False, general=False,
+                           config=str(tmp_path / "missing.yaml"), out=str(tmp_path / "emails"))
+    cli.cmd_email(args, Settings(database_url=TEST_DB))
+    # One call per country for named employers, one for the employer with no name: 3 calls, 4 emails.
+    assert sorted(calls) == ["(not named in the posting)", "Zentrovia Holdings", "Zentrovia Holdings"]
+    drafts = {r["company"]: (r["outreach_body"], r["follow_up_body"], r["contact_email"]) for r in conn.execute(
+        "SELECT j.company, a.outreach_body, a.follow_up_body, a.contact_email FROM applications a JOIN jobs j ON j.id = a.job_id")}
+    assert drafts["Acme Gulf"] == ("Dear Hiring Team,\n\nAny openings at Acme Gulf?", "Dear Hiring Team,\n\nFollowing up at Acme Gulf.", "hr@acme.sa")
+    assert drafts["Beta & Sons"][0].endswith("at Beta & Sons?") and drafts["Delta Dubai"][0].endswith("at Delta Dubai?")
+    assert drafts["gamma.sa (name not given)"][0] == "Dear Hiring Team,\n\nAny openings?"
+    assert not any("Zentrovia" in body + follow for body, follow, _ in drafts.values())

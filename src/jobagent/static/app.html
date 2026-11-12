@@ -1164,7 +1164,7 @@ const A = {
   "add-go": () => { const text = $("#addtext").value.trim(); if (!text) return toast("Paste the post text first.", true);
     $("#adddlg").close(); startTask({ action: "add", text, url: $("#addurl").value.trim() }); $("#addtext").value = ""; $("#addurl").value = ""; },
   resume: () => $("#resumefile").click(),
-  "draft-all": () => { const l = ids(r => !r.has_draft).slice(0, 10); l.length ? startTask({ action: "email", job_ids: l }) : toast("Every shortlisted job already has a draft."); },
+  "draft-all": () => { const l = ids(r => !r.has_draft && !isGeneral(r)).slice(0, 10).concat(ids(r => !r.has_draft && isGeneral(r))); l.length ? startTask({ action: "email", job_ids: l }) : toast("Every shortlisted job already has a draft."); },
   "contacts-all": () => { const l = ids(r => !r.contact_email).slice(0, 10); l.length ? startTask({ action: "contacts", job_ids: l }) : toast("Every shortlisted job already has an address."); },
   "gmail-all": () => { const l = ids(ready); l.length ? startTask({ action: "gmail-drafts", job_ids: l }) : toast(NOT_READY); },
   "send-all": async () => { const l = ids(ready), cap = S.state && S.state.sends;

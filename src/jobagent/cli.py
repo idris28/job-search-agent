@@ -197,7 +197,8 @@ def cmd_email(args, settings):
     from datetime import date
 
     from .browser import LazyBrowser
-    from .models import GENERAL_URL, JobPosting, names_missing_company, unfilled_placeholders
+    from .models import (GENERAL_URL, JobPosting, company_named, names_missing_company,
+                         unfilled_placeholders)
     from .report import emails_html
 
     cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
@@ -216,6 +217,10 @@ def cmd_email(args, settings):
     research_on = outreach.research and not args.no_research and not template
     review_on = outreach.review and not args.no_review and not template
     guidance_cache: dict[str, str | None] = {}
+    # General applications differ only in the employer's name and country, so one written email
+    # serves every address in the same country: the name is swapped in afterwards.
+    general_cache: dict[tuple, object] = {}
+    stand_in, stand_in_short = "Zentrovia Holdings", "Zentrovia"
     roles = ", ".join(cfg.search.roles) or "software engineer"
     llm = _llm(settings)
     browser = None if args.no_browse else LazyBrowser(settings)
@@ -261,10 +266,29 @@ def cmd_email(args, settings):
                         print(f"  ! research failed: {str(ex).splitlines()[0]}")
                         guidance_cache[country] = None
                 notes = None if general else guidance_cache.get(country)
-                print("  drafting email...")
                 job_text = posting.as_prompt_text()
-                e = llm.recruiter_email(p["resume_text"], job_text, live, notes, outreach,
-                                        template=job_template)
+                if general:
+                    named = company_named(job["company"])
+                    key = (job["location"] or "", named)
+                    if key not in general_cache:
+                        print("  drafting the general application email...")
+                        sample = posting.model_copy(update={"company": stand_in}) if named else posting
+                        general_cache[key] = llm.recruiter_email(
+                            p["resume_text"], sample.as_prompt_text(), None, None, outreach,
+                            template=job_template)
+                    else:
+                        print("  reusing the general application email")
+                    e = general_cache[key].model_copy(deep=True)
+                    e.recruiter_name = e.contact_email = None
+                    if named:
+                        for field in ("subject", "body", "follow_up_subject", "follow_up_body"):
+                            text = getattr(e, field) or ""
+                            setattr(e, field, text.replace(stand_in, job["company"])
+                                    .replace(stand_in_short, job["company"]))
+                else:
+                    print("  drafting email...")
+                    e = llm.recruiter_email(p["resume_text"], job_text, live, notes, outreach,
+                                            template=job_template)
                 review = None
                 if review_on and not general:
                     for attempt in range(outreach.max_revisions + 1):
