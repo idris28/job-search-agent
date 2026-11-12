@@ -11,7 +11,7 @@ from pathlib import Path
 
 from . import db
 from .config import AgentConfig, ConfigError, Settings, load_dotenv
-from .report import MATCH_COLS, digest_markdown, table
+from .report import MATCH_COLS, age, digest_markdown, table
 
 
 def _conn(settings: Settings):
@@ -30,6 +30,10 @@ def _profile_id(conn) -> int:
     if not p:
         raise ConfigError("No profile yet. Run: jsa profile import <resume.pdf>")
     return p["id"]
+
+
+def _matches_table(rows) -> str:
+    return table([{**r, "posted": age(r.get("posted_at"))} for r in rows], MATCH_COLS)
 
 
 # --- commands ---------------------------------------------------------------
@@ -82,7 +86,7 @@ def cmd_run(args, settings):
             rows = db.top_matches(conn, _profile_id(conn), run_id=s.run_id,
                                   min_score=cfg.matching.shortlist_min_score, limit=15)
             if rows:
-                print("\nTop new matches:\n" + table(rows, MATCH_COLS))
+                print("\nTop new matches (newest first):\n" + _matches_table(rows))
     finally:
         browser.close()
 
@@ -91,7 +95,7 @@ def cmd_jobs(args, settings):
     with _conn(settings) as conn:
         rows = db.top_matches(conn, _profile_id(conn), min_score=args.min_score, limit=args.limit,
                               include_status=not args.untracked)
-    print(table(rows, MATCH_COLS) if rows else "No matches at that score yet.")
+    print(_matches_table(rows) if rows else "No matches at that score yet.")
 
 
 def cmd_show(args, settings):
@@ -193,7 +197,7 @@ def cmd_email(args, settings):
                 posting = JobPosting(**{k: job[k] for k in (
                     "title", "company", "url", "location", "remote_type", "description")})
                 live = None
-                if browser:
+                if browser and job["url"].startswith("http"):  # pasted posts have no page
                     print("  checking live posting...")
                     try:
                         live = browser.fetch(job["url"], wait_ms=1500).text
@@ -346,6 +350,43 @@ def cmd_apply(args, settings, *, open_url=None, ask=input):
             print(f"Marked {applied} job(s) as applied.")
 
 
+def cmd_add(args, settings, *, read=None):
+    """Add a job from pasted text (for example a LinkedIn post that says to email a CV)."""
+    import hashlib
+    from datetime import datetime, timezone
+
+    from .models import JobPosting
+
+    text = (Path(args.file).read_text(encoding="utf-8") if args.file
+            else (read or sys.stdin.read)()).strip()
+    if not text:
+        sys.exit("Nothing to add: paste the post text, then press Ctrl-D (or pass a file).")
+    cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+    llm = _llm(settings)
+    found = llm.read_pasted_job(text)
+    url = args.url or "pasted:" + hashlib.sha256(text.encode()).hexdigest()[:16]
+    description = found.description + (f"\n\nSend applications to: {found.contact_email}"
+                                       if found.contact_email else "")
+    posting = JobPosting(title=found.title, company=found.company, url=url, location=found.location,
+                         description=description, posted_at=datetime.now(timezone.utc))
+    with _conn(settings) as conn:
+        p = db.active_profile(conn)
+        if not p:
+            sys.exit("No profile yet. Run: jsa profile import <resume.pdf>")
+        job_id, is_new = db.upsert_job(conn, posting, None, None)
+        m = llm.score_job(p["profile"], cfg.search, posting)
+        db.save_match(conn, p["id"], job_id, None, m, llm.model, posting.content_hash)
+        db.set_application_status_if_missing(conn, p["id"], job_id, "added from pasted text")
+    print(f"{'Added' if is_new else 'Updated'} job #{job_id}: {found.title} at {found.company}"
+          f" ({found.location or 'location not given'})")
+    print(f"Match score {m.score} ({m.verdict}): {m.summary}")
+    if found.contact_email:
+        print(f"Applications go to {found.contact_email}. Next: jsa email {job_id} --gmail-drafts"
+              f"   (or --send)")
+    else:
+        print(f"No email address found in the text. Next: jsa email {job_id}")
+
+
 def cmd_digest(args, settings):
     with _conn(settings) as conn:
         rows = db.top_matches(conn, _profile_id(conn), min_score=args.min_score,
@@ -433,6 +474,12 @@ def build_parser() -> argparse.ArgumentParser:
     apl.add_argument("--limit", type=int, default=10, help="max shortlisted jobs when no ids given")
     apl.add_argument("--dry-run", action="store_true", help="list the jobs without opening them")
     apl.set_defaults(fn=cmd_apply)
+
+    ad = sub.add_parser("add", help="add a job from pasted text, e.g. a LinkedIn post")
+    ad.add_argument("file", nargs="?", help="text file with the post (default: paste, then Ctrl-D)")
+    ad.add_argument("--url", help="link to the post, if you have one")
+    ad.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    ad.set_defaults(fn=cmd_add)
 
     d = sub.add_parser("digest", help="write a Markdown digest of top matches")
     d.add_argument("--min-score", type=int, default=75)

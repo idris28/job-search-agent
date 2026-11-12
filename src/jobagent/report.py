@@ -25,8 +25,18 @@ def table(rows: list[dict], cols: list[tuple[str, str, int]]) -> str:
 
 MATCH_COLS = [
     ("job_id", "ID", 6), ("score", "Score", 5), ("title", "Title", 38),
-    ("company", "Company", 18), ("location", "Location", 22), ("application_status", "Status", 12),
+    ("company", "Company", 18), ("location", "Location", 22), ("posted", "Posted", 8),
+    ("application_status", "Status", 12),
 ]
+
+
+def age(posted_at, now: datetime | None = None) -> str:
+    """Short age of a posting for tables: "3h", "2d", or "" when unknown."""
+    if posted_at is None:
+        return ""
+    now = now or datetime.now(posted_at.tzinfo)
+    hours = max(0, (now - posted_at).total_seconds() / 3600)
+    return f"{int(hours)}h" if hours < 24 else f"{int(hours // 24)}d"
 
 
 def digest_markdown(matches: list[dict], *, title: str = "Job matches") -> str:

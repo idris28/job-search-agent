@@ -177,7 +177,7 @@ def top_matches(conn, profile_id: int, *, min_score: int = 0, limit: int = 25,
                 run_id: int | None = None, include_status: bool = True) -> list[dict]:
     sql = """
         SELECT j.id AS job_id, j.title, j.company, j.location, j.remote_type, j.url,
-               j.salary_text, j.first_seen_at, m.score, m.verdict, m.summary,
+               j.salary_text, j.first_seen_at, j.posted_at, m.score, m.verdict, m.summary,
                m.matched_skills, m.missing_skills, m.red_flags,
                a.status AS application_status
         FROM job_matches m
@@ -191,7 +191,8 @@ def top_matches(conn, profile_id: int, *, min_score: int = 0, limit: int = 25,
         params.append(run_id)
     if not include_status:
         sql += " AND a.id IS NULL"
-    sql += " ORDER BY m.score DESC, j.first_seen_at DESC LIMIT %s"
+    # Newest postings first; jobs with no known posting date come after, best score first.
+    sql += " ORDER BY j.posted_at DESC NULLS LAST, m.score DESC, j.first_seen_at DESC LIMIT %s"
     params.append(limit)
     return conn.execute(sql, params).fetchall()
 
@@ -287,9 +288,10 @@ def save_outreach(conn, profile_id: int, job_id: int, *, subject: str, body: str
 def shortlisted_job_ids(conn, profile_id: int, limit: int) -> list[int]:
     rows = conn.execute(
         """SELECT a.job_id FROM applications a
+           JOIN jobs j ON j.id = a.job_id
            LEFT JOIN job_matches m ON m.job_id = a.job_id AND m.profile_id = a.profile_id
            WHERE a.profile_id = %s AND a.status = 'shortlisted'
-           ORDER BY m.score DESC NULLS LAST LIMIT %s""",
+           ORDER BY j.posted_at DESC NULLS LAST, m.score DESC NULLS LAST LIMIT %s""",
         (profile_id, limit),
     ).fetchall()
     return [r["job_id"] for r in rows]

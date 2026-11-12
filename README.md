@@ -106,6 +106,14 @@ jsa runs                         # run history, tokens used, errors
 Output: `digests/emails-<date>.html` (open in a browser; "Copy email" pastes into Gmail with
 formatting; each card shows the recruiter review) and a Markdown copy. Nothing is ever sent.
 
+**New jobs first.** The agent reads how long ago each job was posted ("2 days ago") from the
+job boards. `search.max_age_days` (7 in the example) drops older postings, and lists, emails and
+`jsa apply` go newest first. A job whose age the board does not show is kept and listed last.
+
+**Jobs from a post.** `jsa add` takes text you paste, such as a LinkedIn post asking for CVs by
+email (paste, then Ctrl-D, or pass a text file). It reads the role, company and email address,
+scores the job and shortlists it; `jsa email <id> --send` then emails that address.
+
 **Sending.** `jsa email --send` sends each ready email from your Gmail with the CV from
 `outreach.resume_path` attached, then marks the job applied so it is never emailed twice.
 `jsa email --gmail-drafts` saves them to Gmail Drafts instead, for you to review and send. Both need

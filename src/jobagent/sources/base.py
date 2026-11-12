@@ -4,6 +4,7 @@ import html
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 import httpx
@@ -52,6 +53,26 @@ def html_to_text(raw: str | None) -> str | None:
     s = re.sub(r"[ \t\xa0]+", " ", s)
     s = re.sub(r"\n\s*\n+", "\n\n", s)
     return s.strip()
+
+
+_AGO_RE = re.compile(r"(\d+)\s*\+?\s*(minute|min|hour|hr|day|week|month)s?\s+ago", re.I)
+_UNIT_HOURS = {"minute": 1 / 60, "min": 1 / 60, "hour": 1, "hr": 1, "day": 24, "week": 168, "month": 720}
+
+
+def parse_posted(text: str | None, now: datetime | None = None) -> datetime | None:
+    """When a job was posted, from wording like "2 days ago", "30+ days ago" or "Just now"."""
+    if not text:
+        return None
+    now = now or datetime.now(timezone.utc)
+    low = text.lower()
+    m = _AGO_RE.search(low)
+    if m:
+        return now - timedelta(hours=int(m.group(1)) * _UNIT_HOURS[m.group(2).lower()])
+    if re.search(r"just now|few (minutes|hours) ago|\btoday\b", low):
+        return now
+    if "yesterday" in low:
+        return now - timedelta(days=1)
+    return None
 
 
 def guess_remote_type(*texts: str | None) -> RemoteType:

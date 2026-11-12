@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ..config import ConfigError, SourceConfig
 from ..models import JobPosting
-from .base import Source, SourceContext, guess_remote_type
+from .base import Source, SourceContext, guess_remote_type, parse_posted
 
 
 class GenericSource(Source):
@@ -32,17 +32,23 @@ class GenericSource(Source):
                     url=item.url,
                     location=item.location,
                     remote_type=guess_remote_type(item.location, item.title),
+                    posted_at=parse_posted(item.posted),
                 )
 
         # Visit detail pages for full descriptions (bounded, to control cost and time).
-        for i, job in enumerate(seen.values()):
+        # Newest first, so the limited detail visits go to fresh postings (undated ones last).
+        newest_first = sorted(seen.values(), key=lambda j: (j.posted_at is None,
+                                                             -(j.posted_at.timestamp() if j.posted_at else 0)))
+        for i, job in enumerate(newest_first):
             if i >= self.cfg.max_detail_pages:
                 break
             try:
                 detail = ctx.browser.fetch(job.url, wait_ms=1500)
                 job.description = detail.text[:20000]
+                # The job's own age is near the top; lower down are other, similar postings.
+                job.posted_at = job.posted_at or parse_posted(detail.text[:1500])
                 job.remote_type = (job.remote_type if job.remote_type != "unknown"
                                    else guess_remote_type(detail.text[:3000]))
             except Exception as e:  # noqa: BLE001
                 ctx.log(f"{self.cfg.name}: detail fetch failed for {job.url}: {e}")
-        return list(seen.values())
+        return newest_first

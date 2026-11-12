@@ -49,7 +49,7 @@ search:
   # The matcher marks jobs in these industries as "poor" (score <= 30), which catches
   # employers whose name doesn't say "bank" and consultancies placing people at banks.
   exclude_industries: [banking, retail banking, investment banking]
-  max_age_days: 30
+  max_age_days: 7          # only jobs posted in the last week; newest are listed first
   notes: >
     Based in Ahmedabad, India. Open to relocating to the UAE, Saudi Arabia, or Qatar (would need
     employer visa sponsorship there; this is normal for Gulf roles and is not a red flag). Remote

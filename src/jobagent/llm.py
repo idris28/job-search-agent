@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from .config import OutreachPrefs, SearchPrefs
 from .models import (CandidateProfile, ExtractedListings, JobPosting, MatchResult,
-                     RecruiterEmail, RecruiterReview, TemplateEmail)
+                     PastedJob, RecruiterEmail, RecruiterReview, TemplateEmail)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -32,7 +32,8 @@ Only list skills that actually appear in the job text as missing_skills. Be conc
 
 EXTRACT_INSTRUCTIONS = """You are given the visible text and links of a careers/job search page.
 Return every individual job posting on the page: its title, absolute URL (from the links list),
-company if shown, and location if shown. Skip navigation, category, and filter links. If the page
+company if shown, location if shown, and how long ago it was posted if shown (the wording on
+the page, such as "2 days ago"). Skip navigation, category, and filter links. If the page
 has no job postings, return an empty list."""
 
 COVER_LETTER_INSTRUCTIONS = """Write a concise, specific cover letter (under 250 words) for this
@@ -148,6 +149,11 @@ email as that recruiter would, against the job posting and the resume.
 - rewrite_instructions: specific edits that would raise the score. Empty if score >= 9.
 Be honest and strict; do not inflate scores."""
 
+PASTED_JOB_INSTRUCTIONS = """You are given text a job seeker pasted, usually a social media post
+by a recruiter or employee announcing a vacancy. Extract the one job it describes. Use only what
+the text says: do not guess a company, location or email address. Copy the email address exactly.
+If the post lists several roles, take the first and mention the others in the description."""
+
 
 class BaseLLM:
     """Task methods shared by every provider. Subclasses implement _parse and _text."""
@@ -198,6 +204,9 @@ class BaseLLM:
         links_txt = "\n".join(f"- {l['text']} -> {l['href']}" for l in links[:400])
         payload = (f"PAGE URL: {page_url}\n\nPAGE TEXT:\n{page_text[:15000]}\n\nLINKS:\n{links_txt}")
         return self._parse(EXTRACT_INSTRUCTIONS, payload, ExtractedListings)
+
+    def read_pasted_job(self, text: str) -> PastedJob:
+        return self._parse(PASTED_JOB_INSTRUCTIONS, f"PASTED TEXT:\n{text[:15000]}", PastedJob)
 
     def research_email_content(self, roles: str, country: str,
                                max_searches: int = 4) -> str | None:

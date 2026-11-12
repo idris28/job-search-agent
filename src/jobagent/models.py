@@ -91,6 +91,7 @@ class ExtractedListing(BaseModel):
     url: str
     company: str | None
     location: str | None
+    posted: str | None = Field(default=None, description='How long ago it was posted, as the page shows it, e.g. "2 days ago"')
 
 
 class ExtractedListings(BaseModel):
@@ -142,6 +143,16 @@ _PLACEHOLDER_RE = re.compile(r"\[[A-Za-z0-9][^\[\]\n]{2,199}\](?!\()")  # not a 
 def unfilled_placeholders(text: str) -> list[str]:
     """Template blanks such as "[Company Name]" that are still in a draft."""
     return list(dict.fromkeys(_PLACEHOLDER_RE.findall(text)))
+
+
+class PastedJob(BaseModel):
+    """A job read out of text the user pasted, such as a LinkedIn post."""
+
+    title: str = Field(description="The role being hired for")
+    company: str = Field(description="The hiring company; 'Unknown' if the text does not say")
+    location: str | None
+    contact_email: str | None = Field(description="Where the text says to send applications")
+    description: str = Field(description="Everything the text says about the role and how to apply, kept in full")
 
 
 class RecruiterReview(BaseModel):
