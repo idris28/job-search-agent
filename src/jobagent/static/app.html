@@ -284,23 +284,21 @@ body.reading .scrim{opacity:1;pointer-events:auto}
 body.reading .drawer{transform:none;visibility:visible}
 .d-bar{display:flex;align-items:center;gap:12px;margin-bottom:24px}
 .d-bar .faint{font:400 12px var(--mono)}
-.d-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
+.d-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px 24px;align-items:start}
 .d-head h2{font-size:20px;line-height:28px;overflow-wrap:anywhere}
-.meta{display:flex;gap:4px 16px;flex-wrap:wrap;margin-top:8px;color:var(--t2);font-size:13px}
-.meta span{display:inline-flex;align-items:center;gap:8px}
-.meta .ic{color:var(--t3)}
-.dial{position:relative;width:88px;height:88px}
-.dial svg{display:block;transform:rotate(-90deg)}
-.dial circle{fill:none;stroke-width:6}
-.dial .track{stroke:var(--line)}
-.dial .val{stroke:var(--t3);stroke-linecap:round;transition:stroke-dashoffset .5s var(--ease)}
-.dial.s4 .val{stroke:var(--accent)}
-.dial b{position:absolute;inset:0;display:grid;place-items:center;font:500 20px var(--mono)}
+.d-head .co{margin:4px 0 0;color:var(--t2);overflow-wrap:anywhere}
+.meta{display:flex;gap:4px 16px;flex-wrap:wrap;margin-top:8px;color:var(--t3);font-size:13px}
+.d-score{display:grid;gap:4px;justify-items:end}
+.d-score b{font:500 28px/32px var(--mono);font-variant-numeric:tabular-nums}
+.d-score .bar{width:64px}
+.d-score.s4 .bar u{background:var(--accent)}
+.d-score span:last-child{font-size:12px;color:var(--t3);white-space:nowrap}
 .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:20px 0 0}
 .acts select{height:36px;padding:0 8px;border:1px solid var(--line-2);border-radius:var(--r-m);background:var(--s3)}
 .block{margin-top:24px;padding-top:24px;border-top:1px solid var(--line);min-width:0;overflow-wrap:anywhere}
-.block h3{margin-bottom:12px;font-size:16px;line-height:24px}
-.block h3 .ic{display:none}
+.block h3{display:flex;align-items:center;gap:12px;min-height:32px;margin-bottom:12px;font-size:16px;line-height:24px}
+.block h3 .seg{display:inline-grid;grid-template-columns:none;grid-auto-flow:column;margin-left:auto}
+.block h3 .seg button{padding:0 12px}
 .block p{margin:0 0 12px;max-width:68ch;color:var(--t2)}
 .block .acts{margin-top:4px}
 .lbl{margin-bottom:8px!important;font-size:13px;color:var(--t3)}
@@ -309,10 +307,28 @@ body.reading .drawer{transform:none;visibility:visible}
 .chipsl .tag::before{display:none}
 .chipsl .tag.c-red{color:var(--bad)}
 .drawer p>.tag{white-space:normal}
-.torow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px}
-.torow label{width:24px;color:var(--t3)}
-.torow .field{flex:1 1 224px;width:auto;margin:0}
-.toinfo{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:13px;color:var(--t3)}
+.desk{margin:0 0 12px;padding:16px;border-radius:var(--r-l);background:var(--s0)}
+.sheet{--paper:#f4f2ec;--s2:var(--paper);--s3:rgba(17,24,39,.06);--t1:#111827;--t2:#4b5565;--t3:#6b7487;--line:rgba(17,24,39,.1);--line-2:rgba(17,24,39,.18);
+--accent:#2f55d4;--accent-soft:rgba(47,85,212,.1);--ok:#15803d;--warn:#a15c07;--bad:#dc2626;--main-bg:#111827;--main-ink:#fff;
+color-scheme:light;padding:8px 32px 32px;border-radius:2px;background:var(--paper);color:var(--t1);box-shadow:0 1px 2px rgba(0,0,0,.2),0 8px 24px rgba(0,0,0,.24)}
+:root[data-theme=light] .sheet{--paper:#fffdf9;box-shadow:0 1px 2px rgba(17,24,39,.08),0 8px 24px rgba(17,24,39,.08)}
+.sheet .lines{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.sheet .ln{grid-column:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:48px;padding:8px 0;border-bottom:1px solid var(--line);transition:border-color .14s var(--ease)}
+.sheet .ln:focus-within{border-bottom-color:var(--accent)}
+.sheet .ln label{width:56px;flex:none;font-size:13px;color:var(--t3)}
+.sheet .ln .field{flex:1 1 160px;width:auto;height:32px;margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;outline:none}
+.sheet #subj{font-weight:500}
+.sheet .toinfo{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;flex-basis:100%;margin:0;padding-left:64px;max-width:none;font-size:13px;color:var(--t3)}
+.sheet .ln+.ln{grid-column:1/-1}
+.sheet .lines .pm{grid-column:2;grid-row:1;width:72px;height:48px;margin-left:16px}
+.sheet .body{display:block;width:100%;min-height:240px;margin:24px 0 0;padding:0;border:0;background:none;font:400 14px/24px var(--sans);color:var(--t1);resize:none;overflow:hidden;outline:none;transition:box-shadow .14s var(--ease)}
+.sheet textarea.body:focus{box-shadow:-18px 0 0 -16px var(--accent)}
+.sheet .rendered{min-height:240px;margin-top:24px;line-height:24px}
+.sheet .rendered p{margin:0 0 12px;max-width:none;color:var(--t1)}
+.sheet .rendered ul{margin:0 0 12px;padding-left:20px}
+.sheet .rendered>:last-child{margin-bottom:0}
+.sheet.preview textarea.body,.sheet:not(.preview) .rendered{display:none}
+.sheet .blank{display:grid;justify-items:center;align-content:center;gap:16px;min-height:200px;margin-top:24px;color:var(--t3)}
 .kv{display:grid;grid-template-columns:120px 1fr;gap:8px 12px;margin:0 0 12px}
 .kv dt{color:var(--t3)}
 .kv dd{margin:0;overflow-wrap:anywhere;color:var(--t1)}
@@ -392,7 +408,11 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
   td,th{padding-left:12px;padding-right:12px}
   .ttl,.tsearch,.tfoot{padding-left:12px;padding-right:12px}
   .drawer{width:100vw;padding:16px 16px 32px;border-left:0;border-radius:0}
-  .d-head .dial{grid-column:1/-1}
+  .d-head{grid-template-columns:minmax(0,1fr)}
+  .d-score{justify-items:start}
+  .desk{padding:8px}
+  .sheet{padding:4px 20px 24px}
+  .sheet .toinfo{padding-left:0}
   .check{grid-template-columns:16px 1fr}
   .check>span:last-child{grid-column:2}
 }
@@ -930,7 +950,7 @@ function renderWidgets() {
 /* ---------- job drawer ---------- */
 async function openJob(id, keep) {
   if (S.dirty && id !== S.sel && !await ask("Leave without saving?", "Your changes to this job's draft or note are not saved yet.", "Leave")) return;
-  S.sel = id; S.dirty = false;
+  S.sel = id; S.dirty = false; if (!keep) S.preview = false;
   if (LIST.includes(S.view)) renderList();
   document.body.classList.add("reading"); $("#detail").inert = false;
   try { S.detail = await api(`/api/job?id=${id}`); } catch (e) { fail(e); if (!keep) closeDrawer(true); return; }
@@ -952,7 +972,7 @@ function renderDetail(keep) {
   const d = S.detail, el = $("#detail");
   if (!d) return;
   const j = d.job, m = d.match, a = d.application, s = a ? a.status : "";
-  const sc = m ? m.score : null, C = 2 * Math.PI * 38;
+  const sc = m ? m.score : null;
   const chips = (xs, c) => xs && xs.length ? `<ul class="chipsl">${xs.map(x => `<li class="tag ${c}">${esc(x)}</li>`).join("")}</ul>` : "";
   const stBtn = (to, label, cls = "") => `<button class="btn ${cls}" data-act="status" data-to="${to}">${label}</button>`;
   const canApply = http(j.url) && (s === "" || s === "shortlisted"), pri = canApply ? "" : "primary";
@@ -963,31 +983,38 @@ function renderDetail(keep) {
   const pay = j.salary_text || (m && m.salary_estimate);
   const rows = S.state && LIST.includes(S.view) ? shown() : [], at = rows.findIndex(r => r.job_id === j.id);
 
-  let mail = "";
-  const sent = a && a.outreach_sent_at ? `<span class="tag c-green">sent ${esc(when(a.outreach_sent_at))}</span>` : "";
-  const toRow = !a ? "" : `<div class="torow"><label for="addr">To</label><input class="field" id="addr" type="email" autocomplete="off" spellcheck="false" placeholder="recruiter@company.com" value="${esc(a.contact_email)}">
-      <button class="btn sm" data-act="save-addr">Save address</button>${a.contact_email ? "" : `<button class="btn sm" data-act="contacts-one">${ic("at")}Look for one</button>`}</div>
-    <p class="toinfo">${a.contact_email ? `${a.contact_kind ? `<span class="tag ${a.contact_kind === "general" ? "c-amber" : "c-slate"}">${esc(a.contact_kind)} address</span>` : ""}${http(a.contact_source) ? ` <a href="${esc(a.contact_source)}" target="_blank" rel="noopener noreferrer">where it was found</a>` : ""} ${sent}`
-      : "No address yet. Type one you found yourself, or let the agent look on the company's site."}</p>`;
-  if (a && a.outreach_subject) {
+  let mail = "", hasDraft = !!(a && a.outreach_subject);
+  const sentAt = a && a.outreach_sent_at;
+  const info = !a ? "" : a.contact_email
+    ? `${a.contact_kind ? `<span class="tag ${a.contact_kind === "general" ? "c-amber" : "c-slate"}">${esc(a.contact_kind)} address</span>` : ""}${http(a.contact_source) ? `<a href="${esc(a.contact_source)}" target="_blank" rel="noopener noreferrer">where it was found</a>` : ""}${sentAt ? `<span>sent ${esc(when(sentAt))}</span>` : ""}`
+    : "No address yet. Type one you found yourself, or let the agent look on the company's site.";
+  const toLine = !a ? "" : `<div class="ln"><label for="addr">To</label><input class="field" id="addr" type="email" autocomplete="off" spellcheck="false" placeholder="recruiter@company.com" value="${esc(a.contact_email)}">
+      <button class="btn sm" data-act="save-addr">Save address</button>${a.contact_email ? "" : `<button class="btn sm" data-act="contacts-one">${ic("at")}Look for one</button>`}
+      ${info ? `<p class="toinfo">${info}</p>` : ""}</div>`;
+  const stamp = sentAt ? postmark(sentAt) : "";
+  if (hasDraft) {
     const canSend = s === "shortlisted" && a.contact_email && !a.outreach_sent_at;
-    mail = `${toRow}
-      ${a.unfilled.length ? `<p><span class="tag c-red">Fill in before sending: ${esc(a.unfilled.join(", "))}</span></p>` : ""}
+    mail = `${a.unfilled.length ? `<p><span class="tag c-red">Fill in before sending: ${esc(a.unfilled.join(", "))}</span></p>` : ""}
       ${a.posting_open === false ? `<p><span class="tag c-red">The posting looked closed when this was drafted</span></p>` : ""}
-      <input class="field" id="subj" aria-label="Subject" value="${esc(a.outreach_subject)}">
-      <textarea class="field" id="body" aria-label="Email text">${esc(a.outreach_body)}</textarea>
+      <div class="desk"><div class="sheet${S.preview ? " preview" : ""}" id="sheet">
+        <div class="lines">${toLine}<div class="ln"><label for="subj">Subject</label><input class="field" id="subj" value="${esc(a.outreach_subject)}"></div>${stamp}</div>
+        <textarea class="body" id="body" aria-label="Email text">${esc(a.outreach_body)}</textarea>
+        <div class="rendered">${a.body_html}</div>
+      </div></div>
+      <p class="faint" id="stale" hidden>The preview shows the last saved text. Save your changes to update it.</p>
       <div class="acts">
         <button class="btn" data-act="save-draft">Save changes</button>
         ${canSend ? `<button class="btn primary" data-act="send-one">${ic("send")}Send email</button>` : ""}
         <button class="btn ghost" data-act="draft-one">Write it again</button>
       </div>
-      <details><summary>How it will look</summary><div class="mail">${a.body_html}</div></details>
       ${a.follow_up_body ? `<details ${d.due ? "open" : ""}><summary>Follow-up ${a.follow_up_sent_at ? "sent " + esc(day(a.follow_up_sent_at)) : d.due ? "due now" : "for later"}</summary>
         <p><b>${esc(a.follow_up_subject)}</b></p><div class="mail desc">${esc(a.follow_up_body)}</div>
         ${d.due ? `<div class="acts"><button class="btn" data-act="followup-done">I followed up myself</button></div>` : ""}</details>` : ""}`;
   } else if (s === "shortlisted") {
-    mail = `${toRow}<p>No email has been drafted for this job yet.</p><div class="acts"><button class="btn primary" data-act="draft-one">${ic("edit")}Draft the email</button></div>`;
+    mail = `<div class="desk"><div class="sheet"><div class="lines">${toLine}</div>
+      <div class="blank"><span>Nothing written yet</span><button class="btn primary" data-act="draft-one">${ic("edit")}Draft the email</button></div></div></div>`;
   } else mail = `<p>Shortlist this job to write to its recruiter.</p>`;
+  const seg = hasDraft ? `<span class="seg" role="group" aria-label="Show the email"><button data-act="sheet" data-to="edit" aria-pressed="${!S.preview}">Edit</button><button data-act="sheet" data-to="preview" aria-pressed="${!!S.preview}">Preview</button></span>` : "";
 
   el.innerHTML = `<div class="d-bar">
       <button class="round sm" data-act="back" aria-label="Close">${ic("x")}</button>
@@ -996,27 +1023,30 @@ function renderDetail(keep) {
       <button class="round sm" data-act="next" aria-label="Next job"${at >= 0 && at < rows.length - 1 ? "" : " disabled"}>${ic("right")}</button>
     </div>
     <div class="d-head">
-      <div><h2>${esc(j.title)}</h2><div class="meta"><span>${ic("briefcase")}${esc(j.company)}</span><span>${ic("pin")}${esc(j.location || "Location not given")}</span>${j.posted_at ? `<span>${ic("clock")}posted ${esc(ago(j.posted_at))}</span>` : ""}${pay ? `<span>${ic("trending")}${esc(pay)}</span>` : ""}</div></div>
-      ${sc == null ? "" : `<div class="dial ${tier(sc)}" role="img" aria-label="Match score ${sc} out of 100"><svg viewBox="0 0 88 88" width="88" height="88"><circle class="track" cx="44" cy="44" r="38"/><circle class="val" cx="44" cy="44" r="38" stroke-dasharray="${C}" style="stroke-dashoffset:${keep ? C * (1 - sc / 100) : C}" data-to="${C * (1 - sc / 100)}"/></svg><b>${sc}</b></div>`}
+      <div><h2>${esc(j.title)}</h2><p class="co">${esc(j.company)}</p><div class="meta"><span>${esc(j.location || "Location not given")}</span>${j.posted_at ? `<span>posted ${esc(ago(j.posted_at))}</span>` : ""}${pay ? `<span>${esc(pay)}</span>` : ""}</div></div>
+      ${sc == null ? "" : `<div class="d-score ${tier(sc)}" role="img" aria-label="Match score ${sc} out of 100"><b>${sc}</b><span class="bar"><u style="width:${sc}%"></u></span><span>score out of 100</span></div>`}
     </div>
     <div class="acts">
       ${http(j.url) ? `<a class="btn ${canApply ? "primary" : ""}" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer"${canApply ? " data-apply" : ""}>${ic("link")}${canApply ? "Apply on the job site" : "Open the posting"}</a>` : `<span class="tag c-slate">${isGeneral(j) ? "general application" : "from a pasted post"}: apply by email below</span>`}
       ${moves}
       <select id="setstatus" aria-label="Set another status"><option value="">Other status</option>${["shortlisted", "applied", "interviewing", "offer", "rejected", "withdrawn", "skipped"].filter(x => x !== s).map(x => `<option>${x}</option>`).join("")}</select>
     </div>
-    ${m ? `<div class="block"><h3>${ic("target")}Why it matches</h3><p>${esc(m.summary)}</p>${chips(m.matched_skills, "c-green")}
+    ${m ? `<div class="block"><h3>Why it matches</h3><p>${esc(m.summary)}</p>${chips(m.matched_skills, "c-green")}
       ${m.missing_skills.length ? `<p class="lbl">Asked for, not on your resume</p>${chips(m.missing_skills, "c-slate")}` : ""}
       ${m.red_flags.length ? `<p class="lbl">Check before applying</p>${chips(m.red_flags, "c-red")}` : ""}</div>` : ""}
-    <div class="block"><h3>${ic("mail")}Email to the recruiter</h3>${mail}</div>
-    <div class="block"><h3>${ic("file")}Cover letter</h3>${a && a.cover_letter ? `<div class="mail desc">${esc(a.cover_letter)}</div><div class="acts"><button class="btn sm" data-act="copy-cover">${ic("copy")}Copy</button><button class="btn sm ghost" data-act="cover">Write it again</button></div>`
+    <div class="block"><h3>Email to the recruiter${seg}</h3>${mail}</div>
+    <div class="block"><h3>Cover letter</h3>${a && a.cover_letter ? `<div class="mail desc">${esc(a.cover_letter)}</div><div class="acts"><button class="btn sm" data-act="copy-cover">${ic("copy")}Copy</button><button class="btn sm ghost" data-act="cover">Write it again</button></div>`
       : `<p>For sites that ask for one.</p><button class="btn" data-act="cover">Write a cover letter</button>`}</div>
-    <div class="block"><h3>${ic("note")}Notes</h3><textarea class="field short" id="note" aria-label="Notes" placeholder="Recruiter name, what was said, next step">${esc(a ? a.notes : "")}</textarea>
+    <div class="block"><h3>Notes</h3><textarea class="field short" id="note" aria-label="Notes" placeholder="Recruiter name, what was said, next step">${esc(a ? a.notes : "")}</textarea>
       <button class="btn" data-act="save-note">Save note</button></div>
-    ${d.events.length ? `<div class="block"><h3>${ic("activity")}History</h3><ul class="history">${d.events.map(e => `<li>${esc(when(e.created_at))}: <b>${esc(e.to_status)}</b>${e.note ? ", " + esc(e.note) : ""}</li>`).join("")}</ul></div>` : ""}
+    ${d.events.length ? `<div class="block"><h3>History</h3><ul class="history">${d.events.map(e => `<li>${esc(when(e.created_at))}: <b>${esc(e.to_status)}</b>${e.note ? ", " + esc(e.note) : ""}</li>`).join("")}</ul></div>` : ""}
     ${j.description ? `<div class="block"><details><summary>Full job description</summary><div class="desc">${esc(j.description)}</div></details></div>` : ""}`;
-  const val = $(".dial .val", el);
-  if (val && !keep) requestAnimationFrame(() => requestAnimationFrame(() => val.style.strokeDashoffset = val.dataset.to));
+  fit();
   if (!keep) { el.scrollTop = 0; $("[data-act=back]", el).focus({ preventScroll: true }); }
+}
+function fit() {  // the sheet grows with the letter, so the whole text is on the page
+  const b = $("#body");
+  if (b && b.offsetParent) { b.style.height = "auto"; b.style.height = b.scrollHeight + "px"; }
 }
 async function keepDraft() {  // saving a note or an address must not throw away edits to the draft
   const subj = $("#subj"), body = $("#body");
@@ -1180,6 +1210,11 @@ const A = {
   "contacts-one": () => startTask({ action: "contacts", job_ids: [S.sel] }),
   cover: () => startTask({ action: "cover-letter", job_ids: [S.sel] }),
   "copy-cover": () => navigator.clipboard.writeText(S.detail.application.cover_letter).then(() => toast("Cover letter copied.")),
+  sheet: b => { S.preview = b.dataset.to === "preview";
+    $("#sheet").classList.toggle("preview", S.preview);
+    $$("[data-act=sheet]").forEach(x => x.setAttribute("aria-pressed", String((x.dataset.to === "preview") === S.preview)));
+    $("#stale").hidden = !(S.preview && $("#body").value !== S.detail.application.outreach_body);
+    fit(); },
   "save-draft": () => change("/api/draft", { job_id: S.sel, subject: $("#subj").value, body: $("#body").value }),
   "send-one": async () => { const a = S.detail.application;
     if (S.dirty && !await change("/api/draft", { job_id: S.sel, subject: $("#subj").value, body: $("#body").value }, false)) return;
@@ -1245,6 +1280,7 @@ async function askApplied() {
 }
 document.addEventListener("visibilitychange", askApplied);
 window.addEventListener("focus", askApplied);
+window.addEventListener("resize", fit);
 document.addEventListener("click", e => {
   const t = e.target;
   if (t.closest("[data-apply]") && S.detail) S.applyPending = { id: S.detail.job.id, title: S.detail.job.title, company: S.detail.job.company };
@@ -1261,6 +1297,7 @@ document.addEventListener("click", e => {
 document.addEventListener("input", e => {
   const id = e.target.id;
   if (id === "subj" || id === "body" || id === "note" || id === "addr") S.dirty = true;
+  if (id === "body") fit();
   if (id === "tq") { S.q = e.target.value; S.page = 0; renderList(); }
   if (id === "pq") drawPalette();
 });

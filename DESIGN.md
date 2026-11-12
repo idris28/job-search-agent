@@ -105,7 +105,9 @@ task is really running. Nothing lifts or scales on hover.
 | Message | `--s3`, hairline, radius 8, one line. Short messages end without a full stop. |
 | Stage numbers | One strip of six, hairlines between, no card per number. Label at 13, figure at 28 mono, one line of muted text. The current screen's number sits on the raised surface. |
 | Pipeline tray | Marks 4 wide and 20 tall, 4 apart, wrapping in rows. One mark is one job, in stage order, and opens that job. Over 180 jobs, one mark stands for several and a line under the legend says how many. The legend gives count and share. |
-| Postmark | A 36px ring holding the day over the month, with three wavy lines to its right, in accent ink, turned 6 degrees. It sits at the end of a row for a job that has been emailed. On a phone the wavy lines go. |
+| Postmark | A 36px ring holding the day over the month, with three wavy lines to its right, in accent ink, turned 6 degrees. It sits at the end of a row for a job that has been emailed (on a phone the wavy lines go) and, at 48px, in the top right corner of the sent email's sheet. |
+| Email sheet | Paper (`#f4f2ec` on dark, `#fffdf9` on light) with a 2px corner and a soft neutral shadow, lying on a `--s0` well. Inside the sheet the tokens switch to the light values, so ink, lines and buttons read as on paper. To and Subject are lines with a hairline under each; the text has no box and the sheet grows with it. Edit and Preview switch the same sheet. Only the email gets a sheet: the follow-up and the cover letter stay quiet raised blocks. |
+| Job panel heading | Title at 20, company under it, then location, posting age and pay as muted text with no icons. The score is a figure at 28 mono with the thin bar from the table. |
 
 ## Layout
 
@@ -115,13 +117,11 @@ are.
 
 ## Still to do, screen by screen
 
-The global layer and the four list screens (Shortlist, In progress, Follow-ups, All matches) are
-done. These follow the same rules:
+The global layer, the four list screens (Shortlist, In progress, Follow-ups, All matches) and the
+job panel are done. These follow the same rules:
 
-1. **Job panel.** The email draft becomes the second moment, a sheet of paper. The sent line gets
-   the postmark.
-2. **Insights, Activity, Settings.** One chart leads on Insights; lists stay lists.
-3. **Email preview page** written by `report.py`.
+1. **Insights, Activity, Settings.** One chart leads on Insights; lists stay lists.
+2. **Email preview page** written by `report.py`.
 
 ## Checklist for any change
 
