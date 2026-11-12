@@ -15,7 +15,10 @@ RemoteType = Literal["remote", "hybrid", "onsite", "unknown"]
 NOT_NAMED = "(not named in the posting)"
 _NO_COMPANY_RE = re.compile(
     r"^(unknown|undisclosed|anonymous|hidden|none|company|employer|n/?a|-*|"
-    r"not (disclosed|specified|mentioned|given|available|named))$|confidential|stealth", re.I)
+    r"not (disclosed|specified|mentioned|given|available|named))$|confidential|stealth|"
+    r"\(name not given\)$", re.I)
+GENERAL_URL = "general:"   # jobs.url prefix of a general application: an HR address, no posting
+GENERAL_TITLE = "General application"
 
 
 def company_named(company: str | None) -> bool:

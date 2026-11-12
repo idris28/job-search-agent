@@ -79,6 +79,28 @@ The agent never fills in a job site's form for you. Job sites block automated br
 is yours; the page opens the right posting and keeps the record. **Start applying** in the Next steps
 panel opens the first job on your shortlist, and the arrows at the top of the panel move to the next.
 
+## General applications: HR addresses with no job posting
+
+Use this when you have an employer's HR or careers address but no specific vacancy.
+
+1. Click the envelope button in the left column, **Add HR addresses** (also in All actions, and at
+   the bottom of the "Add from a post" box).
+2. Paste one address per line. Put the employer's name before it if you know it:
+   `Acme Gulf, hr@acme.sa`. Choose where the employers are, or leave it to be worked out from each
+   address.
+3. Click **Add to shortlist**. Each address becomes a "General application" on your shortlist.
+   Nothing is sent. Addresses that are mistyped, repeated or already on your list are listed with
+   the reason and left in the box for you to fix.
+4. Draft and send them like any other job: **Draft emails**, read each one, then **Send email** or
+   **Send ready**. The same daily limit applies, and follow-ups work the same way.
+
+The email comes from its own template, "Your general application email" in Settings. It asks about
+openings instead of applying for a position. If you gave no employer name, the email leaves the name
+out. To see only these, choose **General applications** in the Next step filter.
+
+Send these to employers that could plausibly hire you. The same email to dozens of unrelated
+inboxes is rarely read and can get your Gmail account marked as spam.
+
 ## Finding jobs
 
 | Button | What it does |
@@ -190,6 +212,7 @@ force**.
 | Every morning | Pick a time and click **Run every morning**. The Mac then runs the morning routine daily at that time, as long as it is awake. **Switch it off** removes it. **Run it now** runs it once. |
 | Duplicate jobs | If the same job is stored twice, **Merge** folds the copies together and keeps your score and status. This cannot be undone. |
 | Your email template | Edit the wording used for every recruiter email. Text in [square brackets] is filled in for each job; everything else is sent as you wrote it. Click **Save template**. |
+| Your general application email | Edit the email sent to HR addresses you added without a job posting. |
 | Your cover letter template | Edit the letter used by **Write a cover letter**. It works like the email template: text in [square brackets] is filled in for each job. Click **Save template**. |
 | Limits in force | Read-only. Change them in `config.yaml`; the page picks up the change straight away. |
 | Close the program | **Stop Job Search**. |

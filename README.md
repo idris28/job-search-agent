@@ -169,6 +169,10 @@ already signed in, and asks whether you applied; it records your answer. The cli
 because job sites block automated browsers (Bayt and Google both refused one in testing).
 `--dry-run` lists the jobs without opening them.
 
+**General applications.** `jsa add-contacts` (or "Add HR addresses" on the website) puts HR addresses
+that have no posting on the shortlist. Their emails are drafted from `general_email_template.txt`
+and sent under the same daily limit as any other.
+
 **Cover letters.** `jsa cover-letter <id>` fills in `cover_letter_template.txt` for the job, the same
 way as the email template below; remove the file or set `outreach.cover_letter_template_file: ""`
 for a short built-in letter.

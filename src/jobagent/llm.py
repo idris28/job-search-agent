@@ -161,6 +161,10 @@ BODY: the template, made specific to this job
   never write a company name or a stand-in such as "Unknown", "Confidential" or "your company".
   Leave out the words that need it: "the Java Developer position at [Company Name]" becomes "the
   Java Developer position". This applies to the subject and the follow-up as well.
+- If the stored posting says GENERAL APPLICATION, there is no vacancy to quote: never mention a
+  specific position, posting or requirement. Choose the candidate's own strongest skills and
+  results for the roles they are looking for, and set still_open to true. In the subject, the
+  role is the candidate's own job title.
 - Make it specific to the posting. Skills and areas of experience: the ones this posting asks for
   that the resume shows, by name or by work that plainly involves them, most important first and
   in the posting's own terms where they mean the same thing. Leave out anything the resume does

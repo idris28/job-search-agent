@@ -197,5 +197,6 @@ def test_general_inbox_is_not_emailed_without_saying_so(conn, tmp_path):
 def test_parser_has_the_growth_commands():
     p = cli.build_parser()
     for argv in (["contacts"], ["contacts", "5", "--limit", "3"], ["gaps"], ["progress", "--days", "30"],
-                 ["dedupe"], ["dedupe", "--apply"], ["notify-test"], ["email", "--general"]):
+                 ["dedupe"], ["dedupe", "--apply"], ["notify-test"], ["email", "--general"],
+                 ["add-contacts", "--country", "Saudi Arabia"], ["send", "--gmail-drafts"]):
         assert p.parse_args(argv).fn

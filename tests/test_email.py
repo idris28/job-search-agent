@@ -283,3 +283,74 @@ def test_a_company_the_posting_does_not_name_is_left_out_and_flagged(conn, monke
     assert f"Company: {NOT_NAMED}" in seen[0] and "Unknown" not in seen[0]  # the writer is told, not shown a stand-in
     assert '**Fill in before sending:** company name ("Unknown" is not a real name)' in (tmp_path / "emails.md").read_text()
     assert "Fill in before sending: company name" in (tmp_path / "emails.html").read_text()
+
+
+# --- general applications: an HR address with no posting ---------------------------------
+
+HR_LIST = """1- Careers@Example.sa
+Acme Gulf, hr@acme.com
+3- Hr@alesayi_motors.com
+careers@example.sa
+jobs@example.sa
+recruiter.sample@gmail.com
+not an address at all
+"""
+
+
+def test_hr_addresses_become_general_applications(conn):
+    from jobagent.actions import add_hr_contacts
+    from jobagent.config import AgentConfig
+
+    pid = db.save_profile(conn, "Alex", "resume text", {})
+    r = add_hr_contacts(conn, AgentConfig(), HR_LIST, None)
+    assert [(a["email"], a["company"], a["country"]) for a in r["added"]] == [
+        ("careers@example.sa", "example.sa (name not given)", "Saudi Arabia"),  # country from the ending
+        ("hr@acme.com", "Acme Gulf", None),
+        ("recruiter.sample@gmail.com", "recruiter.sample@gmail.com (name not given)", None)]
+    assert [why for _, why in r["skipped"]] == [
+        "not a valid email address", "repeated in this list",
+        "another address for this employer is already on your list", "not a valid email address"]
+    rows = db.dashboard_rows(conn, pid)
+    assert {x["status"] for x in rows} == {"shortlisted"} and all(x["score"] is None for x in rows)
+    assert {x["contact_email"] for x in rows} == {a["email"] for a in r["added"]}
+    assert all(x["url"].startswith("general:") and x["posted_at"] is None for x in rows)
+
+    again = add_hr_contacts(conn, AgentConfig(), "careers@example.sa\nnew@other.ae", "UAE")
+    assert [a["email"] for a in again["added"]] == ["new@other.ae"] and again["added"][0]["country"] == "UAE"
+    assert again["skipped"] == [("careers@example.sa", "already on your list")]
+
+
+def test_general_applications_use_their_own_template(conn, monkeypatch, tmp_path):
+    from jobagent.actions import add_hr_contacts
+    from jobagent.config import AgentConfig
+
+    pid = db.save_profile(conn, "Alex", "resume text", {})
+    add_hr_contacts(conn, AgentConfig(), "Acme Gulf, hr@acme.sa", None)
+    jid, _ = db.upsert_job(conn, JobPosting(title="Java Engineer", company="Beta", url="https://x/1",
+                                            location="Dubai"), None, None)
+    db.set_application_status(conn, pid, jid, "shortlisted")
+    (tmp_path / "email_template.txt").write_text(TEMPLATE)
+    monkeypatch.chdir(tmp_path)
+    used = {}
+
+    class GeneralLLM:
+        model = "fake"
+
+        def recruiter_email(self, resume, job_text, live, notes=None, outreach=None,
+                            previous=None, review=None, template=None):
+            used["general" if "GENERAL APPLICATION" in job_text else "posting"] = template
+            return filled("Dear Hiring Team,\n\nHello.")
+
+    monkeypatch.setattr(cli, "_llm", lambda s: GeneralLLM())
+    args = SimpleNamespace(job_ids=[], limit=10, no_browse=True, no_research=False, no_review=False,
+                           gmail_drafts=False, send=False, general=False,
+                           config=str(tmp_path / "missing.yaml"), out=str(tmp_path / "emails"))
+    cli.cmd_email(args, Settings(database_url=TEST_DB))
+    assert used == {"posting": TEMPLATE}  # no general template here: that draft is skipped, not mis-written
+
+    (tmp_path / "general_email_template.txt").write_text("Dear Hiring Team,\n\nOpenings at [Company Name]?")
+    cli.cmd_email(args, Settings(database_url=TEST_DB))
+    assert used == {"posting": TEMPLATE, "general": "Dear Hiring Team,\n\nOpenings at [Company Name]?"}
+    drafted = conn.execute("SELECT a.contact_email, a.outreach_subject FROM applications a JOIN jobs j ON j.id = a.job_id"
+                           " WHERE j.url LIKE 'general:%'").fetchone()
+    assert drafted["contact_email"] == "hr@acme.sa" and drafted["outreach_subject"]  # the typed address is kept

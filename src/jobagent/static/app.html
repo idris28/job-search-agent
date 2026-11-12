@@ -493,6 +493,7 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
     <aside class="rail" aria-label="Quick actions">
       <button class="round" data-act="run" data-tip="Find new jobs" aria-label="Find new jobs"><svg class="ic" aria-hidden="true"><use href="#i-zap"/></svg></button>
       <button class="round" data-act="add" data-tip="Add a job from a post" aria-label="Add a job from a post"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+      <button class="round" data-act="hr" data-tip="Add HR addresses" aria-label="Add HR addresses"><svg class="ic" aria-hidden="true"><use href="#i-mail"/></svg></button>
       <button class="round" data-act="draft-all" data-tip="Draft emails for the shortlist" aria-label="Draft emails for the shortlist"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg></button>
       <button class="round" data-act="contacts-all" data-tip="Look for recruiter addresses" aria-label="Look for recruiter addresses"><svg class="ic" aria-hidden="true"><use href="#i-at"/></svg></button>
       <button class="round" data-act="send-all" data-tip="Send ready emails" aria-label="Send ready emails"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg></button>
@@ -565,7 +566,17 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
   <p>Paste a LinkedIn post, a WhatsApp message or an email. The role, company and email address are read from it, then the job is scored and shortlisted.</p>
   <textarea class="field short" id="addtext" style="min-height:170px" aria-label="Post text" placeholder="Paste the post here"></textarea>
   <input class="field" id="addurl" aria-label="Link to the post" placeholder="Link to the post (optional)">
+  <p style="margin:6px 0 0">Only have HR email addresses, with no job post? <button class="link" data-act="hr" style="display:inline-flex;color:var(--blue-hi);font-size:inherit">Add HR addresses</button></p>
   <div class="foot"><button class="btn" data-act="close-add">Cancel</button><button class="btn primary" data-act="add-go">Read and score it</button></div>
+</dialog>
+<dialog id="hrdlg">
+  <h2>Add HR addresses</h2>
+  <p>For employers you want to write to without a specific job. One address per line; put the employer's name before it if you know it, such as "Acme Gulf, hr@acme.sa". Nothing is sent now: each one lands on your shortlist as a general application for you to draft and send.</p>
+  <textarea class="field short" id="hrtext" style="min-height:170px" aria-label="HR addresses" placeholder="Acme Gulf, hr@acme.sa&#10;careers@example.com" spellcheck="false"></textarea>
+  <label class="lbl" for="hrcountry" style="display:block">Where these employers are</label>
+  <select class="field" id="hrcountry"><option value="">Work it out from each address</option><option>Saudi Arabia</option><option>UAE</option><option>Qatar</option><option>India</option></select>
+  <div id="hrresult" role="status"></div>
+  <div class="foot"><button class="btn" data-act="close-hr">Close</button><button class="btn primary" data-act="hr-go">Add to shortlist</button></div>
 </dialog>
 <dialog id="palette" aria-label="All actions"><input id="pq" placeholder="What do you want to do?" aria-label="Search actions" autocomplete="off"><ul id="plist"></ul></dialog>
 <input type="file" id="resumefile" accept=".pdf,.txt,.md" hidden>
@@ -764,13 +775,14 @@ function rowsFor(view) {
   if (view === "followups") return jobs.filter(r => due.has(r.job_id));
   return S.matches || [];
 }
+const isGeneral = r => String(r.url || "").startsWith("general:");
 const ready = r => r.status === "shortlisted" && r.has_draft && r.contact_email && r.contact_kind !== "general" && !r.outreach_sent_at;
 function passes(r) {
   const f = S.f, s = statusOf(r), x = f.extra;
   if (f.country && countryOf(r.location) !== f.country) return false;
   if (f.score && (r.score ?? 0) < f.score) return false;
   if (f.posted && !(r.posted_at && Date.now() - new Date(r.posted_at) <= f.posted * 864e5)) return false;
-  if (S.view === "shortlist") return !(x === "ready" && !ready(r)) && !(x === "nodraft" && r.has_draft) && !(x === "noaddr" && r.contact_email);
+  if (S.view === "shortlist") return !(x === "ready" && !ready(r)) && !(x === "nodraft" && r.has_draft) && !(x === "noaddr" && r.contact_email) && !(x === "general" && !isGeneral(r)) && !(x === "posted" && isGeneral(r));
   if (S.view === "progress") return x === "aside" ? ASIDE.includes(s) : x ? s === x : ACTIVE.includes(s);
   if (S.view === "matches") return !(x === "new" && s) && !(x === "shortlisted" && s !== "shortlisted") && !(x === "applied" && !ACTIVE.includes(s)) && !(x === "aside" && !ASIDE.includes(s));
   return true;
@@ -784,7 +796,7 @@ function shown() {
   return rows;
 }
 const EXTRA = {
-  shortlist: ["Next step", [["", "Any next step"], ["ready", "Ready to send"], ["nodraft", "No draft yet"], ["noaddr", "No address yet"]]],
+  shortlist: ["Next step", [["", "Any next step"], ["ready", "Ready to send"], ["nodraft", "No draft yet"], ["noaddr", "No address yet"], ["general", "General applications"], ["posted", "Job postings only"]]],
   progress: ["Stage", [["", "In progress"], ["applied", "Applied"], ["interviewing", "Interviewing"], ["offer", "Offer"], ["aside", "Set aside"]]],
   matches: ["Status", [["", "Any status"], ["new", "Not listed yet"], ["shortlisted", "Shortlisted"], ["applied", "Applied or later"], ["aside", "Set aside"]]],
 };
@@ -991,7 +1003,7 @@ function renderDetail(keep) {
       ${sc == null ? "" : `<div class="dial ${tier(sc)}" role="img" aria-label="Match score ${sc} out of 100"><svg viewBox="0 0 88 88" width="88" height="88"><circle class="track" cx="44" cy="44" r="38"/><circle class="val" cx="44" cy="44" r="38" stroke-dasharray="${C}" style="stroke-dashoffset:${keep ? C * (1 - sc / 100) : C}" data-to="${C * (1 - sc / 100)}"/></svg><b>${sc}</b></div>`}
     </div>
     <div class="acts">
-      ${http(j.url) ? `<a class="btn ${canApply ? "primary" : ""}" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer"${canApply ? " data-apply" : ""}>${ic("link")}${canApply ? "Apply on the job site" : "Open the posting"}</a>` : `<span class="tag c-slate">from a pasted post: apply by email below</span>`}
+      ${http(j.url) ? `<a class="btn ${canApply ? "primary" : ""}" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer"${canApply ? " data-apply" : ""}>${ic("link")}${canApply ? "Apply on the job site" : "Open the posting"}</a>` : `<span class="tag c-slate">${isGeneral(j) ? "general application" : "from a pasted post"}: apply by email below</span>`}
       ${moves}
       <select id="setstatus" aria-label="Set another status"><option value="">Other status</option>${["shortlisted", "applied", "interviewing", "offer", "rejected", "withdrawn", "skipped"].filter(x => x !== s).map(x => `<option>${x}</option>`).join("")}</select>
     </div>
@@ -1106,6 +1118,8 @@ function renderPage() {
       ${g.template.file ? `<textarea class="field" id="tpl" aria-label="Email template" spellcheck="false">${esc(g.template.text)}</textarea><button class="btn" data-act="save-tpl">Save template</button>` : ""}</section>
     <section class="card pad span2">${cardHead("file", "Your cover letter template")}<p class="sub">${g.cover_template && g.cover_template.file ? `Used by "Write a cover letter" in a job's panel. Text in [square brackets] is filled in for each job; everything else is kept as you wrote it. Saved to ${esc(g.cover_template.file)}.` : "Switched off in config.yaml, so a short built-in cover letter is written."}</p>
       ${g.cover_template && g.cover_template.file ? `<textarea class="field" id="ctpl" aria-label="Cover letter template" spellcheck="false">${esc(g.cover_template.text)}</textarea><button class="btn" data-act="save-ctpl">Save template</button>` : ""}</section>
+    <section class="card pad span2">${cardHead("mail", "Your general application email")}<p class="sub">${g.general_template && g.general_template.file ? `Used for HR addresses you add without a job posting. Text in [square brackets] is filled in from your resume. Saved to ${esc(g.general_template.file)}.` : "Switched off in config.yaml."}</p>
+      ${g.general_template && g.general_template.file ? `<textarea class="field" id="gtpl" aria-label="General application email" spellcheck="false">${esc(g.general_template.text)}</textarea><button class="btn" data-act="save-gtpl">Save template</button>` : ""}</section>
     <section class="card pad">${cardHead("filter", "Limits in force")}<p class="sub">Change these in <b>config.yaml</b>; this page picks them up straight away.</p>
       <dl class="kv" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin:0">
         <dt>Emails a day</dt><dd>${L.sends_per_day || "no limit"}, ${L.pause_seconds}s apart</dd>
@@ -1186,6 +1200,17 @@ const A = {
   "sched-off": async () => { try { toast((await api("/api/schedule", { action: "remove" })).message); loadPage(); } catch (e) { fail(e); } },
   "save-tpl": async () => { try { toast((await api("/api/template", { text: $("#tpl").value })).message); } catch (e) { fail(e); } },
   "save-ctpl": async () => { try { toast((await api("/api/template", { kind: "cover", text: $("#ctpl").value })).message); } catch (e) { fail(e); } },
+  "save-gtpl": async () => { try { toast((await api("/api/template", { kind: "general", text: $("#gtpl").value })).message); } catch (e) { fail(e); } },
+  hr: () => { if ($("#adddlg").open) $("#adddlg").close(); $("#hrresult").innerHTML = ""; $("#hrdlg").showModal(); $("#hrtext").focus(); },
+  "close-hr": () => $("#hrdlg").close(),
+  "hr-go": async () => { const text = $("#hrtext").value.trim(), box = $("#hrresult");
+    if (!text) { box.innerHTML = `<p><span class="tag c-red">Paste at least one email address.</span></p>`; return; }
+    try {
+      const r = await api("/api/hr-contacts", { text, country: $("#hrcountry").value });
+      box.innerHTML = `<p style="color:var(--ink)"><b>${esc(r.message)}</b> ${r.added.length ? "They are on your shortlist with no email drafted yet." : ""}</p>`
+        + (r.skipped.length ? `<ul class="history" style="margin:0 0 12px;max-height:150px;overflow:auto">${r.skipped.map(([line, why]) => `<li><b>${esc(line)}</b>: ${esc(why)}</li>`).join("")}</ul>` : "");
+      if (r.added.length) { $("#hrtext").value = r.skipped.map(x => x[0]).join("\n"); await refresh(); }
+    } catch (e) { box.innerHTML = `<p><span class="tag c-red">${esc(e.message)}</span></p>`; } },
   "theme-light": () => setTheme("light"),
   "theme-dark": () => setTheme("dark"),
   quit: async () => { if (await ask("Stop Job Search?", "Any task that is running is stopped too. Nothing saved is lost.", "Stop it")) { try { await api("/api/quit", {}); } catch {} clearInterval(S.timer);
@@ -1194,13 +1219,13 @@ const A = {
 const go = x => x.startsWith("v:") ? showView(x.slice(2)) : A[x]();
 const PALETTE = [
   ["Find new jobs", "search every site and score", "run"], ["Collect jobs without scoring", "cheaper, scored next time", "run-noscore"],
-  ["Run the morning routine", "search, digest, summary email", "daily"], ["Add a job from a pasted post", "LinkedIn, WhatsApp, email", "add"],
+  ["Run the morning routine", "search, digest, summary email", "daily"], ["Add a job from a pasted post", "LinkedIn, WhatsApp, email", "add"], ["Add HR addresses", "general applications, no specific job", "hr"],
   ["Draft emails for the shortlist", "jobs with no draft yet", "draft-all"], ["Look for recruiter addresses", "on each company's own site", "contacts-all"],
   ["Save ready drafts to Gmail", "review and send from Gmail", "gmail-all"], ["Send ready emails", "from your Gmail, CV attached", "send-all"],
   ["Send follow-ups that are due", "", "followups"], ["Apply for shortlisted jobs", "opens each posting on its site", "apply-first"], ["Download a digest of top matches", "Markdown file", "digest"],
   ["Open the shortlist", "", "v:shortlist"], ["Open applications in progress", "", "v:progress"],
   ["Open follow-ups", "", "v:followups"], ["Browse all scored matches", "", "v:matches"], ["See skill gaps and weekly progress", "", "v:insights"],
-  ["See past searches and task output", "", "v:activity"], ["Schedule the daily run", "", "v:settings"], ["Edit the email template", "", "v:settings"], ["Edit the cover letter template", "", "v:settings"],
+  ["See past searches and task output", "", "v:activity"], ["Schedule the daily run", "", "v:settings"], ["Edit the email template", "", "v:settings"], ["Edit the cover letter template", "", "v:settings"], ["Edit the general application email", "", "v:settings"],
   ["Merge duplicate jobs", "", "v:settings"], ["Send a test notification", "", "notify-test"], ["Import a resume", "PDF or text", "resume"],
   ["Switch to the light theme", "", "theme-light"], ["Switch to the dark theme", "", "theme-dark"],
   ["Update the database", "", "migrate"], ["Stop the running task", "", "stop"],

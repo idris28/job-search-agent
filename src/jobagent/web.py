@@ -21,7 +21,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from . import db, scheduler
-from .actions import ActionError, send_slots, send_stored_draft
+from .actions import ActionError, add_hr_contacts, send_slots, send_stored_draft
 from .config import AgentConfig
 from .contacts import _EMAIL_RE
 from .models import names_missing_company, unfilled_placeholders
@@ -222,6 +222,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             "template": {"file": o.template_file, "found": bool(template and template.is_file()),
                          "text": template.read_text(encoding="utf-8") if template and template.is_file() else ""},
             "cover_template": _template_info(o.cover_letter_template_file),
+            "general_template": _template_info(o.general_template_file),
             "limits": {"sends_per_day": o.max_sends_per_day, "pause_seconds": o.send_pause_seconds,
                        "follow_up_days": o.follow_up_days, "tokens_per_run": c.matching.max_tokens_per_run,
                        "browser_minutes": c.matching.max_browser_minutes_per_run,
@@ -316,9 +317,9 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             scheduler.install(Path.cwd(), int(hour), int(minute))
             return {"message": f"The morning routine will run every day at {int(hour):02d}:{int(minute):02d}."}
         if path == "/api/template":
-            cover = body.get("kind") == "cover"
+            cover, kind = body.get("kind") == "cover", body.get("kind")
             o = config().outreach
-            file = o.cover_letter_template_file if cover else o.template_file
+            file = {"cover": o.cover_letter_template_file, "general": o.general_template_file}.get(kind, o.template_file)
             if not file:
                 raise ActionError("This template is switched off in config.yaml.")
             text = str(body.get("text") or "").strip()
@@ -326,6 +327,19 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 raise ActionError("The template cannot be empty.")
             Path(file).write_text(text + "\n", encoding="utf-8")
             return {"message": "Template saved. New " + ("cover letters" if cover else "drafts") + " will use it."}
+
+        if path == "/api/hr-contacts":
+            text = str(body.get("text") or "").strip()
+            if not text:
+                raise ActionError("Paste at least one email address.")
+            country = str(body.get("country") or "").strip() or None
+            if country not in (None, "India", "UAE", "Saudi Arabia", "Qatar"):
+                raise ActionError("That country is not one of yours.")
+            with connect() as conn:
+                result = add_hr_contacts(conn, config(), text, country)
+            n, k = len(result["added"]), len(result["skipped"])
+            return {**result, "message": f"Added {n} general application{'' if n == 1 else 's'}"
+                                         + (f", skipped {k}." if k else ".")}
 
         jid = int(body.get("job_id") or 0)
         with connect() as conn:
@@ -474,7 +488,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 self._json({"message": "The page has stopped. Open Job Search again to start it."})
                 runner.stop()
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
-            elif path in ("/api/status", "/api/note", "/api/draft", "/api/send", "/api/followup-done", "/api/contact",
+            elif path in ("/api/status", "/api/note", "/api/draft", "/api/send", "/api/followup-done", "/api/contact", "/api/hr-contacts",
                           "/api/schedule", "/api/template"):
                 self._answer(lambda: change(path, body))
             else:

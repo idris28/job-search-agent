@@ -1,0 +1,18 @@
+Dear Hiring Team,
+
+I am a [my current job title] with over [X years] of experience at [my employers], writing to ask about software engineering openings at [Company Name].
+
+**Key skills:** [my 6 to 8 strongest skills from my resume, most important first]
+
+**Relevant experience:**
+- [my strongest achievement, under 12 words, with a number from my resume]
+- [a second achievement, under 12 words, with a number if my resume has one]
+- [a third achievement, under 12 words]
+
+I am based in [my city and country if this employer is in my country; only my country if it is abroad][only if this employer is in another country: " and ready to relocate to" followed by that country in its short everyday form, such as "the UAE"]. I can join [when I can join, from my preferences; leave this sentence out if none is given].
+
+My CV is attached. I would welcome a short call if there is a suitable role.
+
+Best regards,
+[Your Full Name]
+[Phone Number] | [Email Address] | [LinkedIn link]

@@ -147,6 +147,8 @@ class OutreachPrefs(BaseModel):
     # Your own cover letter with [placeholders], filled in for each job by `jsa cover-letter`.
     # When the file is missing (or this is ""), a short built-in cover letter is written instead.
     cover_letter_template_file: str = "cover_letter_template.txt"
+    # The email for a general application: an HR address with no specific posting (`jsa add-contacts`).
+    general_template_file: str = "general_email_template.txt"
 
     def resume_for(self, job_text: str) -> tuple[str, str]:
         """(name, path) of the CV to attach for a job: the first variant whose keyword the job
@@ -162,6 +164,9 @@ class OutreachPrefs(BaseModel):
 
     def cover_letter_template(self) -> str | None:
         return _read_template(self.cover_letter_template_file)
+
+    def general_template(self) -> str | None:
+        return _read_template(self.general_template_file)
 
 
 class MatchingPrefs(BaseModel):

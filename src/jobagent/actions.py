@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
 from . import db, mailer
-from .models import JobPosting
+from .models import GENERAL_TITLE, GENERAL_URL, JobPosting
 from .report import _paragraphs_html
 
 
@@ -34,6 +35,61 @@ def add_pasted_job(conn, llm, cfg, text: str, url: str | None = None):
     if found.contact_email:
         db.save_contact(conn, p["id"], job_id, found.contact_email, None, "recruiter")
     return job_id, is_new, found, m
+
+
+_ADDRESS_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+_WEBMAIL = ("gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "live.com", "icloud.com")
+_COUNTRY_BY_ENDING = {".sa": "Saudi Arabia", ".ae": "UAE", ".qa": "Qatar", ".in": "India"}
+
+
+def add_hr_contacts(conn, cfg, text: str, country: str | None = None) -> dict:
+    """Put HR addresses on the shortlist as general applications: no posting, just an address.
+
+    One address per line, optionally with the employer's name ("Acme Gulf, hr@acme.sa"). Nothing
+    is scored or sent here. Returns {"added": [...], "skipped": [(line, reason), ...]}.
+    """
+    p = db.active_profile(conn)
+    if not p:
+        raise ActionError("No profile yet. Run: jsa profile import <resume.pdf>")
+    roles = ", ".join(cfg.search.roles) or "software engineering roles"
+    added, skipped, seen = [], [], set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        found = _ADDRESS_RE.search(line)
+        # An address glued to characters that cannot be part of one ("hr@acme_motors.com") is wrong.
+        if not found or (found.end() < len(line) and line[found.end()] in "_@"):
+            skipped.append((line, "not a valid email address"))
+            continue
+        email = found.group(0).lower()
+        if email in seen:
+            skipped.append((line, "repeated in this list"))
+            continue
+        seen.add(email)
+        domain = email.rsplit("@", 1)[1]
+        name = re.sub(r"^\s*\d+\s*[-.)]\s*", "", line.replace(found.group(0), " "))
+        name = re.sub(r"\s+", " ", name).strip(" ,;:-|\t")
+        company = name or f"{email if domain in _WEBMAIL else domain} (name not given)"
+        place = country or next((c for end, c in _COUNTRY_BY_ENDING.items() if domain.endswith(end)), None)
+        if conn.execute("SELECT 1 FROM jobs WHERE url = %s", (GENERAL_URL + email,)).fetchone():
+            skipped.append((line, "already on your list"))
+            continue
+        other = conn.execute("SELECT 1 FROM jobs WHERE url LIKE %s AND lower(company) = lower(%s)",
+                             (GENERAL_URL + "%", company)).fetchone()
+        if other:
+            skipped.append((line, "another address for this employer is already on your list"))
+            continue
+        posting = JobPosting(
+            title=GENERAL_TITLE, company=company, url=GENERAL_URL + email, location=place,
+            description="GENERAL APPLICATION. There is no job posting. The candidate is writing to "
+                        "this employer's HR address to ask about suitable openings. "
+                        f"Roles the candidate is looking for: {roles}.")
+        job_id, _ = db.upsert_job(conn, posting, None, None)
+        db.set_application_status_if_missing(conn, p["id"], job_id, "general application")
+        db.save_contact(conn, p["id"], job_id, email, None, "careers")
+        added.append({"job_id": job_id, "company": company, "email": email, "country": place})
+    return {"added": added, "skipped": skipped}
 
 
 def send_slots(conn, profile_id: int, outreach) -> int:

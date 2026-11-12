@@ -112,6 +112,7 @@ Good to know:
 | `jsa run --no-score` | Collects jobs but skips scoring, so no scoring calls are made. |
 | `jsa add` | Adds a job from text you paste, such as a LinkedIn post asking for CVs by email. Paste the text, press Enter, then Ctrl-D. It reads the role, company and email address, scores the job and shortlists it. |
 | `jsa add post.txt --url <link>` | The same, from a saved text file, keeping the post's link. |
+| `jsa add-contacts hr.txt --country "Saudi Arabia"` | Adds HR addresses as general applications: one address per line, optionally with the employer's name (`Acme Gulf, hr@acme.sa`). Nothing is scored or sent. Each lands on the shortlist; `jsa email` then drafts it from `general_email_template.txt`. On the website: **Add HR addresses**. |
 
 ### Looking at jobs
 

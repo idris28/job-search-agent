@@ -197,7 +197,7 @@ def cmd_email(args, settings):
     from datetime import date
 
     from .browser import LazyBrowser
-    from .models import JobPosting, names_missing_company, unfilled_placeholders
+    from .models import GENERAL_URL, JobPosting, names_missing_company, unfilled_placeholders
     from .report import emails_html
 
     cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
@@ -238,6 +238,12 @@ def cmd_email(args, settings):
                 print(f"#{jid} {job['title']} at {job['company']}")
                 posting = JobPosting(**{k: job[k] for k in (
                     "title", "company", "url", "location", "remote_type", "description")})
+                general = job["url"].startswith(GENERAL_URL)  # an HR address with no posting
+                job_template = outreach.general_template() if general else template
+                if general and not job_template:
+                    print(f"  ! skipped: {outreach.general_template_file or 'general_template_file'} "
+                          "is missing, and the job email format does not fit a general application")
+                    continue
                 live = None
                 if browser and job["url"].startswith("http"):  # pasted posts have no page
                     print("  checking live posting...")
@@ -246,7 +252,7 @@ def cmd_email(args, settings):
                     except Exception as ex:  # noqa: BLE001
                         print(f"  ! could not open posting: {str(ex).splitlines()[0]}")
                 country = country_of(job["location"])
-                if research_on and country not in guidance_cache:
+                if research_on and not general and country not in guidance_cache:
                     print(f"  researching what recruiters in {country} look for...")
                     try:
                         guidance_cache[country] = llm.research_email_content(
@@ -254,13 +260,13 @@ def cmd_email(args, settings):
                     except Exception as ex:  # noqa: BLE001
                         print(f"  ! research failed: {str(ex).splitlines()[0]}")
                         guidance_cache[country] = None
-                notes = guidance_cache.get(country)
+                notes = None if general else guidance_cache.get(country)
                 print("  drafting email...")
                 job_text = posting.as_prompt_text()
                 e = llm.recruiter_email(p["resume_text"], job_text, live, notes, outreach,
-                                        template=template)
+                                        template=job_template)
                 review = None
-                if review_on:
+                if review_on and not general:
                     for attempt in range(outreach.max_revisions + 1):
                         review = llm.review_email(e, job_text, p["resume_text"], country)
                         print(f"  recruiter review: {review.score}/10"
@@ -623,6 +629,27 @@ def cmd_add(args, settings, *, read=None):
         print(f"No email address found in the text. Next: jsa email {job_id}")
 
 
+def cmd_add_contacts(args, settings, *, read=None):
+    """Add HR addresses as general applications (no posting), ready to draft and send."""
+    from .actions import ActionError, add_hr_contacts
+
+    text = (Path(args.file).read_text(encoding="utf-8") if args.file else (read or sys.stdin.read)()).strip()
+    if not text:
+        sys.exit("Nothing to add: give one address per line, optionally with the employer's name.")
+    cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+    with _conn(settings) as conn:
+        try:
+            result = add_hr_contacts(conn, cfg, text, args.country)
+        except ActionError as e:
+            sys.exit(str(e))
+    for a in result["added"]:
+        print(f"  added #{a['job_id']}: {a['email']} ({a['company']}{', ' + a['country'] if a['country'] else ''})")
+    for line, why in result["skipped"]:
+        print(f"  skipped: {line} ({why})")
+    print(f"Added {len(result['added'])} general application(s), skipped {len(result['skipped'])}. "
+          "They are on your shortlist with no email drafted yet.")
+
+
 def cmd_contacts(args, settings):
     """Look on each company's own website for a published application address."""
     import httpx
@@ -865,6 +892,12 @@ def build_parser() -> argparse.ArgumentParser:
     sd.add_argument("--general", action="store_true", help="also use a general inbox (info@...)")
     sd.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
     sd.set_defaults(fn=cmd_send)
+
+    ac = sub.add_parser("add-contacts", help="add HR addresses as general applications (no posting)")
+    ac.add_argument("file", nargs="?", help="text file, one address per line (default: paste, then Ctrl-D)")
+    ac.add_argument("--country", help="where these employers are, e.g. \"Saudi Arabia\"")
+    ac.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    ac.set_defaults(fn=cmd_add_contacts)
 
     ct = sub.add_parser("contacts", help="look for a published application address for shortlisted jobs")
     ct.add_argument("job_ids", type=int, nargs="*", help="jobs to look up (default: shortlisted without one)")

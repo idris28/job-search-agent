@@ -116,6 +116,13 @@ def test_state_job_detail_and_quick_changes(conn, page):
     assert db.get_application(conn, pid, jid)["contact_email"] is None
     page.call("/api/contact", {"job_id": jid, "email": "hr@acme.ae"})
     assert "Gmail is not set up" in page.call("/api/send", {"job_id": jid})[1]["error"]
+    assert page.call("/api/hr-contacts", {"text": " "})[0] == 400
+    assert page.call("/api/hr-contacts", {"text": "x@y.sa", "country": "Mars"})[0] == 400
+    r = page.call("/api/hr-contacts", {"text": "Gulf Tech, hr@gulftech.example\nbad line", "country": "Saudi Arabia"})[1]
+    assert r["message"] == "Added 1 general application, skipped 1." and r["skipped"] == [["bad line", "not a valid email address"]]
+    general = [j for j in page.call("/api/state")[1]["jobs"] if j["url"].startswith("general:")]
+    assert [(j["company"], j["location"], j["contact_email"], j["score"]) for j in general] == [("Gulf Tech", "Saudi Arabia", "hr@gulftech.example", None)]
+    conn.execute("DELETE FROM jobs WHERE url LIKE 'general:%'")
     assert page.call("/api/status", {"job_id": jid, "status": "nonsense"})[0] == 400
     assert page.call("/api/status", {"job_id": jid, "status": "applied"})[0] == 200
     assert db.get_application(conn, pid, jid)["status"] == "applied"
