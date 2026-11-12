@@ -404,12 +404,25 @@ def overview(conn, profile_id: int | None) -> dict:
     """How many jobs sit at each stage, for the web page."""
     return conn.execute(
         """SELECT (SELECT count(*) FROM jobs WHERE is_active) AS found,
+                  (SELECT count(*) FROM jobs WHERE is_active
+                   AND first_seen_at >= now() - interval '7 days') AS found_week,
                   (SELECT count(*) FROM job_matches m JOIN jobs j ON j.id = m.job_id
                    WHERE m.profile_id = %s AND j.is_active) AS scored,
                   count(*) FILTER (WHERE status = 'shortlisted') AS shortlisted,
                   count(*) FILTER (WHERE outreach_sent_at IS NOT NULL) AS emailed,
                   count(*) FILTER (WHERE status IN ('applied', 'interviewing', 'offer')) AS applied
            FROM applications WHERE profile_id = %s""", (profile_id, profile_id)).fetchone()
+
+
+def match_countries(conn, profile_id: int) -> list[dict]:
+    """Scored jobs per country, most first, for the web page."""
+    counts: dict[str, int] = {}
+    for r in conn.execute(
+            """SELECT j.location FROM job_matches m JOIN jobs j ON j.id = m.job_id
+               WHERE m.profile_id = %s AND j.is_active""", (profile_id,)):
+        country = country_of(r["location"])
+        counts[country] = counts.get(country, 0) + 1
+    return [{"country": k, "jobs": v} for k, v in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 
 def get_match(conn, profile_id: int, job_id: int) -> dict | None:

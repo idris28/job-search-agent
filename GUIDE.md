@@ -68,12 +68,15 @@ Everything `jsa` does is a button there:
 | On the page | What it does | Same as |
 |---|---|---|
 | **Find new jobs** (and the arrow next to it) | Searches every site, or one site, or collects without scoring; also runs the morning routine | `jsa run`, `jsa run --source`, `--no-score`, `jsa daily` |
-| The rail of six numbers | Shows how many jobs are at each stage; click one to see those jobs. While a task runs, a dot travels along the stage it is working on and the line below shows its latest message | |
+| The six cards across the top | How many jobs are at each stage; click one to see those jobs. While a task runs, the cards it is working on glow and a strip under them shows its latest message, with a Stop button | |
+| The round buttons down the left | One-click actions from any screen: search, add a post, draft, find addresses, send, follow up, morning routine, digest. The last two switch between the light and dark look | |
+| The filter bar and table | Filter by country, score, posting age and next step; search by name; click a column heading to sort; click a job to open it in a panel on the right | `jsa jobs` |
 | **Shortlist** | Draft emails, look for addresses, save drafts to Gmail, send the ready emails | `jsa email`, `jsa contacts`, `jsa send --gmail-drafts`, `jsa send` |
 | A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; buttons for applied, skipped, interview, offer, rejected | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa apply` |
-| **In progress**, **Follow-ups** | Applications under way; follow-ups that are due, with a button to send them | `jsa applications`, `jsa followups` |
-| **All matches** | Every scored job, with a score slider and a digest download | `jsa jobs`, `jsa digest` |
+| **In progress**, **Follow-ups** | Applications under way (choose "Set aside" in the Stage filter for skipped and rejected jobs); follow-ups that are due, with a button to send them | `jsa applications`, `jsa followups` |
+| **All matches** | Every scored job, with the score filter and a digest download | `jsa jobs`, `jsa digest` |
 | **Add a job from a post** | Paste a LinkedIn post; it is read, scored and shortlisted | `jsa add` |
+| The panels beside and below the table | A ring showing your jobs by stage, your top matches, where the jobs are by country, and the next steps worth taking, each with a button | |
 | **Insights** | Your week, the skills you miss most, which sites deliver | `jsa progress`, `jsa gaps` |
 | **Activity** | The full output of the running or last task, and past searches | `jsa runs` |
 | **Settings** | Setup checklist, resume import, the daily schedule, the email template, duplicate jobs, a test notification, and **Stop Job Search** | `jsa profile import`, `jsa schedule`, `jsa dedupe`, `jsa notify-test`, `jsa migrate` |

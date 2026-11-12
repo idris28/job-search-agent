@@ -1,281 +1,544 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Job search</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Onest:wght@400..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("jsa-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
-:root{
-  --bg:#edf1ef; --surface:#fff; --sunk:#e2e9e6; --ink:#14211f; --muted:#586a66; --line:#d2dcd8;
-  --lagoon:#0e4a47; --on-lagoon:#f1f7f5; --band:#0e4a47; --band-ink:#eef6f3; --band-muted:#a7c9c3; --band-line:#2c6b66;
-  --saffron:#e7a100; --on-saffron:#1d1500; --coral:#c23d27; --coral-bg:#fbe6e1; --mint:#1f7a57; --mint-bg:#dff2e9;
-  --saffron-bg:#fdf1d2; --saffron-ink:#7a5200;
-  --display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
-  --body:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --r-s:6px; --r-m:10px; --r-l:18px;
-}
-@media (prefers-color-scheme:dark){:root{
-  --bg:#0b1615; --surface:#122120; --sunk:#0e1b1a; --ink:#e5eeeb; --muted:#90a39e; --line:#223b38;
-  --lagoon:#62cdc1; --on-lagoon:#04201e; --band:#0a2b29; --band-ink:#e5eeeb; --band-muted:#8fb3ad; --band-line:#1f4a46;
-  --saffron:#f3b938; --coral:#ff8068; --coral-bg:#3a1a14; --mint:#63d4a3; --mint-bg:#123326;
-  --saffron-bg:#3a2c0b; --saffron-ink:#f3c860;
-}}
+:root{color-scheme:dark;
+--base:#050816;
+--page:radial-gradient(1100px 700px at -12% 112%,rgba(38,98,255,.62),transparent 62%),radial-gradient(900px 600px at 112% -14%,rgba(84,70,220,.3),transparent 60%),radial-gradient(800px 520px at 104% 108%,rgba(120,170,255,.2),transparent 60%);
+--shell:linear-gradient(180deg,rgba(8,12,32,.95) 0%,rgba(9,14,40,.88) 38%,rgba(13,27,84,.64) 100%);
+--card:linear-gradient(180deg,rgba(255,255,255,.062),rgba(255,255,255,.022));
+--tint:rgba(92,122,255,.07);--inset:rgba(5,9,26,.5);--solid:#0e1538;--solid-2:#121c4a;
+--ink:#eef2ff;--muted:#a5b0d6;--faint:#7783ae;
+--line:rgba(150,170,255,.17);--line-2:rgba(150,170,255,.34);--hair:rgba(150,170,255,.09);
+--hover:rgba(110,150,255,.09);--sel:rgba(84,128,255,.19);
+--blue:#4d82ff;--blue-hi:#8db4ff;--cyan:#43d3f3;--violet:#9c8cff;--green:#3ddba6;--amber:#f8bd5c;--red:#ff7482;--slate:#8a95bb;--on-dot:#06102e;
+--btn:linear-gradient(180deg,#6293ff,#3c69f0);--btn-glow:0 8px 26px rgba(61,107,242,.5);
+--shadow:0 30px 80px rgba(0,0,0,.45);
+--font:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif}
+:root[data-theme=light]{color-scheme:light;
+--base:#e8eefc;
+--page:radial-gradient(1100px 700px at -12% 112%,rgba(92,140,255,.5),transparent 62%),radial-gradient(900px 600px at 112% -14%,rgba(160,150,255,.34),transparent 60%);
+--shell:linear-gradient(180deg,rgba(255,255,255,.9),rgba(246,249,255,.84) 40%,rgba(224,234,255,.78));
+--card:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.74));
+--tint:rgba(60,110,255,.05);--inset:rgba(234,240,255,.85);--solid:#fff;--solid-2:#f1f5ff;
+--ink:#0d1636;--muted:#4c5a86;--faint:#7480a8;
+--line:rgba(52,84,190,.18);--line-2:rgba(52,84,190,.36);--hair:rgba(52,84,190,.1);
+--hover:rgba(60,110,255,.07);--sel:rgba(60,110,255,.13);
+--blue:#2f66ee;--blue-hi:#2f66ee;--cyan:#0a9cc2;--violet:#6a57e3;--green:#0f9469;--amber:#b06c00;--red:#d6334a;--slate:#66739b;--on-dot:#fff;
+--shadow:0 30px 80px rgba(40,60,140,.18)}
 *{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);display:flex;flex-direction:column;min-height:100%}
-h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.01em}
+html{background:var(--base)}
+body{margin:0;min-height:100vh;background-color:var(--base);background-image:var(--page);background-attachment:fixed;background-repeat:no-repeat;color:var(--ink);font:14px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
 button,input,textarea,select{font:inherit;color:inherit}
-a{color:var(--lagoon)}
-:focus-visible{outline:2px solid var(--saffron);outline-offset:2px;border-radius:4px}
+button{cursor:pointer}
+a{color:var(--blue-hi)}
+:focus-visible{outline:2px solid var(--blue-hi);outline-offset:2px}
 [hidden]{display:none!important}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.faint{color:var(--faint)}
+.nw{white-space:nowrap}
+.grow{flex:1}
+
+.shell{margin:14px;border:1px solid var(--line);border-radius:26px;background:var(--shell);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.06);min-height:calc(100vh - 28px);display:flex;flex-direction:column}
 
 /* buttons */
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-m);padding:7px 14px;cursor:pointer;font-weight:500;white-space:nowrap;transition:transform .08s,background .15s,border-color .15s}
-.btn:hover{border-color:var(--lagoon)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 15px;border:1px solid var(--line-2);border-radius:12px;background:var(--card);font-weight:600;font-size:13.5px;white-space:nowrap;text-decoration:none;color:var(--ink);transition:border-color .15s,transform .08s,box-shadow .15s}
+.btn:hover{border-color:var(--blue-hi)}
 .btn:active{transform:translateY(1px)}
-.btn[disabled]{opacity:.5;cursor:not-allowed}
-.btn.primary{background:var(--lagoon);border-color:var(--lagoon);color:var(--on-lagoon)}
-.btn.go{background:var(--saffron);border-color:var(--saffron);color:var(--on-saffron);font-weight:600}
-.btn.danger{color:var(--coral)}
-.btn.quiet{border-color:transparent;background:transparent}
-.btn.quiet:hover{background:var(--sunk)}
-.btn.small{padding:4px 10px;font-size:13px}
+.btn.primary{background:var(--btn);border-color:rgba(170,198,255,.55);color:#fff;box-shadow:var(--btn-glow),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn.primary:hover{box-shadow:0 10px 32px rgba(61,107,242,.72),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn.sm{height:34px;padding:0 12px;font-size:12.5px;border-radius:10px}
+.btn.sm .ic{width:15px;height:15px}
+.btn.danger{color:var(--red)}
+.btn.ghost{background:none;border-color:transparent}
+.btn.ghost:hover{background:var(--hover)}
+.round{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;border:1px solid var(--line-2);background:var(--card);padding:0;position:relative;flex:none;transition:border-color .15s,box-shadow .15s}
+.round:hover{border-color:var(--blue-hi);box-shadow:0 0 18px rgba(77,130,255,.35)}
+.round.sm{width:34px;height:34px}
+.round.sm .ic{width:15px;height:15px}
+.round:disabled{opacity:.35;cursor:default;box-shadow:none}
+.round[aria-pressed=true]{background:var(--btn);border-color:transparent;color:#fff;box-shadow:var(--btn-glow)}
+[data-tip]::after{content:attr(data-tip);position:absolute;left:calc(100% + 12px);top:50%;transform:translateY(-50%) translateX(-4px);background:var(--solid);color:var(--ink);border:1px solid var(--line-2);border-radius:9px;padding:6px 10px;font:500 12.5px var(--font);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+[data-tip]:hover::after,[data-tip]:focus-visible::after{opacity:1;transform:translateY(-50%)}
+.tip-down[data-tip]::after{left:auto;right:0;top:calc(100% + 10px);transform:translateY(-4px)}
+.tip-down[data-tip]:hover::after,.tip-down[data-tip]:focus-visible::after{transform:none}
 
-/* band: title, pipeline rail, live task */
-.band{background:var(--band);color:var(--band-ink);padding:18px clamp(16px,3vw,36px) 0}
-.band-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.band-top h1{font-size:26px;font-weight:700;font-variation-settings:"opsz" 60;margin-right:auto}
-.band-top h1 small{display:block;font:400 13px var(--body);color:var(--band-muted);letter-spacing:0}
-.band .btn{background:transparent;border-color:var(--band-line);color:var(--band-ink)}
-.band .btn:hover{border-color:var(--band-ink)}
-.band .btn.go{background:var(--saffron);border-color:var(--saffron);color:var(--on-saffron)}
-kbd{font:500 11px var(--body);border:1px solid currentColor;border-radius:4px;padding:0 4px;opacity:.7;margin-left:6px}
+/* top bar */
+.top{display:flex;align-items:center;gap:10px;padding:20px 24px 14px}
+.brand{display:flex;align-items:center;gap:10px;border:0;background:none;font-size:25px;font-weight:600;letter-spacing:-.02em;padding:0;margin-right:18px;white-space:nowrap}
+.logo{width:30px;height:30px;filter:drop-shadow(0 0 10px rgba(77,130,255,.6))}
+.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;padding:6px 2px}
+.nav::-webkit-scrollbar{display:none}
+.nav button{display:inline-flex;align-items:center;gap:7px;border:0;background:none;padding:9px 14px;border-radius:12px;font-weight:500;font-size:14px;white-space:nowrap;transition:background .15s}
+.nav button:hover{background:var(--hover)}
+.nav button[aria-current]{background:var(--btn);color:#fff;box-shadow:var(--btn-glow)}
+.nav em{font-style:normal;font-size:11.5px;font-weight:700;min-width:20px;padding:1px 6px;border-radius:99px;background:var(--hover);text-align:center}
+.nav button[aria-current] em{background:rgba(255,255,255,.22)}
+.nav .ic{width:16px;height:16px}
+.search{display:flex;align-items:center;gap:9px;height:40px;min-width:230px;padding:0 14px;border:1px solid var(--line-2);border-radius:99px;background:var(--card);color:var(--muted);font-size:13.5px}
+.search span{flex:1;text-align:left}
+kbd{font:600 11px var(--font);border:1px solid var(--line-2);border-radius:6px;padding:1px 6px;color:var(--muted)}
+#belln{position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:99px;background:#ff3b52;color:#fff;font:700 11px/19px var(--font);text-align:center}
+.me{background:linear-gradient(135deg,#7fb2ff,#6b5cf0);border-color:rgba(255,255,255,.4);color:#fff;font-weight:700;font-size:13px}
+
+/* page head */
+.head{display:flex;align-items:flex-end;gap:14px 20px;flex-wrap:wrap;padding:8px 24px 20px}
+.head h1{font-size:23px}
+.head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.head-r{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chips{display:flex;gap:10px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 13px;border:1px solid var(--line-2);border-radius:12px;background:var(--card);font-size:12.5px;color:var(--muted)}
+.chip:hover{border-color:var(--blue-hi)}
+.chip b{color:var(--ink);font-weight:600}
+.chip .ic{width:16px;height:16px}
 .split{position:relative;display:flex}
-.split .btn.go{border-radius:var(--r-m) 0 0 var(--r-m)}
-.split .more{border-radius:0 var(--r-m) var(--r-m) 0;border-left:1px solid rgba(0,0,0,.25);padding:7px 9px}
-.menu{position:absolute;right:0;top:calc(100% + 6px);z-index:20;min-width:270px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-m);padding:6px;box-shadow:0 14px 40px rgba(4,32,30,.28)}
-.menu button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:var(--r-s);cursor:pointer}
-.menu button:hover{background:var(--sunk)}
-.menu label{display:block;padding:8px 10px 2px;font-size:13px;color:var(--muted)}
-.menu select{width:calc(100% - 20px);margin:0 10px 8px;padding:6px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface)}
+.split .btn.primary{border-radius:12px 0 0 12px}
+.split .btn.more{border-radius:0 12px 12px 0;padding:0 10px;border-left-color:rgba(255,255,255,.3)}
+.menu{position:absolute;right:0;top:calc(100% + 8px);z-index:25;min-width:300px;padding:6px;border:1px solid var(--line-2);border-radius:14px;background:var(--solid);box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.menu button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:none;padding:9px 11px;border-radius:9px;font-size:13.5px}
+.menu button:hover{background:var(--hover)}
+.menu button .ic{color:var(--blue-hi);width:16px;height:16px}
+.menu label{display:block;padding:9px 11px 3px;font-size:12.5px;color:var(--muted)}
+.menu select{width:calc(100% - 22px);margin:0 11px 9px;padding:7px 8px;border:1px solid var(--line);border-radius:9px;background:var(--inset)}
 
-.rail{position:relative;display:grid;grid-template-columns:repeat(6,1fr);margin:22px 0 0;padding-bottom:14px}
-.rail::before{content:"";position:absolute;left:8.333%;right:8.333%;top:8px;height:2px;background:var(--band-line)}
-.rail .seg{position:absolute;top:8px;height:2px;background:var(--saffron);left:var(--from);width:calc(var(--to) - var(--from));opacity:0;transition:opacity .3s}
-.rail .pulse{position:absolute;top:2px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--saffron);box-shadow:0 0 0 0 rgba(231,161,0,.6);opacity:0;left:var(--from)}
-.rail.running .seg{opacity:1}
-.rail.running .pulse{opacity:1;animation:travel 2.4s cubic-bezier(.6,0,.4,1) infinite,ring 1.2s ease-out infinite}
-.rail.running.still .pulse{animation:ring 1.2s ease-out infinite}
-@keyframes travel{0%{left:var(--from)}80%,100%{left:var(--to)}}
-@keyframes ring{to{box-shadow:0 0 0 12px rgba(231,161,0,0)}}
-.station{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:none;border:0;color:inherit;cursor:pointer;text-align:center;padding:0 4px 8px;border-radius:var(--r-m)}
-.station i{display:block;flex:none;width:18px;height:18px;margin:0 auto 10px;border-radius:50%;background:var(--band);border:2px solid var(--band-muted);position:relative;z-index:1;transition:background .2s,border-color .2s,transform .2s}
-.station b{display:block;font:700 30px/1 var(--display);font-variation-settings:"opsz" 96;font-variant-numeric:tabular-nums}
-.station span{font-size:13px;color:var(--band-muted)}
-.station:hover i{border-color:var(--band-ink)}
-.station.on i{background:var(--band-ink);border-color:var(--band-ink)}
-.station.on span{color:var(--band-ink)}
-.station.hot i{background:var(--saffron);border-color:var(--saffron);transform:scale(1.15)}
-.station.alert b{color:var(--saffron)}
+.notice{margin:0 24px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:13px 16px;border-radius:14px;border:1px solid color-mix(in srgb,var(--amber) 45%,transparent);background:color-mix(in srgb,var(--amber) 12%,transparent)}
+.notice p{margin:0;flex:1;min-width:230px}
+.notice.bad{border-color:color-mix(in srgb,var(--red) 45%,transparent);background:color-mix(in srgb,var(--red) 12%,transparent)}
 
-.live{display:flex;align-items:center;gap:12px;border-top:1px solid var(--band-line);padding:10px 0;min-height:48px;font-size:14px}
-.live .what{font-weight:600;white-space:nowrap}
-.live .line{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--band-muted);font-family:ui-monospace,Menlo,monospace;font-size:13px}
-.live .ok{color:#8fe3bf} .live .bad{color:var(--saffron)}
-.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--band-line);border-top-color:var(--saffron);animation:spin .8s linear infinite;flex:none}
+/* body */
+.body{display:grid;grid-template-columns:40px minmax(0,1fr);gap:24px;padding:0 24px 26px;flex:1}
+.rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:18px;align-self:start}
+.rail-gap{height:22px;flex:none}
+.content{min-width:0;display:grid;gap:16px;align-content:start}
+.card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.pad{padding:18px}
+.beam::after,.beam-top::before{content:"";position:absolute;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--blue-hi),transparent);box-shadow:0 0 18px 2px rgba(80,140,255,.7);pointer-events:none}
+.beam::after{left:32%;right:32%;bottom:-1px}
+.beam-top::before{left:6%;width:16%;top:-1px}
+
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+.stat{text-align:left;padding:17px 18px 15px;overflow:hidden;transition:border-color .2s,box-shadow .2s,transform .15s}
+.stat:hover{border-color:var(--line-2);transform:translateY(-1px)}
+.stat b{font-size:28px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.stat span{font-size:12.5px;font-weight:600;margin-left:9px;white-space:nowrap}
+.stat small{display:flex;align-items:center;gap:5px;margin-top:11px;color:var(--faint);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat small .up{font-style:normal;color:var(--green);display:inline-flex;align-items:center;gap:3px;font-weight:600}
+.stat small .ic{width:12px;height:12px}
+.stat.on{border-color:var(--line-2);box-shadow:inset 0 0 0 1px rgba(110,150,255,.25),0 0 26px rgba(61,107,242,.2)}
+.stat.alert b{color:var(--amber)}
+.stat.hot{border-color:rgba(120,165,255,.6)}
+.stat.hot::after,.task.running::after{content:"";position:absolute;bottom:0;left:-35%;width:35%;height:2px;background:linear-gradient(90deg,transparent,#9cc2ff,transparent);box-shadow:0 0 16px 3px rgba(90,150,255,.9);animation:sweep 1.9s ease-in-out infinite}
+@keyframes sweep{to{left:100%}}
+
+.task{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;overflow:hidden;font-size:13.5px}
+.task b{white-space:nowrap;font-weight:600}
+.task .line{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font:12.5px ui-monospace,Menlo,monospace}
+.task.running{border-color:rgba(120,165,255,.55);box-shadow:0 0 30px rgba(61,107,242,.18)}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--blue-hi);animation:spin .8s linear infinite;flex:none}
 @keyframes spin{to{transform:rotate(360deg)}}
+.dot{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;flex:none;color:var(--on-dot);background:var(--c,var(--blue))}
+.dot .ic{width:15px;height:15px;stroke-width:2.1}
+.dot.mini{width:22px;height:22px}
+.dot.mini .ic{width:12px;height:12px}
+.c-green{--c:var(--green)}.c-amber{--c:var(--amber)}.c-red{--c:var(--red)}.c-blue{--c:var(--blue-hi)}.c-violet{--c:var(--violet)}.c-cyan{--c:var(--cyan)}.c-slate{--c:var(--slate)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;border-radius:99px;padding:3px 10px;white-space:nowrap;color:var(--c,var(--slate));background:color-mix(in srgb,var(--c,var(--slate)) 15%,transparent)}
 
-/* tabs */
-nav.tabs{display:flex;gap:2px;padding:0 clamp(12px,3vw,32px);background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto}
-nav.tabs{scrollbar-width:none}
-nav.tabs::-webkit-scrollbar{display:none}
-nav.tabs button{border:0;background:none;padding:12px 12px 10px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;font-weight:500}
-nav.tabs button:hover{color:var(--ink)}
-nav.tabs button[aria-current=page]{color:var(--ink);border-bottom-color:var(--lagoon)}
-nav.tabs .gap{flex:1}
-nav.tabs em{font-style:normal;font-size:12px;background:var(--sunk);border-radius:99px;padding:1px 7px;margin-left:4px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,390px);gap:16px;align-items:start}
+.col{display:grid;gap:16px;min-width:0}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px}
+#geo{display:flex;flex-direction:column}
 
-/* notices */
-.notice{margin:16px clamp(16px,3vw,36px) 0;background:var(--saffron-bg);color:var(--saffron-ink);border-radius:var(--r-m);padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.notice p{margin:0;flex:1;min-width:220px}
-.notice.bad{background:var(--coral-bg);color:var(--coral)}
+/* filter bar */
+.fbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
+.fseg{position:relative;display:flex;align-items:center;gap:10px;padding:0 16px;height:52px;border-right:1px solid var(--line);font-weight:600;font-size:15px;min-width:0}
+.fseg:last-child{border-right:0}
+.fseg select{appearance:none;-webkit-appearance:none;background:none;border:0;font-weight:600;flex:1;min-width:0;padding:14px 22px 14px 0;cursor:pointer;text-overflow:ellipsis;outline:none}
+.fseg:focus-within{box-shadow:inset 0 0 0 2px var(--blue)}
+.fseg .caret{position:absolute;right:14px;pointer-events:none;width:16px;height:16px;color:var(--muted)}
+.fseg.off{color:var(--faint);font-weight:500;font-size:13.5px}
 
-/* workspace: list + detail */
-main{flex:1;min-height:0;display:flex;flex-direction:column}
-.work{flex:1;min-height:0;display:grid;grid-template-columns:minmax(300px,420px) 1fr}
-.listpane{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--surface)}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
-.toolbar .hint{font-size:13px;color:var(--muted);flex-basis:100%}
-.toolbar label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
-.seg-ctl{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden}
-.seg-ctl button{border:0;background:none;padding:5px 12px;cursor:pointer;font-size:13px}
-.seg-ctl button[aria-pressed=true]{background:var(--lagoon);color:var(--on-lagoon)}
-.list{overflow:auto;flex:1;margin:0;padding:0;list-style:none}
-.row{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:11px 14px;cursor:pointer}
-.row:hover{background:var(--sunk)}
-.row[aria-selected=true]{background:var(--sunk);box-shadow:inset 4px 0 0 var(--lagoon)}
-.score{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;font:700 18px var(--display);font-variant-numeric:tabular-nums;background:var(--sunk);color:var(--muted)}
-.score.s4{background:var(--lagoon);color:var(--on-lagoon)}
-.score.s3{background:var(--mint-bg);color:var(--mint)}
-.score.s2{background:var(--saffron-bg);color:var(--saffron-ink)}
-.row .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row .c{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row .r{text-align:right;font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:flex-end;gap:3px}
-.tag{font-size:12px;border-radius:99px;padding:1px 8px;background:var(--sunk);color:var(--muted);white-space:nowrap}
-.tag.good{background:var(--mint-bg);color:var(--mint)}
-.tag.warn{background:var(--saffron-bg);color:var(--saffron-ink)}
-.tag.bad{background:var(--coral-bg);color:var(--coral)}
-.empty{padding:36px 20px;color:var(--muted);text-align:center}
-.empty h3{color:var(--ink);font-size:18px;margin-bottom:6px}
+/* table card */
+.tcard{padding:18px 18px 16px}
+.ttl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.ttl h2{font-size:21px}
+.count{font-size:12px;border:1px solid var(--line-2);border-radius:10px;padding:4px 10px;color:var(--muted)}
+.tools{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.tbox{border:1px solid var(--line);border-radius:14px;background:var(--tint)}
+.tsearch{display:flex;align-items:center;gap:12px;padding:12px;flex-wrap:wrap}
+.find{display:flex;align-items:center;gap:8px;border:1px solid var(--line-2);border-radius:10px;padding:0 12px;height:40px;flex:0 1 260px;min-width:170px;background:var(--inset);color:var(--muted)}
+.find:focus-within{border-color:var(--blue-hi);box-shadow:0 0 0 3px rgba(77,130,255,.22)}
+.find input{border:0;background:none;outline:none;width:100%;color:var(--ink)}
+.hint{color:var(--faint);font-size:12.5px;flex:1;min-width:120px}
+.scroll-x{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:13px;font-weight:600;padding:13px 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);white-space:nowrap;user-select:none}
+th[data-sort]{cursor:pointer}
+th .sort{display:inline-grid;gap:2px;margin-left:7px;vertical-align:middle}
+th .sort i{display:block;border:3.5px solid transparent}
+th .sort i:first-child{border-bottom-color:var(--faint);border-top-width:0}
+th .sort i:last-child{border-top-color:var(--faint);border-bottom-width:0}
+th[aria-sort=ascending] .sort i:first-child{border-bottom-color:var(--blue-hi)}
+th[aria-sort=descending] .sort i:last-child{border-top-color:var(--blue-hi)}
+td{padding:12px 16px;border-bottom:1px solid var(--hair);font-size:13.5px;vertical-align:middle}
+tr.row{cursor:pointer;transition:background .15s}
+tr.row:hover{background:var(--hover)}
+tr.row[aria-selected=true]{background:var(--sel);box-shadow:inset 3px 0 0 var(--blue)}
+tr.row:focus-visible{outline-offset:-2px}
+.jobc{display:flex;align-items:center;gap:12px;min-width:0}
+.jt{min-width:0;display:grid}
+.jt b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34ch}
+.jt small{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34ch}
+.loc{white-space:nowrap;max-width:24ch;overflow:hidden;text-overflow:ellipsis}
+.loc .fl{margin-right:8px;font-size:15px}
+.sc{display:inline-grid;gap:4px;min-width:44px}
+.sc b{font-weight:700;font-variant-numeric:tabular-nums}
+.sc .bar{height:4px;width:44px}
+.sc .bar u{transition:none;background:currentColor}
+.sc.s4{color:var(--green)}.sc.s3{color:var(--blue-hi)}.sc.s2{color:var(--amber)}.sc.s1{color:var(--slate)}
+.av{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;font-weight:700;font-size:13.5px;color:#fff;flex:none;background:linear-gradient(135deg,hsl(var(--h) 85% 64%),hsl(calc(var(--h) + 45) 75% 46%));box-shadow:inset 0 0 0 2px rgba(255,255,255,.22)}
+.av.lg{width:52px;height:52px;font-size:20px}
+.tfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+.pager{display:flex;gap:8px}
+.pager button{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:10px;border:1px solid var(--line-2);background:none;font-weight:600;padding:0}
+.pager button:hover:not(:disabled){border-color:var(--blue-hi)}
+.pager button[aria-current]{background:var(--btn);border-color:transparent;color:#fff;box-shadow:var(--btn-glow)}
+.pager button:disabled{opacity:.4;cursor:default}
+.pager .ic{width:15px;height:15px}
+.empty{padding:38px 20px;text-align:center;color:var(--muted)}
+.empty h3{font-size:17px;color:var(--ink);margin-bottom:6px}
 .empty .btn{margin-top:14px}
 
-.detail{overflow:auto;padding:26px clamp(18px,3vw,40px) 60px;min-width:0}
-.detail>.inner{max-width:760px;animation:arrive .18s ease-out}
-@keyframes arrive{from{opacity:0;transform:translateY(6px)}}
-.d-head{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start}
-.d-head h2{font-size:28px;line-height:1.12;font-weight:700;font-variation-settings:"opsz" 72}
-.d-head .where{color:var(--muted);margin-top:6px;display:flex;gap:6px 16px;flex-wrap:wrap}
-.dial{width:92px;height:92px;position:relative}
-.dial svg{transform:rotate(-90deg)}
-.dial circle{fill:none;stroke-width:9}
-.dial .track{stroke:var(--sunk)}
-.dial .val{stroke:var(--lagoon);stroke-linecap:round;transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1)}
-.dial.s3 .val{stroke:var(--mint)} .dial.s2 .val{stroke:var(--saffron)} .dial.s1 .val{stroke:var(--muted)}
-.dial b{position:absolute;inset:0;display:grid;place-items:center;font:700 28px var(--display)}
-.acts{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 4px;align-items:center}
-.acts select{padding:7px 8px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface)}
-.block{border-top:1px solid var(--line);margin-top:22px;padding-top:18px}
-.block h3{font-size:17px;margin-bottom:10px}
+/* widgets */
+.side{padding:16px;display:grid;gap:16px}
+.chead{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.chead h2{font-size:20px}
+.cicon{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;border:1px solid var(--line-2);color:var(--blue-hi);flex:none}
+.link{border:0;background:none;color:var(--muted);font-size:12px;display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;white-space:nowrap}
+.link:hover{color:var(--ink);background:var(--hover)}
+.link .ic{width:13px;height:13px}
+.panel{border:1px solid var(--line);border-radius:14px;background:var(--tint);padding:14px}
+.donut{display:flex;align-items:center;gap:18px}
+.ringbox{position:relative;width:170px;height:170px;flex:none}
+.ringbox svg{transform:rotate(-90deg);filter:drop-shadow(0 0 12px rgba(77,130,255,.5));display:block}
+.ringbox circle{fill:none;stroke-width:17}
+.ringbox .track{stroke:var(--hair)}
+.ringbox .seg{transition:stroke-dasharray .9s cubic-bezier(.2,.8,.2,1)}
+.ringbox .mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ringbox .mid b{font-size:34px;font-weight:600;line-height:1}
+.ringbox .mid span{color:var(--muted);font-size:13px;margin-top:4px}
+.legend{flex:1;min-width:0;display:grid;gap:9px;font-size:13.5px}
+.legend div{display:grid;grid-template-columns:8px 1fr auto;gap:9px;align-items:center}
+.legend i{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.legend span{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.legend b{font-weight:600;font-variant-numeric:tabular-nums}
+.tlist{padding:8px}
+.tm{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:5px 12px;align-items:center;width:100%;text-align:left;border:0;background:none;padding:9px 6px;border-radius:12px}
+.tm:hover{background:var(--hover)}
+.tm .av{grid-row:1/3}
+.tm .n{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm .n small{color:var(--faint);margin-left:8px;font-size:12px}
+.tm .v{font-weight:600;font-variant-numeric:tabular-nums}
+.tm .bar{grid-column:2/4}
+.bar{display:block;height:6px;border-radius:99px;background:var(--hair);overflow:hidden}
+.bar u{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--violet),var(--blue));transition:width .9s cubic-bezier(.2,.8,.2,1);text-decoration:none}
+.geo{position:relative;flex:1;display:grid;align-content:space-evenly;border-radius:14px;background:var(--inset);border:1px solid var(--hair);padding:14px 18px 12px;overflow:hidden}
+.geo::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(140,170,255,.36) 1px,transparent 1.5px);background-size:10px 10px;-webkit-mask-image:radial-gradient(58% 78% at 70% 46%,#000 15%,transparent 100%);mask-image:radial-gradient(58% 78% at 70% 46%,#000 15%,transparent 100%);opacity:.75}
+.geo .pt{position:absolute;width:9px;height:9px;border-radius:50%;background:#c2b4ff;box-shadow:0 0 0 4px rgba(150,130,255,.25),0 0 18px 4px rgba(120,110,255,.6)}
+.gr{position:relative;display:grid;grid-template-columns:minmax(96px,160px) 1fr;gap:14px;align-items:end;padding:8px 0}
+.gl{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gb{position:relative;padding-top:18px}
+.gb b{position:absolute;top:0;left:max(var(--w),30px);transform:translateX(-100%);font-size:11.5px;font-weight:600}
+.gr .bar u{background:linear-gradient(90deg,var(--blue),var(--cyan))}
+.gr+.gr .bar u{background:linear-gradient(90deg,var(--violet),color-mix(in srgb,var(--violet) 45%,#fff))}
+.steps{display:grid;gap:2px}
+.step{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 2px}
+.step b{display:block;font-weight:500;font-size:13.5px}
+.step small{color:var(--faint);font-size:12px}
+
+/* job drawer */
+.scrim{position:fixed;inset:0;z-index:39;background:rgba(3,6,20,.6);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .25s}
+body.reading{overflow:hidden}
+body.reading .scrim{opacity:1;pointer-events:auto}
+.drawer{position:fixed;z-index:40;top:14px;right:14px;bottom:14px;width:min(690px,calc(100vw - 28px));overflow:auto;border:1px solid var(--line-2);border-radius:22px;background:linear-gradient(180deg,var(--solid),var(--solid-2));box-shadow:-30px 0 90px rgba(0,0,0,.5);transform:translateX(calc(100% + 40px));transition:transform .3s cubic-bezier(.2,.8,.2,1);padding:18px 24px 40px}
+body.reading .drawer{transform:none}
+.d-bar{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.d-head{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:16px;align-items:center}
+.d-head h2{font-size:24px;line-height:1.15}
+.meta{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:8px;color:var(--muted);font-size:13px}
+.meta span{display:inline-flex;align-items:center;gap:6px}
+.meta .ic{width:14px;height:14px}
+.dial{position:relative;width:88px;height:88px}
+.dial svg{transform:rotate(-90deg);display:block;filter:drop-shadow(0 0 10px rgba(77,130,255,.45))}
+.dial circle{fill:none;stroke-width:8}
+.dial .track{stroke:var(--hair)}
+.dial .val{stroke:var(--blue-hi);stroke-linecap:round;transition:stroke-dashoffset .8s cubic-bezier(.2,.8,.2,1)}
+.dial.s4 .val{stroke:var(--green)}.dial.s2 .val{stroke:var(--amber)}.dial.s1 .val{stroke:var(--slate)}
+.dial b{position:absolute;inset:0;display:grid;place-items:center;font-size:26px;font-weight:600}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:18px 0 0}
+.acts select{height:40px;padding:0 10px;border:1px solid var(--line-2);border-radius:12px;background:var(--inset)}
+.block{margin-top:16px;border:1px solid var(--line);border-radius:16px;background:var(--tint);padding:16px 18px}
+.block h3{font-size:15.5px;margin-bottom:10px;display:flex;align-items:center;gap:9px}
+.block h3 .ic{color:var(--blue-hi)}
 .block p{margin:0 0 10px;max-width:68ch}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:0;list-style:none}
-.chips li{border-radius:99px;padding:2px 10px;font-size:13px;background:var(--mint-bg);color:var(--mint)}
-.chips.gap li{background:var(--sunk);color:var(--muted)}
-.chips.flag li{background:var(--coral-bg);color:var(--coral)}
-.kv{display:grid;grid-template-columns:110px 1fr;gap:4px 12px;margin:0 0 12px}
-.kv dt{color:var(--muted)} .kv dd{margin:0;overflow-wrap:anywhere}
-.field{display:block;width:100%;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);padding:9px 11px;margin:0 0 8px}
+.block .acts{margin-top:4px}
+.lbl{color:var(--muted);margin-bottom:6px!important;font-size:13px}
+.chipsl{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:0;list-style:none}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:5px 12px;margin:0 0 12px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;overflow-wrap:anywhere}
+.field{display:block;width:100%;border:1px solid var(--line-2);border-radius:12px;background:var(--inset);padding:10px 12px;margin:0 0 8px;transition:border-color .15s,box-shadow .15s}
+.field:focus{outline:none;border-color:var(--blue-hi);box-shadow:0 0 0 3px rgba(77,130,255,.25)}
 textarea.field{min-height:300px;line-height:1.5;resize:vertical}
 textarea.field.short{min-height:84px}
-.mail{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);padding:16px 18px;margin:0 0 8px}
+.mail{border:1px solid var(--line);border-radius:12px;background:var(--inset);padding:14px 16px;margin:0 0 8px}
 .mail p{margin:0 0 10px}
 details>summary{cursor:pointer;color:var(--muted);margin:8px 0}
-.desc{white-space:pre-wrap;font-size:14px;max-width:72ch}
-.history{list-style:none;margin:0;padding:0;font-size:14px}
-.history li{padding:3px 0;color:var(--muted)}
+.desc{white-space:pre-wrap;font-size:13.5px}
+.history{list-style:none;margin:0;padding:0;font-size:13.5px;color:var(--muted)}
+.history li{padding:3px 0}
 .history b{color:var(--ink);font-weight:500}
-.back{display:none}
 
-/* pages: insights, activity, settings */
-.page{overflow:auto;flex:1;padding:26px clamp(16px,3vw,40px) 60px}
-.page>.inner{max-width:980px;display:grid;gap:34px}
-.page h2{font-size:22px;margin-bottom:4px}
-.page .sub{color:var(--muted);margin:0 0 14px;max-width:68ch}
-.week{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0;border:1px solid var(--line);border-radius:var(--r-l);background:var(--surface);overflow:hidden}
-.week div{padding:14px 16px;border-right:1px solid var(--line)}
-.week b{display:block;font:700 26px/1.1 var(--display);font-variant-numeric:tabular-nums}
-.week span{font-size:13px;color:var(--muted)}
-.bars{display:grid;gap:7px}
-.bar{display:grid;grid-template-columns:minmax(120px,220px) 1fr 76px;gap:12px;align-items:center;font-size:14px}
-.bar .track{height:12px;border-radius:99px;background:var(--sunk);overflow:hidden}
-.bar .fill{display:block;height:100%;border-radius:99px;background:var(--lagoon);width:0;transition:width .8s cubic-bezier(.2,.8,.2,1)}
-.bar .n{color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
-table{border-collapse:collapse;width:100%;font-size:14px}
-th{text-align:left;font-weight:500;color:var(--muted);padding:6px 10px 6px 0;border-bottom:1px solid var(--line)}
-td{padding:7px 10px 7px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;vertical-align:top}
-.scroll-x{overflow-x:auto}
-pre.out{margin:0;background:#0a1f1d;color:#d6e8e3;border-radius:var(--r-m);padding:14px 16px;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow:auto;max-height:420px}
-.check{display:grid;grid-template-columns:22px 170px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);align-items:start}
-.check .m{width:18px;height:18px;border-radius:50%;margin-top:2px;background:var(--mint)}
-.check .m.no{background:var(--coral)} .check .m.opt{background:var(--line)}
-.check b{font-weight:600} .check span{color:var(--muted);overflow-wrap:anywhere}
+/* pages */
+.pgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.span2{grid-column:1/-1}
+.page .sub{color:var(--muted);margin:-6px 0 14px;max-width:72ch;font-size:13.5px}
+.week{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:12px}
+.week div{border:1px solid var(--line);border-radius:14px;background:var(--tint);padding:14px 16px}
+.week b{display:block;font-size:26px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.week span{font-size:12.5px;color:var(--muted)}
+.bars{display:grid;gap:12px}
+.brow{display:grid;grid-template-columns:minmax(110px,190px) 1fr auto;gap:12px;align-items:center;font-size:13.5px}
+.brow span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brow .bar{height:8px}
+.brow .n{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+pre.out{margin:0;background:rgba(3,6,18,.82);color:#d5e0ff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;font:12.5px/1.55 ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow:auto;max-height:440px}
+.check{display:grid;grid-template-columns:24px 180px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--hair);align-items:center}
+.check:last-child{border-bottom:0}
+.check b{font-weight:600}
+.check>span:last-child{color:var(--muted);overflow-wrap:anywhere;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .inline{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.inline input[type=time]{padding:6px 8px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface)}
+.inline input[type=time]{height:40px;padding:0 10px;border:1px solid var(--line-2);border-radius:12px;background:var(--inset)}
 
 /* dialogs, palette, toasts */
-dialog{border:1px solid var(--line);border-radius:var(--r-l);background:var(--surface);color:var(--ink);padding:22px;width:min(560px,calc(100vw - 32px));box-shadow:0 24px 70px rgba(4,32,30,.4)}
-dialog::backdrop{background:rgba(6,28,26,.5)}
-dialog[open]{animation:arrive .16s ease-out}
-dialog h2{font-size:20px;margin-bottom:8px}
+dialog{border:1px solid var(--line-2);border-radius:20px;background:linear-gradient(180deg,var(--solid),var(--solid-2));color:var(--ink);padding:22px;width:min(560px,calc(100vw - 32px));box-shadow:0 30px 90px rgba(0,0,0,.55)}
+dialog::backdrop{background:rgba(3,6,20,.62);backdrop-filter:blur(3px)}
+dialog[open]{animation:pop .18s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}}
+dialog h2{font-size:19px;margin-bottom:8px}
 dialog p{margin:0 0 14px;color:var(--muted)}
-dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
-#palette{padding:0;width:min(600px,calc(100vw - 32px));margin-top:12vh}
-#palette input{width:100%;border:0;border-bottom:1px solid var(--line);padding:16px 18px;font-size:17px;background:none;outline:none}
+dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+#palette{padding:0;width:min(620px,calc(100vw - 32px));margin-top:12vh}
+#palette input{width:100%;border:0;border-bottom:1px solid var(--line);padding:17px 20px;font-size:16.5px;background:none;outline:none}
 #palette ul{list-style:none;margin:0;padding:6px;max-height:52vh;overflow:auto}
-#palette li button{display:grid;grid-template-columns:1fr auto;gap:12px;width:100%;text-align:left;border:0;background:none;padding:9px 12px;border-radius:var(--r-s);cursor:pointer}
-#palette li button span{color:var(--muted);font-size:13px}
-#palette li button.cur,#palette li button:hover{background:var(--sunk)}
-.toasts{position:fixed;left:20px;bottom:20px;display:grid;gap:8px;z-index:50;max-width:min(440px,calc(100vw - 40px))}
-.toast{background:var(--ink);color:var(--bg);border-radius:var(--r-m);padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:arrive .2s ease-out}
-.toast.bad{background:var(--coral);color:#fff}
+#palette li button{display:grid;grid-template-columns:1fr auto;gap:12px;width:100%;text-align:left;border:0;background:none;padding:10px 13px;border-radius:10px}
+#palette li button span{color:var(--faint);font-size:12.5px}
+#palette li button.cur,#palette li button:hover{background:var(--sel)}
+.toasts{position:fixed;right:28px;bottom:28px;display:grid;gap:8px;z-index:60;max-width:min(440px,calc(100vw - 56px))}
+.toast{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line-2);background:var(--solid);border-radius:14px;padding:11px 14px;box-shadow:0 14px 40px rgba(0,0,0,.4);animation:pop .2s ease-out}
+.toast .ic{margin-top:2px;color:var(--green)}
+.toast.bad{border-color:color-mix(in srgb,var(--red) 60%,transparent)}
+.toast.bad .ic{color:var(--red)}
 
-@media (max-width:860px){
-  .work{grid-template-columns:1fr}
-  .detail{display:none;position:fixed;inset:0;background:var(--bg);z-index:30}
-  body.reading .detail{display:block}
-  .back{display:inline-flex;margin-bottom:14px}
-  .station b{font-size:22px} .station span{font-size:11px;white-space:nowrap}
-  .d-head h2{font-size:23px}
-  .check{grid-template-columns:22px 1fr} .check span{grid-column:2}
-  .bar{grid-template-columns:1fr 60px} .bar .track{grid-column:1/-1;order:3}
+@media (max-width:1280px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.grid{grid-template-columns:1fr}.chips{display:none}}
+@media (max-width:900px){
+  .shell{margin:8px;border-radius:20px;min-height:calc(100vh - 16px)}
+  .top{flex-wrap:wrap;padding:16px 16px 8px}
+  .brand{font-size:21px;margin-right:auto}
+  .nav{order:5;flex-basis:100%}
+  .search{min-width:0;flex:0 1 190px}
+  .search kbd{display:none}
+  .head{padding:8px 16px 16px}
+  .head-r{margin-left:0}
+  .notice{margin:0 16px 14px}
+  .body{grid-template-columns:minmax(0,1fr);padding:0 16px 20px;gap:14px}
+  .rail{flex-direction:row;position:static;overflow-x:auto;scrollbar-width:none;padding:3px}
+  .rail::-webkit-scrollbar{display:none}
+  .rail-gap{width:8px;height:auto}
+  [data-tip]::after{display:none}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pair,.pgrid{grid-template-columns:minmax(0,1fr)}
+  .fbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fseg:nth-child(2){border-right:0}
+  .fseg:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .donut{flex-direction:column}
+  .legend{width:100%}
+  .drawer{top:0;right:0;bottom:0;width:100vw;border-radius:0;border:0;padding:14px 16px 30px}
+  .d-head{grid-template-columns:44px minmax(0,1fr)}
+  .d-head .av.lg{width:44px;height:44px}
+  .d-head .dial{grid-column:1/-1}
+  .check{grid-template-columns:24px 1fr}
+  .check>span:last-child{grid-column:2}
+  .step{grid-template-columns:30px minmax(0,1fr)}
+  .step .btn{grid-column:2;justify-self:start}
 }
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rail.running .pulse{left:var(--to)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<header class="band">
-  <div class="band-top">
-    <h1>Job search<small id="who">Starting up</small></h1>
-    <button class="btn" data-act="add">Add a job from a post</button>
-    <button class="btn" data-act="palette">All actions<kbd id="kbd">⌘K</kbd></button>
-    <div class="split">
-      <button class="btn go" data-act="run">Find new jobs</button>
-      <button class="btn go more" data-act="run-menu" aria-label="More ways to search" aria-haspopup="true">▾</button>
-      <div class="menu" id="runmenu" hidden>
-        <button data-act="run">Search every site and score the jobs</button>
-        <button data-act="run-noscore">Collect only, score later</button>
-        <button data-act="daily">Morning routine: search, digest, summary email</button>
-        <label for="onesite">Search one site</label>
-        <select id="onesite"><option value="">Choose a site</option></select>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></symbol>
+<symbol id="i-at" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+<symbol id="i-sunrise" viewBox="0 0 24 24"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/><polyline points="8 6 12 2 16 6"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+<symbol id="i-command" viewBox="0 0 24 24"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+<symbol id="i-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
+<symbol id="i-square" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+<symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+<symbol id="i-filter" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
+<symbol id="i-pie" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></symbol>
+<symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></symbol>
+<symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></symbol>
+<symbol id="i-trending" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
+<symbol id="i-activity" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 3l1.9 5.6 5.6 1.9-5.6 1.9L11 18l-1.9-5.6L3.500 10.500l5.600-1.900z"/><path d="M19 15v5M16.500 17.500h5"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+<symbol id="i-power" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.500-9.500z"/></symbol>
+</defs></svg>
+
+<div class="shell">
+  <header class="top">
+    <button class="brand" data-view="shortlist" aria-label="Job Search, open the shortlist">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ab8ff"/><stop offset="1" stop-color="#3c69f0"/></linearGradient></defs><path d="M16 3.500a12.500 12.500 0 1 0 12.500 12.500" fill="none" stroke="url(#lg)" stroke-width="5" stroke-linecap="round"/><circle cx="23.500" cy="8.500" r="4.500" fill="#8fe3ff"/></svg>
+      <span>Job Search</span>
+    </button>
+    <nav class="nav" id="tabs" aria-label="Sections">
+      <button data-view="shortlist">Shortlist<em data-c="shortlisted" hidden></em></button>
+      <button data-view="progress">In progress<em data-c="applied" hidden></em></button>
+      <button data-view="followups">Follow-ups<em data-c="due" hidden></em></button>
+      <button data-view="matches">All matches</button>
+      <button data-view="insights"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>Insights</button>
+      <button data-view="activity">Activity</button>
+      <button data-view="settings">Settings</button>
+    </nav>
+    <button class="search" data-act="palette"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span>Search actions</span><kbd id="kbd">⌘K</kbd></button>
+    <button class="round tip-down" data-view="followups" data-tip="Follow-ups due" aria-label="Follow-ups due"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg><span id="belln" hidden></span></button>
+    <button class="round me tip-down" id="me" data-view="settings" data-tip="Settings" aria-label="Settings">?</button>
+  </header>
+
+  <section class="head">
+    <div><h1 id="vtitle">Shortlist</h1><p id="vsub">Starting up</p></div>
+    <div class="head-r">
+      <span class="chips" id="chips"></span>
+      <button class="btn" data-act="add"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Add from a post</button>
+      <div class="split">
+        <button class="btn primary" data-act="run"><svg class="ic" aria-hidden="true"><use href="#i-zap"/></svg>Find new jobs</button>
+        <button class="btn primary more" data-act="run-menu" aria-label="More ways to search" aria-haspopup="true"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></button>
+        <div class="menu" id="runmenu" hidden>
+          <button data-act="run"><svg class="ic" aria-hidden="true"><use href="#i-zap"/></svg>Search every site and score the jobs</button>
+          <button data-act="run-noscore"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg>Collect only, score later</button>
+          <button data-act="daily"><svg class="ic" aria-hidden="true"><use href="#i-sunrise"/></svg>Morning routine: search, digest, summary</button>
+          <label for="onesite">Search one site</label>
+          <select id="onesite"><option value="">Choose a site</option></select>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="rail" id="rail" aria-label="Where your jobs are">
-    <span class="seg"></span><span class="pulse"></span>
-    <button class="station" data-view="matches"><i></i><b data-n="found">0</b><span>found</span></button>
-    <button class="station" data-view="matches"><i></i><b data-n="scored">0</b><span>scored</span></button>
-    <button class="station" data-view="shortlist"><i></i><b data-n="shortlisted">0</b><span>shortlisted</span></button>
-    <button class="station" data-view="progress"><i></i><b data-n="emailed">0</b><span>emailed</span></button>
-    <button class="station" data-view="progress"><i></i><b data-n="applied">0</b><span>applied</span></button>
-    <button class="station" data-view="followups"><i></i><b data-n="due">0</b><span>to follow up</span></button>
-  </div>
-  <div class="live" id="live" aria-live="polite"></div>
-</header>
+  </section>
 
-<nav class="tabs" id="tabs" aria-label="Sections">
-  <button data-view="shortlist">Shortlist<em data-c="shortlisted"></em></button>
-  <button data-view="progress">In progress<em data-c="applied"></em></button>
-  <button data-view="followups">Follow-ups<em data-c="due"></em></button>
-  <button data-view="matches">All matches</button>
-  <span class="gap"></span>
-  <button data-view="insights">Insights</button>
-  <button data-view="activity">Activity</button>
-  <button data-view="settings">Settings</button>
-</nav>
-
-<main>
   <div id="notices"></div>
-  <div class="work" id="work">
-    <section class="listpane" aria-label="Jobs">
-      <div class="toolbar" id="toolbar"></div>
-      <ul class="list" id="list"></ul>
-    </section>
-    <section class="detail" id="detail" aria-label="Job details"></section>
+
+  <div class="body">
+    <aside class="rail" aria-label="Quick actions">
+      <button class="round" data-act="run" data-tip="Find new jobs" aria-label="Find new jobs"><svg class="ic" aria-hidden="true"><use href="#i-zap"/></svg></button>
+      <button class="round" data-act="add" data-tip="Add a job from a post" aria-label="Add a job from a post"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+      <button class="round" data-act="draft-all" data-tip="Draft emails for the shortlist" aria-label="Draft emails for the shortlist"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg></button>
+      <button class="round" data-act="contacts-all" data-tip="Look for recruiter addresses" aria-label="Look for recruiter addresses"><svg class="ic" aria-hidden="true"><use href="#i-at"/></svg></button>
+      <button class="round" data-act="send-all" data-tip="Send ready emails" aria-label="Send ready emails"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg></button>
+      <button class="round" data-act="gmail-all" data-tip="Save ready drafts to Gmail" aria-label="Save ready drafts to Gmail"><svg class="ic" aria-hidden="true"><use href="#i-inbox"/></svg></button>
+      <button class="round" data-act="followups" data-tip="Send follow-ups that are due" aria-label="Send follow-ups that are due"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg></button>
+      <button class="round" data-act="daily" data-tip="Run the morning routine" aria-label="Run the morning routine"><svg class="ic" aria-hidden="true"><use href="#i-sunrise"/></svg></button>
+      <button class="round" data-act="digest" data-tip="Download a digest of top matches" aria-label="Download a digest of top matches"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg></button>
+      <button class="round" data-act="palette" data-tip="All actions" aria-label="All actions"><svg class="ic" aria-hidden="true"><use href="#i-command"/></svg></button>
+      <span class="rail-gap"></span>
+      <button class="round" id="th-light" data-act="theme-light" data-tip="Light" aria-label="Light theme" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg></button>
+      <button class="round" id="th-dark" data-act="theme-dark" data-tip="Dark" aria-label="Dark theme" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg></button>
+    </aside>
+
+    <div class="content">
+      <div class="stats" id="stats">
+        <button class="card stat" data-n="found" data-view="matches"><b>0</b><span>Found</span><small></small></button>
+        <button class="card stat" data-n="scored" data-view="matches" data-on="matches"><b>0</b><span>Scored</span><small></small></button>
+        <button class="card stat" data-n="shortlisted" data-view="shortlist" data-on="shortlist"><b>0</b><span>Shortlisted</span><small></small></button>
+        <button class="card stat" data-n="emailed" data-view="progress"><b>0</b><span>Emailed</span><small></small></button>
+        <button class="card stat" data-n="applied" data-view="progress" data-on="progress"><b>0</b><span>Applied</span><small></small></button>
+        <button class="card stat" data-n="due" data-view="followups" data-on="followups"><b>0</b><span>To follow up</span><small></small></button>
+      </div>
+      <div class="card task" id="live" hidden aria-live="polite"></div>
+
+      <div class="grid" id="work">
+        <div class="col">
+          <div class="fbar" id="fbar"></div>
+          <section class="card tcard beam" aria-label="Jobs">
+            <div class="ttl"><h2 id="ttitle">Jobs</h2><span class="count" id="tcount">0</span><div class="tools" id="toolbar"></div></div>
+            <div class="tbox">
+              <div class="tsearch">
+                <label class="find"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><input id="tq" placeholder="Search jobs" aria-label="Search jobs" autocomplete="off"></label>
+                <span class="hint" id="thint"></span>
+                <button class="round sm" data-act="reload" aria-label="Refresh"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+              </div>
+              <div class="scroll-x"><table>
+                <thead><tr>
+                  <th data-sort="title" tabindex="0">Job<span class="sort"><i></i><i></i></span></th>
+                  <th data-sort="location" tabindex="0">Location<span class="sort"><i></i><i></i></span></th>
+                  <th data-sort="score" tabindex="0">Score<span class="sort"><i></i><i></i></span></th>
+                  <th data-sort="posted_at" tabindex="0">Posted<span class="sort"><i></i><i></i></span></th>
+                  <th id="thlast">Next step</th>
+                </tr></thead>
+                <tbody id="tbody"></tbody>
+              </table></div>
+              <div class="tfoot" id="tfoot"></div>
+            </div>
+          </section>
+          <div class="pair">
+            <section class="card pad" id="geo" aria-label="Where the jobs are"></section>
+            <section class="card pad beam" id="next" aria-label="Next steps"></section>
+          </div>
+        </div>
+        <aside class="card side beam-top" aria-label="Pipeline and top matches">
+          <div id="donut"></div>
+          <div id="tops"></div>
+        </aside>
+      </div>
+      <div class="page" id="page" hidden></div>
+    </div>
   </div>
-  <div class="page" id="page" hidden></div>
-</main>
+</div>
+
+<div class="scrim" id="scrim" data-act="back"></div>
+<aside class="drawer" id="detail" aria-label="Job details" inert></aside>
 
 <dialog id="ask"><h2></h2><p></p><div class="foot"><button class="btn" value="no">Cancel</button><button class="btn primary" value="yes"></button></div></dialog>
 <dialog id="adddlg">
@@ -295,10 +558,30 @@ const TOKEN = "__TOKEN__";
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const S = { state: null, view: "shortlist", sel: null, detail: null, matches: null, minScore: 70, aside: false,
-            lines: [], taskId: 0, wasRunning: false, dirty: false, counted: false, settings: null, insights: null };
-const SEGMENT = { run: [0, 1], daily: [0, 2], add: [0, 2], contacts: [2, 3], email: [2, 3], send: [2, 3],
-                  "gmail-drafts": [2, 3], "cover-letter": [2, 4], followups: [4, 5] };
+const ic = (n, c = "") => `<svg class="ic ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const PAGE = 8, LIST = ["shortlist", "progress", "followups", "matches"];
+const ACTIVE = ["applied", "interviewing", "offer"], ASIDE = ["skipped", "rejected", "withdrawn"];
+const calm = matchMedia("(prefers-reduced-motion:reduce)").matches;
+const S = { state: null, inited: false, view: "shortlist", sel: null, detail: null, matches: null, q: "", page: 0,
+            f: { country: "", score: 0, posted: 0, extra: "" }, sort: { key: "", dir: 1 }, lsig: "", wsig: "",
+            lines: [], taskId: 0, wasRunning: false, polling: false, dirty: false, counted: false, dismissed: 0, settings: null, insights: null };
+const VIEWS = {
+  shortlist: ["Shortlist", "Jobs that scored well against your resume. Draft the email, find the address, send."],
+  progress: ["In progress", "Applications under way, and the jobs you set aside."],
+  followups: ["Follow-ups", "Emails that have had no reply for a few days."],
+  matches: ["All matches", "Every job scored against your resume, newest first."],
+  insights: ["Insights", "Your week, the skills you are missing, and which sites deliver."],
+  activity: ["Activity", "What the program is doing now, and past searches."],
+  settings: ["Settings", "Setup, the daily run, your email template and limits."],
+};
+const HOT = { run: ["found", "scored"], daily: ["found", "scored", "shortlisted"], add: ["found", "scored", "shortlisted"], contacts: ["shortlisted"], email: ["shortlisted"],
+              send: ["shortlisted", "emailed", "applied"], "gmail-drafts": ["shortlisted"], "cover-letter": ["shortlisted"], followups: ["due"] };
+const STATUS_C = { shortlisted: "c-blue", applied: "c-cyan", interviewing: "c-violet", offer: "c-green", rejected: "c-red", skipped: "c-slate", withdrawn: "c-slate" };
+const COUNTRIES = [["UAE", "🇦🇪", /\b(uae|united arab emirates|dubai|abu dhabi|sharjah|ajman)\b/], ["Saudi Arabia", "🇸🇦", /\b(saudi|ksa|riyadh|jeddah|dammam|khobar)\b/], ["Qatar", "🇶🇦", /\b(qatar|doha)\b/],
+  ["India", "🇮🇳", /\b(india|ahmedabad|gandhinagar|bengaluru|bangalore|pune|hyderabad|mumbai|chennai|gurugram|gurgaon|noida|delhi|kolkata)\b/]];
+const countryOf = loc => { const l = (loc || "").toLowerCase(); return (COUNTRIES.find(c => c[2].test(l)) || ["Remote"])[0]; };
+const flagOf = c => (COUNTRIES.find(x => x[0] === c) || [0, "🌐"])[1];
+const countryName = c => c === "Remote" ? "Remote or elsewhere" : c;
 
 async function api(path, body, raw) {
   const opt = { headers: { "X-Token": TOKEN } };
@@ -313,7 +596,7 @@ async function api(path, body, raw) {
 }
 function toast(msg, bad) {
   const t = document.createElement("div");
-  t.className = "toast" + (bad ? " bad" : ""); t.textContent = msg;
+  t.className = "toast" + (bad ? " bad" : ""); t.innerHTML = ic(bad ? "alert" : "check") + "<span></span>"; t.lastChild.textContent = msg;
   $("#toasts").append(t); setTimeout(() => t.remove(), bad ? 9000 : 4500);
 }
 const fail = e => toast(e.message, true);
@@ -337,66 +620,80 @@ const when = iso => iso ? new Date(iso).toLocaleString(undefined, { day: "numeri
 const tier = s => s == null ? "s0" : s >= 85 ? "s4" : s >= 75 ? "s3" : s >= 60 ? "s2" : "s1";
 const statusOf = r => r.status || r.application_status || "";
 const http = u => /^https?:\/\//.test(u || "");
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const initials = n => (n || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
+const hue = s => { let h = 0; for (const ch of String(s || "")) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
+const avatar = (name, cls = "") => `<span class="av ${cls}" style="--h:${hue(name)}" aria-hidden="true">${esc(((name || "").trim()[0] || "?").toUpperCase())}</span>`;
+const grow = root => requestAnimationFrame(() => requestAnimationFrame(() => $$("u[data-w]", root).forEach(u => u.style.width = u.dataset.w + "%")));
 
-/* ---------- state ---------- */
+/* ---------- state and chrome ---------- */
 async function refresh() {
-  try { S.state = await api("/api/state"); } catch (e) { $("#who").textContent = e.message; return; }
-  renderBand(); renderNotices(); renderTabs();
-  if (["shortlist", "progress", "followups", "matches"].includes(S.view)) renderList();
+  try { S.state = await api("/api/state"); } catch (e) { $("#vsub").textContent = e.message; return; }
+  renderChrome(); renderNotices();
+  if (!S.inited) await showView(S.view, true);
+  else if (LIST.includes(S.view)) { renderList(); renderWidgets(); }
   trackTask();
 }
-function renderBand() {
-  const st = S.state, c = st.counts || {};
-  const p = st.setup.profile;
-  $("#who").textContent = p ? `${p.name}, ${new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}` : "Not set up yet";
-  $$("#rail [data-n]").forEach(b => {
-    const n = c[b.dataset.n] ?? 0;
-    if (!S.counted && n > 0 && !matchMedia("(prefers-reduced-motion:reduce)").matches) countUp(b, n); else b.textContent = n;
+function renderChrome() {
+  const st = S.state, c = st.counts || {}, p = st.setup.profile, t = st.task, [title, sub] = VIEWS[S.view];
+  const me = $("#me"); me.textContent = p ? initials(p.name) : "?"; me.dataset.tip = p ? `${p.name}: settings` : "Settings";
+  const bn = $("#belln"); bn.textContent = c.due || ""; bn.hidden = !c.due;
+  $$("#tabs [data-view]").forEach(b => b.dataset.view === S.view ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  $$("#tabs [data-c]").forEach(e => { const n = c[e.dataset.c] || 0; e.textContent = n; e.hidden = !n; });
+  $("#vtitle").textContent = title; $("#vsub").textContent = sub;
+  const se = st.search || {};
+  const chips = [["layers", "Sites", st.sources.length], ["calendar", "Posted", se.max_age_days ? `Last ${se.max_age_days} days` : "Any time"], ["briefcase", "Pay", se.min_salary_lpa ? `${se.min_salary_lpa} LPA or more` : "Any"]]
+    .map(([i, l, v]) => `<button class="chip" data-view="settings">${ic(i)}<span>${l}:</span><b>${esc(v)}</b></button>`).join("");
+  if ($("#chips").dataset.k !== chips) { $("#chips").innerHTML = chips; $("#chips").dataset.k = chips; }
+  const subs = {
+    found: c.found_week ? `<i class="up">${ic("trending")}+${c.found_week.toLocaleString()}</i> this week` : `from ${st.sources.length} sites`,
+    scored: "against your resume", shortlisted: `scoring ${st.shortlist_min_score} or more`,
+    emailed: st.sends ? `${st.sends.today} sent today${st.sends.cap ? ", limit " + st.sends.cap : ""}` : "none sent yet",
+    applied: "applications under way", due: c.due ? "due now" : `${st.follow_up_days} days after an email` };
+  const hot = t && t.running ? HOT[t.action] || [] : [];
+  $$("#stats .stat").forEach(b => {
+    const k = b.dataset.n, n = c[k] ?? 0, num = $("b", b), sm = $("small", b);
+    if (!S.counted && n > 0 && !calm) countUp(num, n); else num.textContent = n.toLocaleString();
+    if (sm.dataset.k !== subs[k]) { sm.innerHTML = subs[k]; sm.dataset.k = subs[k]; }
+    b.classList.toggle("on", b.dataset.on === S.view);
+    b.classList.toggle("hot", hot.includes(k));
+    b.classList.toggle("alert", k === "due" && n > 0);
   });
   if (st.counts) S.counted = true;
-  $$("#rail .station")[5].classList.toggle("alert", (c.due || 0) > 0);
   const sel = $("#onesite");
   if (sel.options.length !== st.sources.length + 1)
     sel.innerHTML = '<option value="">Choose a site</option>' + st.sources.map(s => `<option>${esc(s)}</option>`).join("");
   renderLive();
 }
 function countUp(el, n) {
-  const t0 = performance.now(), dur = 700;
-  const step = t => { const k = Math.min(1, (t - t0) / dur); el.textContent = Math.round(n * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
+  const t0 = performance.now(), dur = 800;
+  const step = t => { const k = Math.min(1, (t - t0) / dur); el.textContent = Math.round(n * (1 - Math.pow(1 - k, 3))).toLocaleString(); if (k < 1) requestAnimationFrame(step); };
   requestAnimationFrame(step);
 }
 function renderLive() {
-  const t = S.state.task, rail = $("#rail"), live = $("#live");
-  const seg = t && t.running ? SEGMENT[t.action] : null;
-  rail.classList.toggle("running", !!(t && t.running && seg));
-  $$("#rail .station").forEach((s, i) => s.classList.toggle("hot", !!seg && i >= seg[0] && i <= seg[1]));
-  if (seg) { rail.style.setProperty("--from", `${(seg[0] + .5) / 6 * 100}%`); rail.style.setProperty("--to", `${(seg[1] + .5) / 6 * 100}%`); }
-  if (!t) { live.innerHTML = `<span class="line" style="font-family:inherit">Nothing is running. Start with <b>Find new jobs</b>, or pick a job below.</span>`; return; }
+  const t = S.state.task, live = $("#live");
+  if (!t || (!t.running && S.dismissed === t.id)) { live.hidden = true; live.dataset.k = ""; return; }
+  const key = `${t.id}:${t.running}`;
+  if (live.dataset.k === key) { $(".line", live).textContent = t.last || (t.running ? "starting" : ""); return; }
+  live.dataset.k = key; live.hidden = false; live.classList.toggle("running", t.running);
   if (t.running) {
-    live.innerHTML = `<span class="spin"></span><span class="what">${esc(t.label)}</span><span class="line">${esc(t.last || "starting")}</span>
-      <button class="btn small" data-view="activity">Show output</button><button class="btn small" data-act="stop">Stop</button>`;
+    live.innerHTML = `<span class="spin"></span><b>${esc(t.label)}</b><span class="line">${esc(t.last || "starting")}</span>
+      <button class="btn sm" data-view="activity">Show output</button><button class="btn sm danger" data-act="stop">${ic("square")}Stop</button>`;
   } else {
     const ok = t.exit_code === 0 && !t.stopped;
-    live.innerHTML = `<span class="what ${ok ? "ok" : "bad"}">${esc(t.label)}: ${t.stopped ? "stopped" : ok ? "done" : "did not finish"}</span>
-      <span class="line">${esc(t.last)}</span><button class="btn small" data-view="activity">Show output</button>`;
+    live.innerHTML = `<span class="dot ${ok ? "c-green" : "c-amber"}">${ic(ok ? "check" : "alert")}</span><b>${esc(t.label)}: ${t.stopped ? "stopped" : ok ? "done" : "did not finish"}</b>
+      <span class="line">${esc(t.last)}</span><button class="btn sm" data-view="activity">Show output</button><button class="round sm" data-act="dismiss" aria-label="Hide this">${ic("x")}</button>`;
   }
 }
 function renderNotices() {
-  const s = S.state.setup, busy = S.state.task && S.state.task.running;
+  const s = S.state.setup;
   let h = "";
   if (s.database === "unreachable") h = `<div class="notice bad"><p><b>The database is not answering.</b> Start PostgreSQL, then reload this page. ${esc(s.error)}</p></div>`;
   else if (s.database === "behind") h = `<div class="notice"><p><b>The database needs ${s.pending.length === 1 ? "one update" : s.pending.length + " updates"}</b> before anything else works. It only adds what the new features need; your jobs stay as they are.</p>
-      <button class="btn primary" data-act="migrate" ${busy ? "disabled" : ""}>Update the database</button></div>`;
+      <button class="btn primary" data-act="migrate">Update the database</button></div>`;
   else if (!s.profile) h = `<div class="notice"><p><b>Import your resume to begin.</b> Jobs are scored against it, and emails are written from it.</p>
-      <button class="btn primary" data-act="resume" ${busy ? "disabled" : ""}>Choose your resume</button></div>`;
-  $("#notices").innerHTML = h;
-}
-function renderTabs() {
-  const c = S.state.counts || {};
-  $$("#tabs [data-view]").forEach(b => b.toggleAttribute("aria-current", false));
-  const cur = $(`#tabs [data-view="${S.view}"]`); if (cur) cur.setAttribute("aria-current", "page");
-  $$("#tabs [data-c]").forEach(e => { const n = c[e.dataset.c] || 0; e.textContent = n; e.hidden = !n; });
-  $$("#rail .station").forEach(s => s.classList.toggle("on", s.dataset.view === S.view));
+      <button class="btn primary" data-act="resume">${ic("upload")}Choose your resume</button></div>`;
+  if ($("#notices").dataset.k !== h) { $("#notices").innerHTML = h; $("#notices").dataset.k = h; }
 }
 
 /* ---------- task runner ---------- */
@@ -404,7 +701,7 @@ async function startTask(body) {
   try {
     const r = await api(body.action === "profile" ? "/api/profile" : "/api/task", body.raw ? undefined : body, body.raw);
     S.state.task = r.task; S.lines = []; S.taskId = r.task.id; S.wasRunning = true;
-    renderLive(); renderNotices(); if (S.view === "activity") renderPage(); pollTask();
+    renderChrome(); if (S.view === "activity") renderPage(); if (LIST.includes(S.view)) renderWidgets(); pollTask();
   } catch (e) { fail(e); }
 }
 function trackTask() {
@@ -434,236 +731,356 @@ async function finished(t) {
   S.wasRunning = false;
   const ok = t.exit_code === 0 && !t.stopped;
   toast(`${t.label}: ${t.stopped ? "stopped" : ok ? "done" : "did not finish. " + (t.last || "")}`, !ok);
-  S.matches = null; S.settings = null; S.insights = null;
-  await refresh();
-  if (S.view === "matches") loadMatches();
+  S.settings = null; S.insights = null;
+  await refresh(); staleMatches();
   if (S.sel && !S.dirty) openJob(S.sel, true);
-  if (["insights", "activity", "settings"].includes(S.view)) showView(S.view);
+  if (!LIST.includes(S.view)) loadPage();
 }
 
-/* ---------- list ---------- */
+/* ---------- table ---------- */
 function rowsFor(view) {
   const jobs = S.state.jobs, due = new Set(S.state.due);
   if (view === "shortlist") return jobs.filter(r => r.status === "shortlisted");
-  if (view === "progress") return jobs.filter(r => S.aside ? ["skipped", "rejected", "withdrawn"].includes(r.status) : ["applied", "interviewing", "offer"].includes(r.status));
+  if (view === "progress") return jobs.filter(r => r.status !== "shortlisted");
   if (view === "followups") return jobs.filter(r => due.has(r.job_id));
   return S.matches || [];
 }
-function ready(r) { return r.status === "shortlisted" && r.has_draft && r.contact_email && r.contact_kind !== "general" && !r.outreach_sent_at; }
-function renderList() {
-  const rows = rowsFor(S.view), st = S.state, due = new Set(st.due), busy = st.task && st.task.running ? "disabled" : "";
-  let tb = "";
+const ready = r => r.status === "shortlisted" && r.has_draft && r.contact_email && r.contact_kind !== "general" && !r.outreach_sent_at;
+function passes(r) {
+  const f = S.f, s = statusOf(r), x = f.extra;
+  if (f.country && countryOf(r.location) !== f.country) return false;
+  if (f.score && (r.score ?? 0) < f.score) return false;
+  if (f.posted && !(r.posted_at && Date.now() - new Date(r.posted_at) <= f.posted * 864e5)) return false;
+  if (S.view === "shortlist") return !(x === "ready" && !ready(r)) && !(x === "nodraft" && r.has_draft) && !(x === "noaddr" && r.contact_email);
+  if (S.view === "progress") return x === "aside" ? ASIDE.includes(s) : x ? s === x : ACTIVE.includes(s);
+  if (S.view === "matches") return !(x === "new" && s) && !(x === "shortlisted" && s !== "shortlisted") && !(x === "applied" && !ACTIVE.includes(s)) && !(x === "aside" && !ASIDE.includes(s));
+  return true;
+}
+function shown() {
+  let rows = rowsFor(S.view).filter(passes);
+  const q = S.q.trim().toLowerCase();
+  if (q) rows = rows.filter(r => `${r.title} ${r.company} ${r.location || ""}`.toLowerCase().includes(q));
+  const { key, dir } = S.sort;
+  if (key) rows = [...rows].sort((a, b) => { const x = a[key] ?? "", y = b[key] ?? ""; return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * dir; });
+  return rows;
+}
+const EXTRA = {
+  shortlist: ["Next step", [["", "Any next step"], ["ready", "Ready to send"], ["nodraft", "No draft yet"], ["noaddr", "No address yet"]]],
+  progress: ["Stage", [["", "In progress"], ["applied", "Applied"], ["interviewing", "Interviewing"], ["offer", "Offer"], ["aside", "Set aside"]]],
+  matches: ["Status", [["", "Any status"], ["new", "Not on a list yet"], ["shortlisted", "Shortlisted"], ["applied", "Applied or further"], ["aside", "Set aside"]]],
+};
+function renderFilters() {
+  const f = S.f, ex = EXTRA[S.view];
+  const sel = (id, icon, label, opts, val) => `<label class="fseg">${ic(icon)}<select id="${id}" aria-label="${label}">${opts.map(([v, l]) => `<option value="${v}"${String(v) === String(val) ? " selected" : ""}>${l}</option>`).join("")}</select>${ic("down", "caret")}</label>`;
+  $("#fbar").innerHTML =
+    sel("f-country", "globe", "Country", [["", "All countries"], ["India", "India"], ["UAE", "UAE"], ["Saudi Arabia", "Saudi Arabia"], ["Qatar", "Qatar"], ["Remote", "Remote or elsewhere"]], f.country) +
+    sel("f-score", "target", "Score", [[0, "Any score"], [60, "Score 60 or more"], [70, "Score 70 or more"], [80, "Score 80 or more"], [90, "Score 90 or more"]], f.score) +
+    sel("f-posted", "calendar", "Posted", [[0, "Posted any time"], [1, "Last 24 hours"], [3, "Last 3 days"], [7, "Last 7 days"], [30, "Last 30 days"]], f.posted) +
+    (ex ? sel("f-extra", "filter", ex[0], ex[1], f.extra) : `<span class="fseg off">${ic("clock")}Oldest email first</span>`);
+}
+function tagFor(r, due) {
+  const s = statusOf(r);
+  if (S.view === "followups" || (S.view !== "matches" && due.has(r.job_id))) return `<span class="tag c-amber">${ic("clock")}Follow up now</span>`;
   if (S.view === "shortlist") {
-    const noDraft = rows.filter(r => !r.has_draft).length, noAddr = rows.filter(r => !r.contact_email).length, n = rows.filter(ready).length;
-    tb = `<button class="btn small" data-act="draft-all" ${busy || (noDraft ? "" : "disabled")}>Draft emails (${noDraft})</button>
-      <button class="btn small" data-act="contacts-all" ${busy || (noAddr ? "" : "disabled")}>Look for addresses (${noAddr})</button>
-      <button class="btn small" data-act="gmail-all" ${busy || (n ? "" : "disabled")}>Save to Gmail drafts</button>
-      <button class="btn small primary" data-act="send-all" ${busy || (n ? "" : "disabled")}>Send ready emails (${n})</button>
-      <span class="hint">${n} of ${rows.length} can be emailed now${st.sends && st.sends.cap ? `, ${st.sends.today} of ${st.sends.cap} sent today` : ""}. Newest postings first.</span>`;
-  } else if (S.view === "progress") {
-    tb = `<div class="seg-ctl"><button data-act="aside-off" aria-pressed="${!S.aside}">In progress</button><button data-act="aside-on" aria-pressed="${S.aside}">Set aside</button></div>`;
-  } else if (S.view === "followups") {
-    tb = `<button class="btn small primary" data-act="followups" ${busy || (rows.length ? "" : "disabled")}>Send all follow-ups (${rows.length})</button>
-      <span class="hint">A follow-up is due ${st.follow_up_days} days after an email with no reply.</span>`;
-  } else {
-    tb = `<label>Score at least <input type="range" id="minscore" min="0" max="95" step="5" value="${S.minScore}"> <b id="minlabel">${S.minScore}</b></label>
-      <a class="btn small" href="/api/digest?min_score=${S.minScore}&token=${encodeURIComponent(TOKEN)}">Download as a digest</a>`;
+    if (ready(r)) return `<span class="tag c-green">${ic("send")}Ready to send</span>`;
+    if (r.has_draft && r.contact_kind === "general") return `<span class="tag c-amber">General inbox only</span>`;
+    if (r.has_draft && !r.contact_email) return `<span class="tag c-amber">No address yet</span>`;
+    return `<span class="tag c-violet">${ic("edit")}No draft yet</span>`;
   }
-  $("#toolbar").innerHTML = tb;
-  const list = $("#list");
-  if (S.view === "matches" && S.matches === null) { list.innerHTML = `<li class="empty">Loading matches</li>`; return; }
-  if (!rows.length) { list.innerHTML = `<li class="empty">${emptyText()}</li>`; return; }
-  list.innerHTML = rows.map(r => {
-    const s = statusOf(r), tags = [];
-    if (S.view === "matches" && s) tags.push(`<span class="tag">${esc(s)}</span>`);
-    if (S.view !== "matches") {
-      if (due.has(r.job_id)) tags.push(`<span class="tag warn">follow up</span>`);
-      else if (r.outreach_sent_at) tags.push(`<span class="tag good">emailed ${esc(day(r.outreach_sent_at))}</span>`);
-      else if (ready(r)) tags.push(`<span class="tag good">ready to send</span>`);
-      else if (s === "shortlisted" && r.has_draft && !r.contact_email) tags.push(`<span class="tag">no address</span>`);
-      else if (s === "shortlisted" && !r.has_draft) tags.push(`<span class="tag">no draft</span>`);
-      else if (s !== "shortlisted") tags.push(`<span class="tag">${esc(s)}</span>`);
-    }
-    return `<li><button class="row" data-job="${r.job_id}" aria-selected="${r.job_id === S.sel}">
-      <span class="score ${tier(r.score)}">${r.score ?? "–"}</span>
-      <span style="min-width:0"><span class="t">${esc(r.title)}</span><span class="c" style="display:block">${esc(r.company)}${r.location ? ", " + esc(r.location) : ""}</span></span>
-      <span class="r"><span>${esc(ago(r.posted_at))}</span>${tags.join("")}</span></button></li>`;
-  }).join("");
+  if (!s) return `<span class="tag c-slate">Not on a list yet</span>`;
+  return `<span class="tag ${STATUS_C[s] || "c-slate"}">${esc(s)}</span>${r.outreach_sent_at ? ` <span class="faint nw">emailed ${esc(day(r.outreach_sent_at))}</span>` : ""}`;
 }
-function emptyText() {
-  const p = S.state.setup.profile;
-  if (!p) return "<h3>Nothing here yet</h3>Finish the setup step above first.";
-  if (S.view === "shortlist") return `<h3>Your shortlist is empty</h3>Jobs scoring ${S.state.shortlist_min_score} or more land here after a search.<br><button class="btn go" data-act="run">Find new jobs</button>`;
-  if (S.view === "progress") return S.aside ? "<h3>Nothing set aside</h3>Jobs you skip, and rejections, are kept here." : "<h3>No applications yet</h3>A job moves here when you email the recruiter or mark it applied.";
+function emptyText(total) {
+  if (!S.state.setup.profile) return "<h3>Nothing here yet</h3>Finish the setup step at the top first.";
+  if (total) return `<h3>No job matches these filters</h3>Change a filter or the search text.<br><button class="btn sm" data-act="clear">Clear the filters</button>`;
+  if (S.view === "shortlist") return `<h3>Your shortlist is empty</h3>Jobs scoring ${S.state.shortlist_min_score} or more land here after a search.<br><button class="btn primary" data-act="run">${ic("zap")}Find new jobs</button>`;
+  if (S.view === "progress") return "<h3>No applications yet</h3>A job moves here when you email the recruiter or mark it applied.";
   if (S.view === "followups") return "<h3>No follow-ups due</h3>They appear here when an email has had no reply for a few days.";
-  return "<h3>No matches at this score</h3>Lower the score, or run a search.";
+  return `<h3>No scored jobs yet</h3>Run a search to collect and score jobs.<br><button class="btn primary" data-act="run">${ic("zap")}Find new jobs</button>`;
 }
+function renderList(force) {
+  const st = S.state, all = rowsFor(S.view), rows = shown(), due = new Set(st.due);
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE)); S.page = Math.max(0, Math.min(S.page, pages - 1));
+  const slice = rows.slice(S.page * PAGE, (S.page + 1) * PAGE);
+  const sl = S.view === "shortlist" ? all : [], n = sl.filter(ready).length, nd = sl.filter(r => !r.has_draft).length, na = sl.filter(r => !r.contact_email).length;
+  const sig = JSON.stringify([S.view, S.page, S.q, S.f, S.sort, S.sel, S.matches === null, all.length, rows.length, n, nd, na, st.sends, st.due,
+    slice.map(r => [r.job_id, statusOf(r), r.score, r.has_draft, r.contact_email, r.contact_kind, r.outreach_sent_at, ago(r.posted_at)])]);
+  if (!force && sig === S.lsig) return;
+  S.lsig = sig;
+  $("#ttitle").textContent = { shortlist: "Shortlisted jobs", progress: S.f.extra === "aside" ? "Set aside" : "Applications", followups: "Follow-ups due", matches: "All scored jobs" }[S.view];
+  $("#tcount").textContent = rows.length === all.length ? all.length : `${rows.length} of ${all.length}`;
+  $("#thlast").textContent = S.view === "shortlist" ? "Next step" : "Status";
+  let tb = "", hint = "";
+  if (S.view === "shortlist") {
+    tb = `<button class="btn sm" data-act="draft-all">${ic("edit")}Draft emails (${nd})</button><button class="btn sm" data-act="contacts-all">${ic("at")}Look for addresses (${na})</button>
+      <button class="btn sm" data-act="gmail-all">${ic("inbox")}Save to Gmail</button><button class="btn sm primary" data-act="send-all">${ic("send")}Send ready (${n})</button>`;
+    hint = `${n} of ${all.length} can be emailed now${st.sends && st.sends.cap ? `, ${st.sends.today} of ${st.sends.cap} sent today` : ""}`;
+  } else if (S.view === "followups") {
+    tb = `<button class="btn sm primary" data-act="followups">${ic("send")}Send all follow-ups (${all.length})</button>`;
+    hint = `Due ${st.follow_up_days} days after an email with no reply`;
+  } else if (S.view === "matches") {
+    tb = `<button class="btn sm" data-act="digest">${ic("download")}Download digest</button>`;
+    hint = "Newest postings first";
+  } else hint = "Open a job to record an interview, an offer or a rejection";
+  $("#toolbar").innerHTML = tb; $("#thint").textContent = hint;
+  $$(".tcard th[data-sort]").forEach(th => th.setAttribute("aria-sort", S.sort.key === th.dataset.sort ? (S.sort.dir > 0 ? "ascending" : "descending") : "none"));
+  const body = $("#tbody");
+  if (S.view === "matches" && S.matches === null) body.innerHTML = `<tr><td colspan="5"><div class="empty">Loading matches</div></td></tr>`;
+  else body.innerHTML = slice.map(r => `<tr class="row" data-job="${r.job_id}" tabindex="0" aria-selected="${r.job_id === S.sel}">
+      <td><div class="jobc">${avatar(r.company)}<span class="jt"><b>${esc(r.title)}</b><small>${esc(r.company)}</small></span></div></td>
+      <td class="loc"><span class="fl" aria-hidden="true">${flagOf(countryOf(r.location))}</span>${esc(r.location || "Not given")}</td>
+      <td>${r.score == null ? '<span class="faint">none</span>' : `<span class="sc ${tier(r.score)}"><b>${r.score}</b><span class="bar"><u style="width:${r.score}%"></u></span></span>`}</td>
+      <td class="nw">${esc(ago(r.posted_at)) || '<span class="faint">not shown</span>'}</td>
+      <td>${tagFor(r, due)}</td></tr>`).join("") || `<tr><td colspan="5"><div class="empty">${emptyText(all.length)}</div></td></tr>`;
+  const from = rows.length ? S.page * PAGE + 1 : 0, to = Math.min(rows.length, (S.page + 1) * PAGE);
+  let pg = "";
+  if (pages > 1) {
+    const start = Math.max(0, Math.min(S.page - 2, pages - 5)), end = Math.min(pages, start + 5);
+    pg = `<button data-page="${S.page - 1}" aria-label="Previous page"${S.page ? "" : " disabled"}>${ic("left")}</button>`;
+    for (let i = start; i < end; i++) pg += `<button data-page="${i}"${i === S.page ? ' aria-current="page"' : ""}>${i + 1}</button>`;
+    pg += `<button data-page="${S.page + 1}" aria-label="Next page"${S.page < pages - 1 ? "" : " disabled"}>${ic("right")}</button>`;
+  }
+  $("#tfoot").innerHTML = `<span>Showing ${from} to ${to} of ${plural(rows.length, "job", "jobs")}</span><span class="pager">${pg}</span>`;
+}
+function sortBy(key) {
+  const first = key === "score" || key === "posted_at" ? -1 : 1, s = S.sort;
+  S.sort = s.key !== key ? { key, dir: first } : s.dir === first ? { key, dir: -first } : { key: "", dir: 1 };
+  S.page = 0; renderList();
+}
+const staleMatches = () => S.view === "matches" ? loadMatches() : (S.matches = null);
 async function loadMatches() {
-  try { S.matches = (await api(`/api/matches?min_score=${S.minScore}`)).jobs; } catch (e) { S.matches = []; fail(e); }
-  if (S.view === "matches") renderList();
+  try { S.matches = (await api("/api/matches?min_score=0")).jobs; } catch (e) { S.matches = []; fail(e); }
+  if (S.view === "matches") renderList(true);
 }
 
-/* ---------- detail ---------- */
+/* ---------- side widgets ---------- */
+function nextSteps() {
+  const st = S.state, sl = rowsFor("shortlist"), t = st.task, out = [];
+  if (!st.setup.profile) return [["amber", "upload", "Import your resume", "Jobs are scored against it.", "Choose a file", "resume"]];
+  const n = sl.filter(ready).length, nd = sl.filter(r => !r.has_draft).length, na = sl.filter(r => !r.contact_email).length, due = st.due.length;
+  if (t && t.running) out.push(["blue", "refresh", `${t.label} is running`, "Its progress shows under the cards above.", "Show output", "v:activity"]);
+  if (due) out.push(["amber", "clock", `${plural(due, "follow-up is", "follow-ups are")} due`, "No reply yet to an email you sent.", "Open follow-ups", "v:followups"]);
+  if (n) out.push(["green", "send", `${plural(n, "email is", "emails are")} ready to send`, "Draft and address are both in place.", "Send", "send-all"]);
+  if (nd) out.push(["violet", "edit", `${plural(nd, "shortlisted job has", "shortlisted jobs have")} no email draft`, "Written from your template and resume.", "Draft emails", "draft-all"]);
+  if (na) out.push(["cyan", "at", `${plural(na, "job has", "jobs have")} no recruiter address`, "Looked up on each company's own site.", "Look for addresses", "contacts-all"]);
+  if (!sl.length) out.push(["blue", "zap", "Your shortlist is empty", "Search the job sites for new postings.", "Find new jobs", "run"]);
+  if (out.length < 5) out.push(["slate", "trending", "See which skills to learn next", "What postings ask for that your resume lacks.", "Open insights", "v:insights"]);
+  return out.slice(0, 5);
+}
+function renderWidgets() {
+  const st = S.state, jobs = st.jobs, t = st.task;
+  const sig = JSON.stringify([jobs.map(r => [r.job_id, r.status, r.score, r.has_draft, !!r.contact_email, !!r.outreach_sent_at]), st.countries, st.due, t && [t.id, t.running], !!st.setup.profile]);
+  if (sig === S.wsig) return;
+  S.wsig = sig;
+  const cnt = k => jobs.filter(r => [].concat(k).includes(r.status)).length;
+  const groups = [["Shortlisted", cnt("shortlisted"), "--blue"], ["Applied", cnt("applied"), "--cyan"], ["Interviewing", cnt("interviewing"), "--violet"], ["Offer", cnt("offer"), "--green"], ["Set aside", cnt(ASIDE), "--slate"]];
+  const total = jobs.length, R = 74, C = 2 * Math.PI * R;
+  let acc = 0;
+  const segs = groups.filter(g => g[1]).map(g => { const len = g[1] / total * C, h = `<circle class="seg" cx="85" cy="85" r="${R}" style="stroke:var(${g[2]})" stroke-dasharray="0 ${C}" stroke-dashoffset="${-acc}" data-len="${Math.max(1, len - 4)}"/>`; acc += len; return h; }).join("");
+  $("#donut").innerHTML = `<div class="chead"><span class="cicon">${ic("pie")}</span><h2>Pipeline</h2><span class="grow"></span><button class="link" data-view="progress">In progress${ic("right")}</button></div>
+    <div class="panel donut"><div class="ringbox"><svg viewBox="0 0 170 170" width="170" height="170" role="img" aria-label="${total} tracked jobs by stage"><circle class="track" cx="85" cy="85" r="${R}"/>${segs}</svg><div class="mid"><b>${total}</b><span>tracked</span></div></div>
+    <div class="legend">${groups.map(g => `<div><i style="--c:var(${g[2]})"></i><span>${g[0]}</span><b>${total ? Math.round(100 * g[1] / total) : 0}%</b></div>`).join("")}</div></div>`;
+  requestAnimationFrame(() => requestAnimationFrame(() => $$("#donut .seg").forEach(s => s.style.strokeDasharray = `${s.dataset.len} ${C}`)));
+
+  const top = jobs.filter(r => r.score != null).sort((a, b) => b.score - a.score).slice(0, 9);
+  $("#tops").innerHTML = `<div class="chead"><span class="cicon">${ic("award")}</span><h2>Top matches</h2><span class="grow"></span><button class="link" data-view="matches">View all${ic("right")}</button></div>
+    <div class="panel tlist">${top.map(r => `<button class="tm" data-job="${r.job_id}">${avatar(r.company)}<span class="n">${esc(r.title)}<small>${esc(r.company)}</small></span><span class="v">${r.score}</span><span class="bar"><u data-w="${r.score}"></u></span></button>`).join("") || '<div class="empty">No scored jobs on your lists yet.</div>'}</div>`;
+
+  const tally = {};
+  jobs.forEach(r => { const c = countryOf(r.location); tally[c] = (tally[c] || 0) + 1; });
+  const cs = (st.countries && st.countries.length ? st.countries : Object.entries(tally).map(([country, n]) => ({ country, jobs: n })).sort((a, b) => b.jobs - a.jobs)).slice(0, 5);
+  const ct = cs.reduce((a, c) => a + c.jobs, 0), cmax = Math.max(1, ...cs.map(c => c.jobs));
+  $("#geo").innerHTML = `<div class="chead"><h2>Where the jobs are</h2><span class="grow"></span><span class="faint nw">${plural(ct, "scored job", "scored jobs")}</span></div>
+    <div class="geo"><i class="pt" style="left:93%;top:16%"></i><i class="pt" style="left:87%;top:52%"></i><i class="pt" style="left:95%;top:84%"></i>
+    ${cs.map(c => { const w = Math.max(3, 74 * c.jobs / cmax); return `<div class="gr"><span class="gl"><span aria-hidden="true">${flagOf(c.country)}</span> ${esc(countryName(c.country))}</span><span class="gb" style="--w:${w}%"><b>${Math.round(100 * c.jobs / ct)}%</b><span class="bar"><u data-w="${w}"></u></span></span></div>`; }).join("") || '<div class="empty">Nothing scored yet.</div>'}</div>`;
+
+  $("#next").innerHTML = `<div class="chead"><span class="cicon">${ic("compass")}</span><h2>Next steps</h2></div>
+    <div class="steps">${nextSteps().map(([c, i, title, sub, label, go]) => `<div class="step"><span class="dot c-${c}">${ic(i)}</span><div><b>${esc(title)}</b><small>${esc(sub)}</small></div><button class="btn sm" data-go="${go}">${label}</button></div>`).join("")}</div>`;
+  grow($("#work"));
+}
+
+/* ---------- job drawer ---------- */
 async function openJob(id, keep) {
+  if (S.dirty && id !== S.sel && !await ask("Leave without saving?", "Your changes to this job's draft or note are not saved yet.", "Leave")) return;
   S.sel = id; S.dirty = false;
-  $$("#list .row").forEach(b => b.setAttribute("aria-selected", String(+b.dataset.job === id)));
-  document.body.classList.add("reading");
-  try { S.detail = await api(`/api/job?id=${id}`); } catch (e) { fail(e); return; }
+  if (LIST.includes(S.view)) renderList();
+  document.body.classList.add("reading"); $("#detail").inert = false;
+  try { S.detail = await api(`/api/job?id=${id}`); } catch (e) { fail(e); if (!keep) closeDrawer(true); return; }
   if (S.sel === id) renderDetail(keep);
+}
+async function closeDrawer(force) {
+  if (!force && S.dirty && !await ask("Close without saving?", "Your changes to this job's draft or note are not saved yet.", "Close")) return false;
+  S.dirty = false; S.sel = null; S.detail = null;
+  document.body.classList.remove("reading"); $("#detail").inert = true;
+  if (S.state && LIST.includes(S.view)) renderList();
+  return true;
+}
+function step(delta) {
+  const rows = shown(), i = rows.findIndex(r => r.job_id === S.sel), n = rows[i + delta];
+  if (!n) return;
+  S.page = Math.floor((i + delta) / PAGE); openJob(n.job_id);
 }
 function renderDetail(keep) {
   const d = S.detail, el = $("#detail");
-  if (!d) { el.innerHTML = `<div class="empty"><h3>Pick a job</h3>Its match, the email draft and your notes open here.</div>`; return; }
-  const j = d.job, m = d.match, a = d.application, s = a ? a.status : "", busy = S.state.task && S.state.task.running ? "disabled" : "";
+  if (!d) return;
+  const j = d.job, m = d.match, a = d.application, s = a ? a.status : "";
   const sc = m ? m.score : null, C = 2 * Math.PI * 38;
-  const chips = (xs, cls) => xs && xs.length ? `<ul class="chips ${cls}">${xs.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  const chips = (xs, c) => xs && xs.length ? `<ul class="chipsl">${xs.map(x => `<li class="tag ${c}">${esc(x)}</li>`).join("")}</ul>` : "";
   const stBtn = (to, label, cls = "") => `<button class="btn ${cls}" data-act="status" data-to="${to}">${label}</button>`;
   const moves = { "": stBtn("shortlisted", "Add to shortlist", "primary") + stBtn("skipped", "Not for me"),
     shortlisted: stBtn("applied", "I applied", "primary") + stBtn("skipped", "Skip"),
     applied: stBtn("interviewing", "Got an interview", "primary") + stBtn("rejected", "Rejected"),
     interviewing: stBtn("offer", "Got an offer", "primary") + stBtn("rejected", "Rejected") }[s] ?? stBtn("shortlisted", "Back to shortlist");
   const pay = j.salary_text || (m && m.salary_estimate);
+  const rows = S.state && LIST.includes(S.view) ? shown() : [], at = rows.findIndex(r => r.job_id === j.id);
 
   let mail = "";
   if (a && a.outreach_subject) {
     const to = a.contact_email
-      ? `${esc(a.contact_email)}${a.contact_kind ? ` <span class="tag ${a.contact_kind === "general" ? "warn" : ""}">${esc(a.contact_kind)} address</span>` : ""}${http(a.contact_source) ? ` <a href="${esc(a.contact_source)}" target="_blank" rel="noopener noreferrer">where it was found</a>` : ""}`
-      : `No address known. <button class="btn small" data-act="contacts-one" ${busy}>Look for one</button>`;
-    const sent = a.outreach_sent_at ? `<span class="tag good">sent ${esc(when(a.outreach_sent_at))}</span>` : "";
+      ? `${esc(a.contact_email)}${a.contact_kind ? ` <span class="tag ${a.contact_kind === "general" ? "c-amber" : "c-slate"}">${esc(a.contact_kind)} address</span>` : ""}${http(a.contact_source) ? ` <a href="${esc(a.contact_source)}" target="_blank" rel="noopener noreferrer">where it was found</a>` : ""}`
+      : `No address known. <button class="btn sm" data-act="contacts-one">${ic("at")}Look for one</button>`;
+    const sent = a.outreach_sent_at ? `<span class="tag c-green">sent ${esc(when(a.outreach_sent_at))}</span>` : "";
     const canSend = s === "shortlisted" && a.contact_email && !a.outreach_sent_at;
     mail = `<dl class="kv"><dt>To</dt><dd>${to} ${sent}</dd></dl>
-      ${a.unfilled.length ? `<p><span class="tag bad">Fill in before sending: ${esc(a.unfilled.join(", "))}</span></p>` : ""}
-      ${a.posting_open === false ? `<p><span class="tag bad">The posting looked closed when this was drafted</span></p>` : ""}
+      ${a.unfilled.length ? `<p><span class="tag c-red">Fill in before sending: ${esc(a.unfilled.join(", "))}</span></p>` : ""}
+      ${a.posting_open === false ? `<p><span class="tag c-red">The posting looked closed when this was drafted</span></p>` : ""}
       <input class="field" id="subj" aria-label="Subject" value="${esc(a.outreach_subject)}">
       <textarea class="field" id="body" aria-label="Email text">${esc(a.outreach_body)}</textarea>
-      <div class="acts" style="margin-top:0">
+      <div class="acts">
         <button class="btn" data-act="save-draft">Save changes</button>
-        ${canSend ? `<button class="btn primary" data-act="send-one">Send email</button>` : ""}
-        <button class="btn quiet" data-act="draft-one" ${busy}>Write it again</button>
+        ${canSend ? `<button class="btn primary" data-act="send-one">${ic("send")}Send email</button>` : ""}
+        <button class="btn ghost" data-act="draft-one">Write it again</button>
       </div>
       <details><summary>How it will look</summary><div class="mail">${a.body_html}</div></details>
       ${a.follow_up_body ? `<details ${d.due ? "open" : ""}><summary>Follow-up ${a.follow_up_sent_at ? "sent " + esc(day(a.follow_up_sent_at)) : d.due ? "due now" : "for later"}</summary>
         <p><b>${esc(a.follow_up_subject)}</b></p><div class="mail desc">${esc(a.follow_up_body)}</div>
         ${d.due ? `<div class="acts"><button class="btn" data-act="followup-done">I followed up myself</button></div>` : ""}</details>` : ""}`;
   } else if (s === "shortlisted") {
-    mail = `<p>No email has been drafted for this job yet.</p><div class="acts"><button class="btn primary" data-act="draft-one" ${busy}>Draft the email</button>
-      ${a && !a.contact_email ? `<button class="btn" data-act="contacts-one" ${busy}>Look for an address</button>` : ""}</div>`;
+    mail = `<p>No email has been drafted for this job yet.</p><div class="acts"><button class="btn primary" data-act="draft-one">${ic("edit")}Draft the email</button>
+      ${a && !a.contact_email ? `<button class="btn" data-act="contacts-one">${ic("at")}Look for an address</button>` : ""}</div>`;
   } else mail = `<p>Shortlist this job to write to its recruiter.</p>`;
 
-  el.innerHTML = `<div class="inner" ${keep ? 'style="animation:none"' : ""}>
-    <button class="btn small back" data-act="back">Back to the list</button>
-    <div class="d-head"><div><h2>${esc(j.title)}</h2>
-      <div class="where"><b>${esc(j.company)}</b><span>${esc(j.location || "Location not given")}</span>${j.posted_at ? `<span>posted ${esc(ago(j.posted_at))}</span>` : ""}${pay ? `<span>${esc(pay)}</span>` : ""}<span>#${j.id}</span></div></div>
-      ${sc == null ? "" : `<div class="dial ${tier(sc)}" role="img" aria-label="Match score ${sc} out of 100"><svg viewBox="0 0 92 92" width="92" height="92"><circle class="track" cx="46" cy="46" r="38"/><circle class="val" cx="46" cy="46" r="38" stroke-dasharray="${C}" stroke-dashoffset="${keep ? C * (1 - sc / 100) : C}" data-to="${C * (1 - sc / 100)}"/></svg><b>${sc}</b></div>`}
+  el.innerHTML = `<div class="d-bar">
+      <button class="round sm" data-act="back" aria-label="Close">${ic("x")}</button>
+      <span class="tag ${STATUS_C[s] || "c-slate"}">${esc(s || "not on a list yet")}</span><span class="faint">#${j.id}</span><span class="grow"></span>
+      <button class="round sm" data-act="prev" aria-label="Previous job"${at > 0 ? "" : " disabled"}>${ic("left")}</button>
+      <button class="round sm" data-act="next" aria-label="Next job"${at >= 0 && at < rows.length - 1 ? "" : " disabled"}>${ic("right")}</button>
+    </div>
+    <div class="d-head">${avatar(j.company, "lg")}
+      <div><h2>${esc(j.title)}</h2><div class="meta"><span>${ic("briefcase")}${esc(j.company)}</span><span>${ic("pin")}${esc(j.location || "Location not given")}</span>${j.posted_at ? `<span>${ic("clock")}posted ${esc(ago(j.posted_at))}</span>` : ""}${pay ? `<span>${ic("trending")}${esc(pay)}</span>` : ""}</div></div>
+      ${sc == null ? "" : `<div class="dial ${tier(sc)}" role="img" aria-label="Match score ${sc} out of 100"><svg viewBox="0 0 88 88" width="88" height="88"><circle class="track" cx="44" cy="44" r="38"/><circle class="val" cx="44" cy="44" r="38" stroke-dasharray="${C}" style="stroke-dashoffset:${keep ? C * (1 - sc / 100) : C}" data-to="${C * (1 - sc / 100)}"/></svg><b>${sc}</b></div>`}
     </div>
     <div class="acts">
-      ${http(j.url) ? `<a class="btn" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">Open the posting</a>` : `<span class="tag">from a pasted post</span>`}
+      ${http(j.url) ? `<a class="btn" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">${ic("link")}Open the posting</a>` : `<span class="tag c-slate">from a pasted post</span>`}
       ${moves}
       <select id="setstatus" aria-label="Set another status"><option value="">Other status</option>${["shortlisted", "applied", "interviewing", "offer", "rejected", "withdrawn", "skipped"].filter(x => x !== s).map(x => `<option>${x}</option>`).join("")}</select>
-      ${s ? `<span class="tag">${esc(s)}</span>` : ""}
     </div>
-    ${m ? `<div class="block"><h3>Why it matches</h3><p>${esc(m.summary)}</p>${chips(m.matched_skills, "")}
-      ${m.missing_skills.length ? `<p style="margin-bottom:6px;color:var(--muted)">Asked for, not on your resume</p>${chips(m.missing_skills, "gap")}` : ""}
-      ${m.red_flags.length ? `<p style="margin-bottom:6px;color:var(--muted)">Check before applying</p>${chips(m.red_flags, "flag")}` : ""}</div>` : ""}
-    <div class="block"><h3>Email to the recruiter</h3>${mail}</div>
-    <div class="block"><h3>Cover letter</h3>${a && a.cover_letter ? `<div class="mail desc">${esc(a.cover_letter)}</div><div class="acts" style="margin-top:0"><button class="btn small" data-act="copy-cover">Copy</button><button class="btn small quiet" data-act="cover" ${busy}>Write it again</button></div>`
-      : `<p>For sites that ask for one.</p><button class="btn" data-act="cover" ${busy}>Write a cover letter</button>`}</div>
-    <div class="block"><h3>Notes</h3><textarea class="field short" id="note" aria-label="Notes" placeholder="Recruiter name, what was said, next step">${esc(a ? a.notes : "")}</textarea>
+    ${m ? `<div class="block"><h3>${ic("target")}Why it matches</h3><p>${esc(m.summary)}</p>${chips(m.matched_skills, "c-green")}
+      ${m.missing_skills.length ? `<p class="lbl">Asked for, not on your resume</p>${chips(m.missing_skills, "c-slate")}` : ""}
+      ${m.red_flags.length ? `<p class="lbl">Check before applying</p>${chips(m.red_flags, "c-red")}` : ""}</div>` : ""}
+    <div class="block"><h3>${ic("mail")}Email to the recruiter</h3>${mail}</div>
+    <div class="block"><h3>${ic("file")}Cover letter</h3>${a && a.cover_letter ? `<div class="mail desc">${esc(a.cover_letter)}</div><div class="acts"><button class="btn sm" data-act="copy-cover">${ic("copy")}Copy</button><button class="btn sm ghost" data-act="cover">Write it again</button></div>`
+      : `<p>For sites that ask for one.</p><button class="btn" data-act="cover">Write a cover letter</button>`}</div>
+    <div class="block"><h3>${ic("note")}Notes</h3><textarea class="field short" id="note" aria-label="Notes" placeholder="Recruiter name, what was said, next step">${esc(a ? a.notes : "")}</textarea>
       <button class="btn" data-act="save-note">Save note</button></div>
-    ${d.events.length ? `<div class="block"><h3>History</h3><ul class="history">${d.events.map(e => `<li>${esc(when(e.created_at))}: <b>${esc(e.to_status)}</b>${e.note ? ", " + esc(e.note) : ""}</li>`).join("")}</ul></div>` : ""}
-    ${j.description ? `<div class="block"><details><summary>Full job description</summary><div class="desc">${esc(j.description)}</div></details></div>` : ""}
-  </div>`;
+    ${d.events.length ? `<div class="block"><h3>${ic("activity")}History</h3><ul class="history">${d.events.map(e => `<li>${esc(when(e.created_at))}: <b>${esc(e.to_status)}</b>${e.note ? ", " + esc(e.note) : ""}</li>`).join("")}</ul></div>` : ""}
+    ${j.description ? `<div class="block"><details><summary>Full job description</summary><div class="desc">${esc(j.description)}</div></details></div>` : ""}`;
   const val = $(".dial .val", el);
-  if (val && !keep) requestAnimationFrame(() => requestAnimationFrame(() => val.setAttribute("stroke-dashoffset", val.dataset.to)));
-  if (!keep) el.scrollTop = 0;
+  if (val && !keep) requestAnimationFrame(() => requestAnimationFrame(() => val.style.strokeDashoffset = val.dataset.to));
+  if (!keep) { el.scrollTop = 0; $("[data-act=back]", el).focus({ preventScroll: true }); }
 }
 async function change(path, body, after = true) {
   try {
     const r = await api(path, body);
     if (r.message) toast(r.message);
-    S.dirty = false; S.matches = S.view === "matches" ? S.matches : null;
-    if (after) { await refresh(); if (S.view === "matches") loadMatches(); if (S.sel) openJob(S.sel, true); }
+    S.dirty = false;
+    if (after) { await refresh(); await staleMatches(); if (S.sel) openJob(S.sel, true); }
+    else staleMatches();
     return true;
   } catch (e) { fail(e); return false; }
 }
 
-/* ---------- pages ---------- */
-async function showView(v) {
-  S.view = v;
-  const listView = ["shortlist", "progress", "followups", "matches"].includes(v);
-  $("#work").hidden = !listView; $("#page").hidden = listView;
-  if (S.state) renderTabs();
-  if (listView) {
-    if (!S.state) return;
+/* ---------- views and pages ---------- */
+async function showView(v, init) {
+  if (document.body.classList.contains("reading") && !await closeDrawer()) return;
+  const changed = init || v !== S.view;
+  S.view = v; S.inited = true;
+  if (changed) { S.q = ""; $("#tq").value = ""; S.page = 0; S.sort = { key: "", dir: 1 }; S.f = { country: "", score: v === "matches" ? 70 : 0, posted: 0, extra: "" }; }
+  const list = LIST.includes(v);
+  $("#work").hidden = !list; $("#page").hidden = list;
+  if (!S.state) return;
+  renderChrome();
+  if (list) {
     if (v === "matches" && S.matches === null) loadMatches();
-    renderList();
-    const rows = rowsFor(v);
-    if (!rows.some(r => r.job_id === S.sel)) { S.sel = null; S.detail = null; renderDetail(); if (rows.length && innerWidth > 860) openJob(rows[0].job_id); }
-    return;
-  }
+    if (changed) renderFilters();
+    renderList(true); renderWidgets();
+  } else loadPage();
+}
+async function loadPage() {
+  const v = S.view;
   renderPage();
   try {
-    if (v === "insights") S.insights = await api("/api/insights?days=30");
+    if (v === "insights" || v === "activity") S.insights = await api("/api/insights?days=30");
     if (v === "settings") S.settings = await api("/api/settings");
-  } catch (e) { $("#page").innerHTML = `<div class="inner"><div class="empty"><h3>Not available yet</h3>${esc(e.message)}</div></div>`; return; }
+  } catch (e) { $("#page").innerHTML = `<div class="card pad"><div class="empty"><h3>Not available yet</h3>${esc(e.message)}</div></div>`; return; }
   if (S.view === v) renderPage();
 }
+const cardHead = (icon, title) => `<div class="chead"><span class="cicon">${ic(icon)}</span><h2>${title}</h2></div>`;
 function renderPage() {
-  const el = $("#page"), busy = S.state && S.state.task && S.state.task.running ? "disabled" : "";
+  const el = $("#page");
   if (S.view === "activity") {
-    const t = S.state && S.state.task;
-    el.innerHTML = `<div class="inner"><section><h2>${t ? esc(t.label) : "Nothing has run yet"}</h2>
-      <p class="sub">${t ? (t.running ? "Running now. " : `Finished ${esc(when(t.ended_at))}. `) + "This is what the program reported." : "When you start a search or draft emails, its progress shows here."}</p>
-      ${t ? `<pre class="out" id="taskout">${esc(S.lines.join("\n") || "No output yet.")}</pre>` : ""}</section>
-      <section id="runs"></section></div>`;
-    api("/api/insights?days=30").then(i => { S.insights = i; const r = $("#runs"); if (r) r.innerHTML = runsTable(i.runs); }).catch(() => {});
+    const t = S.state && S.state.task, runs = S.insights ? S.insights.runs : null;
+    el.innerHTML = `<div class="pgrid"><section class="card pad span2 beam">${cardHead("activity", t ? esc(t.label) : "Nothing has run yet")}
+        <p class="sub">${t ? (t.running ? "Running now. " : `Finished ${esc(when(t.ended_at))}. `) + "This is what the program reported." : "When you start a search or draft emails, its progress shows here."}</p>
+        ${t ? `<pre class="out" id="taskout">${esc(S.lines.join("\n") || "No output yet.")}</pre>` : ""}</section>
+      <section class="card pad span2">${cardHead("clock", "Past searches")}${runs === null ? '<p class="sub">Loading</p>' : runsTable(runs)}</section></div>`;
     const out = $("#taskout"); if (out) out.scrollTop = out.scrollHeight;
     if (t && !S.polling && S.lines.length < t.total) api("/api/task?since=0").then(r => { if (r.task && r.task.id === S.taskId && !S.polling) { S.lines = r.task.lines; const o = $("#taskout"); if (o) { o.textContent = S.lines.join("\n"); o.scrollTop = o.scrollHeight; } } }).catch(() => {});
     return;
   }
   if (S.view === "insights") {
     const i = S.insights;
-    if (!i) { el.innerHTML = `<div class="inner"><p class="sub">Loading</p></div>`; return; }
+    if (!i) { el.innerHTML = `<div class="card pad"><p class="sub" style="margin:0">Loading</p></div>`; return; }
     const m = i.progress.moves, mail = i.progress.mail, max = Math.max(1, ...i.gaps.map(g => g.jobs)), smax = Math.max(1, ...i.progress.sources.map(s => s.found));
     const rate = mail.emailed_ever ? `${mail.answered_ever} of ${mail.emailed_ever} emailed jobs got an answer (${Math.round(100 * mail.answered_ever / mail.emailed_ever)}%).` : "No emails sent yet, so there is no reply rate.";
-    el.innerHTML = `<div class="inner">
-      <section><h2>Your last 7 days</h2><p class="sub">${esc(rate)} ${i.waiting} still on your shortlist.</p>
+    el.innerHTML = `<div class="pgrid">
+      <section class="card pad span2 beam">${cardHead("trending", "Your last 7 days")}<p class="sub">${esc(rate)} ${i.waiting} still on your shortlist.</p>
         <div class="week">${[["shortlisted", m.shortlisted], ["applied", m.applied], ["emails sent", mail.sent], ["follow-ups sent", mail.followed_up], ["interviews", m.interviewing], ["offers", m.offer], ["rejected", m.rejected]].map(([l, n]) => `<div><b>${n || 0}</b><span>${l}</span></div>`).join("")}</div></section>
-      <section><h2>Skills you are missing most</h2><p class="sub">${i.gaps.length ? `Across ${i.gap_jobs} jobs scored 50 or more in the last ${i.days} days. Learning the top few, or adding ones you already know to your resume, raises your scores.` : "Nothing to show until some jobs are scored."}</p>
-        <div class="bars">${i.gaps.map(g => `<div class="bar"><span>${esc(g.skill)}</span><span class="track"><span class="fill" data-w="${100 * g.jobs / max}"></span></span><span class="n">${g.jobs} jobs</span></div>`).join("")}</div></section>
-      <section><h2>Which sites deliver</h2><p class="sub">Jobs first seen in the last 7 days, by where they came from.</p>
-        <div class="bars">${i.progress.sources.map(s => `<div class="bar"><span>${esc(s.source)}</span><span class="track"><span class="fill" data-w="${100 * s.found / smax}"></span></span><span class="n">${s.found} found, ${s.shortlisted + s.applied} kept</span></div>`).join("") || '<p class="sub">No jobs found this week.</p>'}</div></section>
+      <section class="card pad">${cardHead("target", "Skills you are missing most")}<p class="sub">${i.gaps.length ? `Across ${i.gap_jobs} jobs scored 50 or more in the last ${i.days} days. Learning the top few, or adding ones you already know to your resume, raises your scores.` : "Nothing to show until some jobs are scored."}</p>
+        <div class="bars">${i.gaps.map(g => `<div class="brow"><span>${esc(g.skill)}</span><span class="bar"><u data-w="${100 * g.jobs / max}"></u></span><span class="n">${plural(g.jobs, "job", "jobs")}</span></div>`).join("")}</div></section>
+      <section class="card pad">${cardHead("layers", "Which sites deliver")}<p class="sub">Jobs first seen in the last 7 days, by where they came from.</p>
+        <div class="bars">${i.progress.sources.map(s => `<div class="brow"><span>${esc(s.source)}</span><span class="bar"><u data-w="${100 * s.found / smax}"></u></span><span class="n">${s.found} found, ${s.shortlisted + s.applied} kept</span></div>`).join("") || '<p class="sub" style="margin:0">No jobs found this week.</p>'}</div></section>
     </div>`;
-    requestAnimationFrame(() => requestAnimationFrame(() => $$(".fill", el).forEach(f => f.style.width = f.dataset.w + "%")));
+    grow(el);
     return;
   }
   const g = S.settings;
-  if (!g) { el.innerHTML = `<div class="inner"><p class="sub">Loading</p></div>`; return; }
+  if (!g) { el.innerHTML = `<div class="card pad"><p class="sub" style="margin:0">Loading</p></div>`; return; }
   const p = S.state.setup.profile, L = g.limits, sch = g.schedule;
-  const row = (ok, name, text, extra = "") => `<div class="check"><i class="m ${ok === true ? "" : ok === null ? "opt" : "no"}"></i><b>${name}</b><span>${text} ${extra}</span></div>`;
+  const row = (ok, name, text, extra = "") => `<div class="check"><span class="dot mini ${ok === true ? "c-green" : ok === null ? "c-slate" : "c-red"}">${ic(ok === true ? "check" : ok === null ? "plus" : "x")}</span><b>${name}</b><span>${text} ${extra}</span></div>`;
   const dupes = g.duplicates.reduce((n, x) => n + x.drop.length, 0);
-  el.innerHTML = `<div class="inner">
-    <section><h2>Setup</h2><p class="sub">Keys and passwords live in the <b>.env</b> file in ${esc(g.folder)}. This page never shows or changes them.</p>
+  el.innerHTML = `<div class="pgrid">
+    <section class="card pad span2 beam">${cardHead("sliders", "Setup")}<p class="sub">Keys and passwords live in the <b>.env</b> file in ${esc(g.folder)}. This page never shows or changes them.</p>
       ${row(S.state.setup.database === "ok", "Database", S.state.setup.database === "ok" ? "Up to date." : "Needs attention, see the top of the page.")}
-      ${row(!!p, "Resume", p ? `${esc(p.name)}, imported ${esc(day(p.imported))}.` : "Not imported yet.", `<button class="btn small" data-act="resume" ${busy}>${p ? "Import a newer one" : "Choose your resume"}</button>`)}
+      ${row(!!p, "Resume", p ? `${esc(p.name)}, imported ${esc(day(p.imported))}.` : "Not imported yet.", `<button class="btn sm" data-act="resume">${ic("upload")}${p ? "Import a newer one" : "Choose your resume"}</button>`)}
       ${row(g.ai.ready, "AI model", g.ai.ready ? `${esc(g.ai.model || "default model")} (${esc(g.ai.provider)}).` : "No API key in .env.")}
       ${row(g.browser.ready, "Browser for job sites", g.browser.ready ? esc(g.browser.kind) + "." : "BROWSERBASE_API_KEY is missing in .env.")}
       ${row(g.gmail.ready, "Gmail", g.gmail.ready ? `Sends from ${esc(g.gmail.address)}.` : "Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to .env to send from this page.")}
       ${row(g.cv.found, "CV to attach", g.cv.found ? esc(g.cv.path) : g.cv.path ? `Not found: ${esc(g.cv.path)}` : "Set outreach.resume_path in config.yaml.")}
-      ${row(g.telegram ? true : null, "Phone notifications", g.telegram ? "Telegram is set up." : g.gmail.ready ? "Strong matches are emailed to you. Add Telegram keys to .env for phone alerts." : "Not set up.", `<button class="btn small" data-act="notify-test" ${busy}>Send a test</button>`)}
+      ${row(g.telegram ? true : null, "Phone notifications", g.telegram ? "Telegram is set up." : g.gmail.ready ? "Strong matches are emailed to you. Add Telegram keys to .env for phone alerts." : "Not set up.", `<button class="btn sm" data-act="notify-test">${ic("bell")}Send a test</button>`)}
     </section>
-    <section><h2>Every morning</h2><p class="sub">${sch.installed ? `The morning routine runs daily at <b>${esc(sch.time)}</b> while this Mac is awake${sch.loaded ? "" : " (it is installed but not loaded; set it again)"}.` : "Let the search run by itself each morning: it searches, writes a digest and emails you one summary."}</p>
+    <section class="card pad">${cardHead("sunrise", "Every morning")}<p class="sub">${sch.installed ? `The morning routine runs daily at <b>${esc(sch.time)}</b> while this Mac is awake${sch.loaded ? "" : " (it is installed but not loaded; set it again)"}.` : "Let the search run by itself each morning: it searches, writes a digest and emails you one summary."}</p>
       <div class="inline"><input type="time" id="schedtime" value="${esc(sch.time || "08:00")}" aria-label="Time of day">
         <button class="btn primary" data-act="sched-on">${sch.installed ? "Change the time" : "Run every morning"}</button>
         ${sch.installed ? `<button class="btn" data-act="sched-off">Switch it off</button>` : ""}
-        <button class="btn quiet" data-act="daily" ${busy}>Run it now</button></div></section>
-    <section><h2>Your email template</h2><p class="sub">${g.template.file ? `Text in [square brackets] is filled in for each job; everything else is sent as you wrote it. Saved to ${esc(g.template.file)}.` : "Switched off in config.yaml, so the built-in format is used."}</p>
-      ${g.template.file ? `<textarea class="field" id="tpl" aria-label="Email template" spellcheck="false">${esc(g.template.text)}</textarea><button class="btn" data-act="save-tpl">Save template</button>` : ""}</section>
-    <section><h2>Duplicate jobs</h2><p class="sub">${dupes ? `${dupes} job${dupes === 1 ? " is" : "s are"} stored twice. Merging keeps your scores and status on one copy.` : "None. The same job on two sites is stored once."}</p>
+        <button class="btn ghost" data-act="daily">Run it now</button></div></section>
+    <section class="card pad">${cardHead("layers", "Duplicate jobs")}<p class="sub">${dupes ? `${plural(dupes, "job is", "jobs are")} stored twice. Merging keeps your scores and status on one copy.` : "None. The same job on two sites is stored once."}</p>
       ${dupes ? `<div class="scroll-x"><table><tr><th>Keep</th><th>Merge into it</th></tr>${g.duplicates.map(x => `<tr><td>#${x.keep.id} ${esc(x.keep.title)}, ${esc(x.keep.company)}</td><td>${x.drop.map(d => `#${d.id} ${esc(d.title)}`).join("<br>")}</td></tr>`).join("")}</table></div>
-      <p style="margin-top:12px"><button class="btn" data-act="dedupe" ${busy}>Merge ${dupes} duplicate${dupes === 1 ? "" : "s"}</button></p>` : ""}</section>
-    <section><h2>Limits in force</h2><p class="sub">Change these in <b>config.yaml</b>; this page picks them up straight away.</p>
-      <dl class="kv" style="grid-template-columns:230px 1fr">
+      <p style="margin:14px 0 0"><button class="btn" data-act="dedupe">Merge ${plural(dupes, "duplicate", "duplicates")}</button></p>` : ""}</section>
+    <section class="card pad span2">${cardHead("mail", "Your email template")}<p class="sub">${g.template.file ? `Text in [square brackets] is filled in for each job; everything else is sent as you wrote it. Saved to ${esc(g.template.file)}.` : "Switched off in config.yaml, so the built-in format is used."}</p>
+      ${g.template.file ? `<textarea class="field" id="tpl" aria-label="Email template" spellcheck="false">${esc(g.template.text)}</textarea><button class="btn" data-act="save-tpl">Save template</button>` : ""}</section>
+    <section class="card pad">${cardHead("filter", "Limits in force")}<p class="sub">Change these in <b>config.yaml</b>; this page picks them up straight away.</p>
+      <dl class="kv" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin:0">
         <dt>Emails a day</dt><dd>${L.sends_per_day || "no limit"}, ${L.pause_seconds}s apart</dd>
         <dt>Follow up after</dt><dd>${L.follow_up_days} days</dd>
         <dt>AI budget per search</dt><dd>${L.tokens_per_run ? L.tokens_per_run.toLocaleString() + " tokens" : "no limit"}</dd>
@@ -672,24 +1089,33 @@ function renderPage() {
         <dt>Oldest posting</dt><dd>${L.max_age_days ? L.max_age_days + " days" : "any age"}</dd>
         <dt>Notify me from score</dt><dd>${L.notify_min_score || "off"}</dd>
         <dt>Searching</dt><dd>${g.sources} sites, in ${esc(g.locations.join(", ") || "any location")}</dd></dl></section>
-    <section><h2>Close the program</h2><p class="sub">The page keeps working in the background after you close this tab. Stop it here; open Job Search again to bring it back.</p>
-      <button class="btn danger" data-act="quit">Stop Job Search</button></section>
+    <section class="card pad">${cardHead("power", "Close the program")}<p class="sub">The page keeps working in the background after you close this tab. Stop it here; open Job Search again to bring it back.</p>
+      <button class="btn danger" data-act="quit">${ic("power")}Stop Job Search</button></section>
   </div>`;
 }
 function runsTable(runs) {
-  if (!runs.length) return `<h2>Past searches</h2><p class="sub">None yet.</p>`;
-  return `<h2>Past searches</h2><div class="scroll-x"><table><tr><th>Run</th><th>Started</th><th>Result</th><th>Found</th><th>New</th><th>Scored</th><th>AI tokens</th><th>Problem</th></tr>
-    ${runs.map(r => `<tr><td>#${r.id}</td><td>${esc(when(r.started_at))}</td><td><span class="tag ${r.status === "succeeded" ? "good" : r.status === "running" ? "" : "warn"}">${esc(r.status)}</span></td><td>${r.jobs_found ?? ""}</td><td>${r.jobs_new ?? ""}</td><td>${r.jobs_scored ?? ""}</td><td>${(r.tokens_used || 0).toLocaleString()}</td><td>${esc((r.error || "").slice(0, 120))}</td></tr>`).join("")}</table></div>`;
+  if (!runs.length) return `<p class="sub" style="margin:0">None yet.</p>`;
+  return `<div class="scroll-x"><table><tr><th>Run</th><th>Started</th><th>Result</th><th>Found</th><th>New</th><th>Scored</th><th>AI tokens</th><th>Problem</th></tr>
+    ${runs.map(r => `<tr><td>#${r.id}</td><td class="nw">${esc(when(r.started_at))}</td><td><span class="tag ${r.status === "succeeded" ? "c-green" : r.status === "running" ? "c-blue" : "c-amber"}">${esc(r.status)}</span></td><td>${r.jobs_found ?? ""}</td><td>${r.jobs_new ?? ""}</td><td>${r.jobs_scored ?? ""}</td><td>${(r.tokens_used || 0).toLocaleString()}</td><td>${esc((r.error || "").slice(0, 120))}</td></tr>`).join("")}</table></div>`;
 }
 
 /* ---------- actions ---------- */
-const ids = pred => rowsFor("shortlist").filter(pred).map(r => r.job_id);
+function setTheme(t, quiet) {
+  document.documentElement.dataset.theme = t;
+  $("#th-light").setAttribute("aria-pressed", String(t === "light")); $("#th-dark").setAttribute("aria-pressed", String(t === "dark"));
+  if (!quiet) try { localStorage.setItem("jsa-theme", t); } catch {}
+}
+const ids = pred => S.state ? rowsFor("shortlist").filter(pred).map(r => r.job_id) : [];
+const NOT_READY = "No email is ready yet. A job needs a draft and an address first.";
 const A = {
   run: () => startTask({ action: "run" }),
   "run-noscore": () => startTask({ action: "run", no_score: true }),
   daily: () => startTask({ action: "daily" }),
   migrate: () => startTask({ action: "migrate" }),
   stop: async () => { if (await ask("Stop this task?", "What it has already saved is kept. You can start it again later.", "Stop it")) api("/api/task/stop", {}).catch(fail); },
+  dismiss: () => { S.dismissed = S.state.task ? S.state.task.id : 0; renderLive(); },
+  reload: async () => { await refresh(); await staleMatches(); toast("Up to date."); },
+  clear: () => { S.q = ""; $("#tq").value = ""; S.f = { country: "", score: 0, posted: 0, extra: "" }; S.page = 0; renderFilters(); renderList(); },
   "run-menu": () => { $("#runmenu").hidden = !$("#runmenu").hidden; },
   palette: () => openPalette(),
   add: () => { $("#adddlg").showModal(); $("#addtext").focus(); },
@@ -697,14 +1123,20 @@ const A = {
   "add-go": () => { const text = $("#addtext").value.trim(); if (!text) return toast("Paste the post text first.", true);
     $("#adddlg").close(); startTask({ action: "add", text, url: $("#addurl").value.trim() }); $("#addtext").value = ""; $("#addurl").value = ""; },
   resume: () => $("#resumefile").click(),
-  "draft-all": () => startTask({ action: "email", job_ids: ids(r => !r.has_draft).slice(0, 10) }),
-  "contacts-all": () => startTask({ action: "contacts", job_ids: ids(r => !r.contact_email).slice(0, 10) }),
-  "gmail-all": () => startTask({ action: "gmail-drafts", job_ids: ids(ready) }),
-  "send-all": async () => { const list = ids(ready), cap = S.state.sends;
-    if (await ask(`Send ${list.length} email${list.length === 1 ? "" : "s"} now?`, `Each goes from your Gmail to the address on the job, with your CV attached, and the job is marked applied.${cap && cap.cap ? ` Today's limit is ${cap.cap}; ${cap.today} already sent.` : ""}`, "Send them")) startTask({ action: "send", job_ids: list }); },
-  followups: async () => { if (await ask("Send the follow-ups?", "The stored follow-up text goes to each recruiter who has not replied.", "Send them")) startTask({ action: "followups" }); },
-  "aside-on": () => { S.aside = true; showView("progress"); },
-  "aside-off": () => { S.aside = false; showView("progress"); },
+  "draft-all": () => { const l = ids(r => !r.has_draft).slice(0, 10); l.length ? startTask({ action: "email", job_ids: l }) : toast("Every shortlisted job already has a draft."); },
+  "contacts-all": () => { const l = ids(r => !r.contact_email).slice(0, 10); l.length ? startTask({ action: "contacts", job_ids: l }) : toast("Every shortlisted job already has an address."); },
+  "gmail-all": () => { const l = ids(ready); l.length ? startTask({ action: "gmail-drafts", job_ids: l }) : toast(NOT_READY); },
+  "send-all": async () => { const l = ids(ready), cap = S.state && S.state.sends;
+    if (!l.length) return toast(NOT_READY);
+    if (await ask(`Send ${plural(l.length, "email", "emails")} now?`, `Each goes from your Gmail to the address on the job, with your CV attached, and the job is marked applied.${cap && cap.cap ? ` Today's limit is ${cap.cap}; ${cap.today} already sent.` : ""}`, "Send them")) startTask({ action: "send", job_ids: l }); },
+  followups: async () => { if (!S.state || !S.state.due.length) return toast("No follow-ups are due.");
+    if (await ask("Send the follow-ups?", "The stored follow-up text goes to each recruiter who has not replied.", "Send them")) startTask({ action: "followups" }); },
+  digest: async () => { try {
+      const r = await fetch(`/api/digest?min_score=${S.view === "matches" && S.f.score ? S.f.score : 75}&token=${encodeURIComponent(TOKEN)}`);
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "That did not work.");
+      const a = document.createElement("a"); a.href = URL.createObjectURL(await r.blob()); a.download = `job-matches-${new Date().toISOString().slice(0, 10)}.md`; a.click(); URL.revokeObjectURL(a.href);
+      toast("Digest downloaded.");
+    } catch (e) { fail(e); } },
   "draft-one": async () => { if (S.detail.application && S.detail.application.outreach_subject && !await ask("Write the email again?", "The current draft, including your edits, is replaced.", "Write it again")) return; startTask({ action: "email", job_ids: [S.sel] }); },
   "contacts-one": () => startTask({ action: "contacts", job_ids: [S.sel] }),
   cover: () => startTask({ action: "cover-letter", job_ids: [S.sel] }),
@@ -716,55 +1148,70 @@ const A = {
   "save-note": () => change("/api/note", { job_id: S.sel, note: $("#note").value }),
   "followup-done": () => change("/api/followup-done", { job_id: S.sel }),
   status: b => change("/api/status", { job_id: S.sel, status: b.dataset.to }),
-  back: () => document.body.classList.remove("reading"),
+  back: () => closeDrawer(),
+  prev: () => step(-1),
+  next: () => step(1),
   dedupe: async () => { if (await ask("Merge the duplicates?", "Each duplicate is folded into the copy marked Keep. This cannot be undone.", "Merge them")) startTask({ action: "dedupe" }); },
   "notify-test": () => startTask({ action: "notify-test" }),
-  "sched-on": async () => { try { toast((await api("/api/schedule", { action: "install", time: $("#schedtime").value })).message); showView("settings"); } catch (e) { fail(e); } },
-  "sched-off": async () => { try { toast((await api("/api/schedule", { action: "remove" })).message); showView("settings"); } catch (e) { fail(e); } },
+  "sched-on": async () => { try { toast((await api("/api/schedule", { action: "install", time: $("#schedtime").value })).message); loadPage(); } catch (e) { fail(e); } },
+  "sched-off": async () => { try { toast((await api("/api/schedule", { action: "remove" })).message); loadPage(); } catch (e) { fail(e); } },
   "save-tpl": async () => { try { toast((await api("/api/template", { text: $("#tpl").value })).message); } catch (e) { fail(e); } },
+  "theme-light": () => setTheme("light"),
+  "theme-dark": () => setTheme("dark"),
   quit: async () => { if (await ask("Stop Job Search?", "Any task that is running is stopped too. Nothing saved is lost.", "Stop it")) { try { await api("/api/quit", {}); } catch {} clearInterval(S.timer);
-    document.body.innerHTML = '<div class="empty" style="margin:auto"><h3>Job Search has stopped</h3>Open Job Search again to start it.</div>'; } },
+    document.body.innerHTML = '<div class="shell" style="place-content:center;display:grid"><div class="empty"><h3>Job Search has stopped</h3>Open Job Search again to start it.</div></div>'; } },
 };
+const go = x => x.startsWith("v:") ? showView(x.slice(2)) : A[x]();
 const PALETTE = [
   ["Find new jobs", "search every site and score", "run"], ["Collect jobs without scoring", "no AI cost", "run-noscore"],
   ["Run the morning routine", "search, digest, summary email", "daily"], ["Add a job from a pasted post", "LinkedIn, WhatsApp, email", "add"],
   ["Draft emails for the shortlist", "jobs with no draft yet", "draft-all"], ["Look for recruiter addresses", "on each company's own site", "contacts-all"],
   ["Save ready drafts to Gmail", "review and send from Gmail", "gmail-all"], ["Send ready emails", "from your Gmail, CV attached", "send-all"],
-  ["Send follow-ups that are due", "", "followups"], ["Open the shortlist", "", "v:shortlist"], ["Open applications in progress", "", "v:progress"],
+  ["Send follow-ups that are due", "", "followups"], ["Download a digest of top matches", "Markdown file", "digest"],
+  ["Open the shortlist", "", "v:shortlist"], ["Open applications in progress", "", "v:progress"],
   ["Open follow-ups", "", "v:followups"], ["Browse all scored matches", "", "v:matches"], ["See skill gaps and weekly progress", "", "v:insights"],
   ["See past searches and task output", "", "v:activity"], ["Schedule the daily run", "", "v:settings"], ["Edit the email template", "", "v:settings"],
   ["Merge duplicate jobs", "", "v:settings"], ["Send a test notification", "", "notify-test"], ["Import a resume", "PDF or text", "resume"],
+  ["Switch to the light theme", "", "theme-light"], ["Switch to the dark theme", "", "theme-dark"],
   ["Update the database", "", "migrate"], ["Stop the running task", "", "stop"],
 ];
-function openPalette() {
-  const d = $("#palette"), q = $("#pq"); q.value = ""; d.showModal(); drawPalette(); q.focus();
-}
+function openPalette() { const d = $("#palette"), q = $("#pq"); q.value = ""; d.showModal(); drawPalette(); q.focus(); }
 function drawPalette() {
   const q = $("#pq").value.toLowerCase().trim();
   const hits = PALETTE.filter(([l, h]) => !q || (l + " " + h).toLowerCase().includes(q));
   $("#plist").innerHTML = hits.map(([l, h, a], i) => `<li><button data-p="${a}" class="${i ? "" : "cur"}">${esc(l)}<span>${esc(h)}</span></button></li>`).join("") || `<li class="empty">No action matches that.</li>`;
 }
-function runPalette(a) { $("#palette").close(); if (a.startsWith("v:")) showView(a.slice(2)); else A[a](); }
+function runPalette(a) { $("#palette").close(); go(a); }
 
 document.addEventListener("click", e => {
-  const p = e.target.closest("[data-p]"); if (p) return runPalette(p.dataset.p);
-  const job = e.target.closest("[data-job]"); if (job) return openJob(+job.dataset.job);
-  const act = e.target.closest("[data-act]");
+  const t = e.target;
+  const p = t.closest("[data-p]"); if (p) return runPalette(p.dataset.p);
+  const act = t.closest("[data-act]");
   if (!act || act.dataset.act !== "run-menu") $("#runmenu").hidden = true;
-  if (act && !act.disabled) return A[act.dataset.act](act);
-  const v = e.target.closest("[data-view]"); if (v) showView(v.dataset.view);
+  if (act) { if (!act.disabled) A[act.dataset.act](act); return; }
+  const g = t.closest("[data-go]"); if (g) return go(g.dataset.go);
+  const pg = t.closest("[data-page]"); if (pg) { if (!pg.disabled) { S.page = +pg.dataset.page; renderList(); } return; }
+  const th = t.closest("th[data-sort]"); if (th) return sortBy(th.dataset.sort);
+  const job = t.closest("[data-job]"); if (job) return openJob(+job.dataset.job);
+  const v = t.closest("[data-view]"); if (v) showView(v.dataset.view);
 });
 document.addEventListener("input", e => {
-  if (e.target.id === "subj" || e.target.id === "body" || e.target.id === "note") S.dirty = true;
-  if (e.target.id === "minscore") $("#minlabel").textContent = e.target.value;
-  if (e.target.id === "pq") drawPalette();
+  const id = e.target.id;
+  if (id === "subj" || id === "body" || id === "note") S.dirty = true;
+  if (id === "tq") { S.q = e.target.value; S.page = 0; renderList(); }
+  if (id === "pq") drawPalette();
 });
 document.addEventListener("change", e => {
-  if (e.target.id === "minscore") { S.minScore = +e.target.value; S.matches = null; loadMatches(); renderList(); }
-  if (e.target.id === "onesite" && e.target.value) { startTask({ action: "run", source: e.target.value }); e.target.value = ""; $("#runmenu").hidden = true; }
-  if (e.target.id === "setstatus" && e.target.value) change("/api/status", { job_id: S.sel, status: e.target.value });
-  if (e.target.id === "resumefile" && e.target.files[0]) { const f = e.target.files[0];
-    startTask({ action: "profile", raw: { body: f, headers: { "X-Filename": encodeURIComponent(f.name) } } }); e.target.value = ""; }
+  const el = e.target, id = el.id;
+  if (id === "f-country") S.f.country = el.value;
+  if (id === "f-score") S.f.score = +el.value;
+  if (id === "f-posted") S.f.posted = +el.value;
+  if (id === "f-extra") S.f.extra = el.value;
+  if (id.startsWith("f-")) { S.page = 0; renderList(); }
+  if (id === "onesite" && el.value) { startTask({ action: "run", source: el.value }); el.value = ""; $("#runmenu").hidden = true; }
+  if (id === "setstatus" && el.value) change("/api/status", { job_id: S.sel, status: el.value });
+  if (id === "resumefile" && el.files[0]) { const f = el.files[0];
+    startTask({ action: "profile", raw: { body: f, headers: { "X-Filename": encodeURIComponent(f.name) } } }); el.value = ""; }
 });
 document.addEventListener("keydown", e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); return openPalette(); }
@@ -775,17 +1222,22 @@ document.addEventListener("keydown", e => {
     if (e.key === "Enter" && items[i]) { e.preventDefault(); runPalette(items[i].dataset.p); }
     return;
   }
-  if (e.target.matches("input,textarea,select") || document.querySelector("dialog[open]") || $("#work").hidden) return;
-  if (e.key === "j" || e.key === "k") { const rows = rowsFor(S.view), i = rows.findIndex(r => r.job_id === S.sel), n = rows[i + (e.key === "j" ? 1 : -1)];
-    if (n) { openJob(n.job_id); $(`#list [data-job="${n.job_id}"]`)?.scrollIntoView({ block: "nearest" }); } }
+  if (document.querySelector("dialog[open]")) return;
+  if (e.key === "Escape" && document.body.classList.contains("reading")) return closeDrawer();
+  if (e.key === "Enter" || e.key === " ") {
+    if (e.target.matches("tr.row")) { e.preventDefault(); return openJob(+e.target.dataset.job); }
+    if (e.target.matches("th[data-sort]")) { e.preventDefault(); return sortBy(e.target.dataset.sort); }
+  }
+  if (e.target.matches("input,textarea,select") || !S.state || !LIST.includes(S.view)) return;
+  if (e.key === "j") step(1);
+  if (e.key === "k") step(-1);
 });
 $("#palette").addEventListener("click", e => { if (e.target.id === "palette") e.target.close(); });
 if (!/Mac/.test(navigator.platform)) $("#kbd").textContent = "Ctrl K";
+setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark", true);
 
 (async () => {
-  renderDetail();
   await refresh();
-  if (S.state) showView("shortlist");
   S.timer = setInterval(() => { if (!document.hidden && !S.polling) refresh(); }, 6000);
 })();
 </script>

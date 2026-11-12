@@ -139,7 +139,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         out = {"setup": setup, "task": runner.snapshot(), "jobs": [], "due": [], "counts": None,
                "sends": None, "shortlist_min_score": c.matching.shortlist_min_score,
                "follow_up_days": c.outreach.follow_up_days,
-               "sources": [s.name for s in c.sources if s.enabled]}
+               "sources": [s.name for s in c.sources if s.enabled], "countries": [],
+               "search": {"max_age_days": c.search.max_age_days, "min_salary_lpa": c.search.min_salary_lpa}}
         try:
             conn = db.connect(url)
         except Exception as e:  # noqa: BLE001
@@ -160,6 +161,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             out["due"] = [r["job_id"] for r in due]
             out["counts"]["due"] = len(due)
             out["sends"] = {"today": db.sends_today(conn, pid), "cap": c.outreach.max_sends_per_day}
+            out["countries"] = db.match_countries(conn, pid)
             for r in db.dashboard_rows(conn, pid):
                 body = r.pop("outreach_body")
                 r["has_draft"] = bool(r["outreach_subject"] and body)
