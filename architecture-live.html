@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Search Agent: Live Architecture</title>
+<style>
+  :root {
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1d2430; --muted:#5d6b7e; --line:#d9dee6;
+    --node:#ffffff; --node-line:#b9c2cf; --edge:#c9d0da;
+    --accent:#2457d6; --accent-soft:#e3ebfc; --done:#1e7d4f; --done-soft:#e6f4ec;
+    --code:#eef3fb; --data:#e8f5ec; --ext:#f3eafa; --person:#fff6e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#12151b; --card:#1b2029; --ink:#e7ebf1; --muted:#9aa6b6; --line:#2c3442;
+      --node:#222936; --node-line:#3a4557; --edge:#333d4d;
+      --accent:#7ea2ff; --accent-soft:#22304f; --done:#6fd3a0; --done-soft:#173327;
+      --code:#1f2a3d; --data:#173327; --ext:#2c2140; --person:#3a2f17;
+    }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width:1240px; margin:0 auto; padding:28px 16px 56px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  p.sub { color:var(--muted); margin:0 0 18px; max-width:78ch; }
+  .bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
+  .bar .gap { flex:1; }
+  button { font:inherit; font-size:14px; cursor:pointer; color:var(--ink); background:var(--card);
+           border:1px solid var(--line); border-radius:8px; padding:7px 13px; }
+  button:hover { border-color:var(--accent); }
+  button[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  label { color:var(--muted); font-size:13px; }
+  .layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; }
+  @media (max-width: 980px) { .layout { grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  svg { width:100%; height:auto; display:block; }
+  .edge { stroke:var(--edge); stroke-width:2; fill:none; }
+  .edge.live { stroke:var(--accent); stroke-width:3; }
+  .node rect { stroke:var(--node-line); stroke-width:1.5; rx:10; }
+  .node.code rect { fill:var(--code); } .node.data rect { fill:var(--data); }
+  .node.ext rect { fill:var(--ext); }   .node.person rect { fill:var(--person); }
+  .node text { fill:var(--ink); font-size:14px; font-weight:600; text-anchor:middle; }
+  .node text.small { fill:var(--muted); font-size:11.5px; font-weight:400; }
+  .node.live rect { stroke:var(--accent); stroke-width:3; }
+  .node.seen rect { stroke:var(--done); }
+  #dot { fill:var(--accent); }
+  #dotRing { fill:none; stroke:var(--accent); stroke-width:2; opacity:.35; }
+  #caption { min-height:54px; margin:12px 2px 0; }
+  #caption b { display:block; font-size:16px; }
+  #caption span { color:var(--muted); font-size:13.5px; }
+  ol { margin:0; padding:0 0 0 22px; max-height:560px; overflow:auto; }
+  li { padding:5px 6px; border-radius:6px; font-size:13.5px; color:var(--muted); }
+  li.now { background:var(--accent-soft); color:var(--ink); font-weight:600; }
+  li.past { color:var(--ink); }
+  li code, p code { font:12.5px ui-monospace, Menlo, monospace; }
+  h2 { font-size:14px; margin:0 0 8px; color:var(--muted); font-weight:600; }
+  .legend { display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; color:var(--muted); font-size:12.5px; }
+  .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px;
+              vertical-align:-1px; border:1px solid var(--node-line); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Job Search Agent: Live Architecture</h1>
+  <p class="sub">Pick a command and press Play to watch that request travel through the agent: which
+  part of the code handles it, when the AI model, the browser, Gmail and the database are called, and
+  what comes back to you.</p>
+
+  <div class="bar" role="group" aria-label="Command to trace">
+    <button data-flow="run" aria-pressed="true">jsa run</button>
+    <button data-flow="add" aria-pressed="false">jsa add</button>
+    <button data-flow="email" aria-pressed="false">jsa email --send</button>
+    <button data-flow="apply" aria-pressed="false">jsa apply</button>
+    <span class="gap"></span>
+    <button id="play">Play</button>
+    <button id="step">Step</button>
+    <button id="reset">Reset</button>
+    <label>Speed <input id="speed" type="range" min="0.5" max="3" step="0.5" value="1" aria-label="Speed"></label>
+  </div>
+
+  <div class="layout">
+    <div class="card">
+      <svg id="stage" viewBox="0 0 1040 610" role="img" aria-label="Architecture diagram of the job search agent">
+        <g id="edges"></g>
+        <g id="nodes"></g>
+        <circle id="dotRing" r="14" cx="-50" cy="-50"></circle>
+        <circle id="dot" r="8" cx="-50" cy="-50"></circle>
+      </svg>
+      <div id="caption" aria-live="polite"><b>Ready</b><span>Choose a command above, then press Play.</span></div>
+      <div class="legend">
+        <span><i style="background:var(--person)"></i>You</span>
+        <span><i style="background:var(--code)"></i>The agent's code</span>
+        <span><i style="background:var(--data)"></i>Database</span>
+        <span><i style="background:var(--ext)"></i>Outside service</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2 id="stepsTitle">Steps</h2>
+      <ol id="steps"></ol>
+    </div>
+  </div>
+</main>
+
+<script>
+const NODES = {
+  user:    { x: 90,  y: 300, label: "You",            sub: "Terminal",                kind: "person" },
+  cli:     { x: 290, y: 300, label: "jsa commands",   sub: "cli.py",                  kind: "code" },
+  pipeline:{ x: 500, y: 140, label: "Pipeline",       sub: "pipeline.py",             kind: "code" },
+  sources: { x: 720, y: 70,  label: "Sources",        sub: "sources/",                kind: "code" },
+  filters: { x: 720, y: 200, label: "Rule filters",   sub: "filters.py",              kind: "code" },
+  browser: { x: 940, y: 70,  label: "Browserbase",    sub: "cloud browser",           kind: "ext" },
+  ai:      { x: 940, y: 300, label: "AI model",       sub: "Claude, via llm.py",      kind: "ext" },
+  db:      { x: 720, y: 440, label: "PostgreSQL",     sub: "db.py",                   kind: "data" },
+  report:  { x: 500, y: 540, label: "Preview",        sub: "report.py",               kind: "code" },
+  mail:    { x: 940, y: 540, label: "Gmail",          sub: "mailer.py",               kind: "ext" },
+  own:     { x: 290, y: 540, label: "Your browser",   sub: "the job site",            kind: "person" },
+};
+const W = 150, H = 54;
+
+const FLOWS = {
+  run: { title: "jsa run: find and score jobs", steps: [
+    ["user","cli","You type jsa run","main() reads your keys from .env and picks the command."],
+    ["cli","pipeline","Start a run","cmd_run() loads config.yaml and calls run_agent()."],
+    ["pipeline","db","Open a run record","active_profile() loads your resume profile; start_run() logs the run."],
+    ["pipeline","sources","Ask each job board for jobs","build_source().fetch() for Naukri, Naukrigulf and Bayt."],
+    ["sources","browser","Open the search page","A cloud browser loads the page. If the session ends, a new one is opened."],
+    ["browser","sources","Page text and links","The rendered page comes back."],
+    ["sources","ai","Read the page","extract_listings(): which lines are jobs?"],
+    ["ai","sources","Jobs with title, link and age","Links that are not on the page are thrown away."],
+    ["sources","browser","Open the newest job pages","Up to 15 per site, newest first."],
+    ["browser","sources","Full job descriptions","Used later for scoring."],
+    ["sources","pipeline","Jobs handed back","Each one is a JobPosting."],
+    ["pipeline","db","Store every job once","upsert_job() uses a fingerprint, so a job is never stored twice."],
+    ["pipeline","filters","Check the free rules","reject_reason(): location, title, bank, older than 7 days."],
+    ["filters","pipeline","Keep or drop","Dropped jobs cost no AI call."],
+    ["pipeline","ai","Score the jobs that are left","score_job(), four at a time, against your resume."],
+    ["ai","pipeline","Score 0 to 100","With matched skills, gaps and red flags."],
+    ["pipeline","db","Save scores and shortlist","save_match(); scores of 75 or more are shortlisted."],
+    ["pipeline","cli","Run summary","Counts, tokens used, any site that failed."],
+    ["cli","user","Top new matches","Printed newest first."],
+  ]},
+  add: { title: "jsa add: a job from a pasted post", steps: [
+    ["user","cli","You paste a LinkedIn post","jsa add, paste the text, Ctrl-D."],
+    ["cli","ai","Read the post","read_pasted_job(): role, company, location, email address."],
+    ["ai","cli","The job, as data","Nothing is guessed: only what the post says."],
+    ["cli","db","Store the job","upsert_job()."],
+    ["cli","ai","Score it","score_job() against your resume."],
+    ["ai","cli","Score 0 to 100","Same scoring as a normal run."],
+    ["cli","db","Save and shortlist","save_match(); the job is shortlisted because you chose it."],
+    ["cli","user","Job number and score","Plus the next command to run."],
+  ]},
+  email: { title: "jsa email --send: draft and send", steps: [
+    ["user","cli","You type jsa email --send","cmd_email() loads config.yaml and email_template.txt."],
+    ["cli","db","Which jobs?","shortlisted_job_ids(), newest first."],
+    ["db","cli","The shortlisted jobs","get_job() for each."],
+    ["cli","browser","Open the live posting","Is the job still open?"],
+    ["browser","cli","Current page text","Also used to find a recruiter name or email address."],
+    ["cli","ai","Fill in your template","recruiter_email(): skills and experience chosen for this job."],
+    ["ai","cli","The finished email","Any blank left unfilled is flagged."],
+    ["cli","db","Save the draft","save_outreach(), before anything is sent."],
+    ["cli","report","Build the preview","emails_html() writes digests/emails-date.html."],
+    ["report","user","Preview to read","Every draft, with copy buttons."],
+    ["cli","mail","Send the ready emails","build_message() attaches your CV; send_messages() sends it."],
+    ["mail","user","Email sent to the recruiter","Only if the posting had an address, is open, and has no blank."],
+    ["cli","db","Mark the job applied","So it is never emailed twice."],
+  ]},
+  apply: { title: "jsa apply: apply on the job site", steps: [
+    ["user","cli","You type jsa apply","cmd_apply() starts."],
+    ["cli","db","Which jobs?","shortlisted_job_ids(), newest first."],
+    ["db","cli","The shortlisted jobs","One at a time."],
+    ["cli","own","Open the posting","In your normal browser, where you are signed in."],
+    ["user","own","You apply on the site","The agent does not log in or click for you."],
+    ["cli","user","Applied?","y, n, s to skip, or q to quit."],
+    ["user","cli","Your answer","Typed in the terminal."],
+    ["cli","db","Record it","set_application_status(): applied or skipped."],
+  ]},
+};
+
+const svgNS = "http://www.w3.org/2000/svg";
+const $ = (id) => document.getElementById(id);
+const el = (name, attrs, text) => {
+  const n = document.createElementNS(svgNS, name);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text) n.textContent = text;
+  return n;
+};
+
+// Draw every connection used by any flow once, then the nodes on top.
+const edgeEls = {};
+const edgeKey = (a, b) => [a, b].sort().join("|");
+for (const f of Object.values(FLOWS)) for (const [a, b] of f.steps) {
+  const k = edgeKey(a, b);
+  if (edgeEls[k]) continue;
+  edgeEls[k] = $("edges").appendChild(el("line", {
+    class: "edge", x1: NODES[a].x, y1: NODES[a].y, x2: NODES[b].x, y2: NODES[b].y }));
+}
+const nodeEls = {};
+for (const [id, n] of Object.entries(NODES)) {
+  const g = el("g", { class: "node " + n.kind, id: "n-" + id });
+  g.appendChild(el("rect", { x: n.x - W / 2, y: n.y - H / 2, width: W, height: H, rx: 10 }));
+  g.appendChild(el("text", { x: n.x, y: n.y - 2 }, n.label));
+  g.appendChild(el("text", { x: n.x, y: n.y + 15, class: "small" }, n.sub));
+  nodeEls[id] = $("nodes").appendChild(g);
+}
+
+let flow = "run", index = -1, playing = false, raf = 0, timer = 0;
+const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function renderSteps() {
+  $("stepsTitle").textContent = FLOWS[flow].title;
+  $("steps").innerHTML = "";
+  FLOWS[flow].steps.forEach(([a, b, title], i) => {
+    const li = document.createElement("li");
+    li.textContent = `${NODES[a].label} → ${NODES[b].label}: ${title}`;
+    li.id = "s-" + i;
+    $("steps").appendChild(li);
+  });
+}
+
+function paint() {
+  const steps = FLOWS[flow].steps;
+  Object.values(nodeEls).forEach((n) => n.classList.remove("live", "seen"));
+  Object.values(edgeEls).forEach((e) => e.classList.remove("live"));
+  steps.forEach(([a, b], i) => {
+    const li = $("s-" + i);
+    li.className = i < index ? "past" : i === index ? "now" : "";
+    if (i <= index) { nodeEls[a].classList.add("seen"); nodeEls[b].classList.add("seen"); }
+  });
+  if (index >= 0 && index < steps.length) {
+    const [a, b, title, detail] = steps[index];
+    nodeEls[a].classList.add("live"); nodeEls[b].classList.add("live");
+    edgeEls[edgeKey(a, b)].classList.add("live");
+    $("caption").innerHTML = "";
+    const bEl = document.createElement("b"); bEl.textContent = `${index + 1}. ${title}`;
+    const sEl = document.createElement("span"); sEl.textContent = detail;
+    $("caption").append(bEl, sEl);
+    $("s-" + index).scrollIntoView({ block: "nearest" });
+  } else if (index >= steps.length) {
+    $("caption").innerHTML = "<b>Done</b><span>That is the whole request. Press Reset, or pick another command.</span>";
+  } else {
+    $("caption").innerHTML = "<b>Ready</b><span>Press Play to watch the request, or Step to move one hop at a time.</span>";
+  }
+}
+
+function moveDot(a, b, ms, done) {
+  const A = NODES[a], B = NODES[b], dot = $("dot"), ring = $("dotRing");
+  const place = (t) => {
+    const x = A.x + (B.x - A.x) * t, y = A.y + (B.y - A.y) * t;
+    dot.setAttribute("cx", x); dot.setAttribute("cy", y);
+    ring.setAttribute("cx", x); ring.setAttribute("cy", y);
+  };
+  if (reduced) { place(1); timer = setTimeout(done, ms); return; }
+  const start = performance.now();
+  const tick = (now) => {
+    const t = Math.min(1, (now - start) / ms);
+    place(t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+    if (t < 1) raf = requestAnimationFrame(tick); else done();
+  };
+  raf = requestAnimationFrame(tick);
+}
+
+function stop() { playing = false; cancelAnimationFrame(raf); clearTimeout(timer); $("play").textContent = "Play"; }
+
+function advance(auto) {
+  const steps = FLOWS[flow].steps;
+  if (index >= steps.length - 1) { index = steps.length; paint(); stop(); return; }
+  index += 1; paint();
+  const [a, b] = steps[index];
+  const speed = parseFloat($("speed").value);
+  moveDot(a, b, 900 / speed, () => {
+    if (auto && playing) timer = setTimeout(() => advance(true), 650 / speed);
+  });
+}
+
+function reset() {
+  stop(); index = -1;
+  $("dot").setAttribute("cx", -50); $("dotRing").setAttribute("cx", -50);
+  paint();
+}
+
+$("play").addEventListener("click", () => {
+  if (playing) { stop(); return; }
+  if (index >= FLOWS[flow].steps.length) reset();
+  playing = true; $("play").textContent = "Pause"; advance(true);
+});
+$("step").addEventListener("click", () => { stop(); if (index >= FLOWS[flow].steps.length) reset(); advance(false); });
+$("reset").addEventListener("click", reset);
+document.querySelectorAll("button[data-flow]").forEach((btn) => btn.addEventListener("click", () => {
+  document.querySelectorAll("button[data-flow]").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+  flow = btn.dataset.flow; renderSteps(); reset();
+}));
+
+renderSteps(); paint();
+</script>
+</body>
+</html>
