@@ -10,9 +10,9 @@ I am a [my current job title] with over [X years] of experience at [my employers
 - [a third such area, under 12 words]
 - [only if this job asks for AI, LLM or agent experience: my AI work, such as the PVR Triage Agent, under 15 words; otherwise leave this line out]
 
-Based in [my city and country if the job is in my country; only my country if the job is abroad]. Ready to relocate to [the job's city if it is in my country, or its country if abroad; leave this sentence out if the job is in my city or remote]. Available to join [when I can join, from my preferences; leave this sentence out if none is given].
+I am based in [my city and country if the job is in my country; only my country if the job is abroad][only if the job is in another city or country and is not remote: " and ready to relocate to" followed by the job's city if it is in my country, or its country if abroad in its short everyday form, such as "the UAE"]. I can join [when I can join, from my preferences; leave this sentence out if none is given].
 
-My CV is attached. I would be glad to discuss the role on a short call.
+My CV is attached. I am available for a short call any day this week, at a time that suits you.
 
 Best regards,
 [Your Full Name]
