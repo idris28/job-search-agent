@@ -232,5 +232,11 @@
     "seen": 1794482500.013599,
     "ast_hash": "9067f5ef3469cffa56a69e8e2dbd48eb",
     "semantic_hash": "9067f5ef3469cffa56a69e8e2dbd48eb"
+  },
+  "ARCHITECTURE.md": {
+    "mtime": 1794483140.1897757,
+    "seen": 1794483486.2494872,
+    "ast_hash": "138b4ad72ab673460f156a1e4bce3920",
+    "semantic_hash": "138b4ad72ab673460f156a1e4bce3920"
   }
 }
