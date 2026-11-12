@@ -63,7 +63,8 @@ Each job has a **number** (for example 343). Use it wherever a command takes a j
 
 Double-click **Job Search** (the app in the project folder; drag it to the Dock if you like). It
 starts the program if it is not running and opens the page at http://127.0.0.1:8765 in your browser.
-Everything `jsa` does is a button there:
+Everything `jsa` does is a button there. [WEBSITE_GUIDE.md](WEBSITE_GUIDE.md) is the full guide to
+the website; this table maps its buttons to commands:
 
 | On the page | What it does | Same as |
 |---|---|---|
@@ -72,7 +73,7 @@ Everything `jsa` does is a button there:
 | The round buttons down the left | One-click actions from any screen: search, add a post, draft, find addresses, send, follow up, morning routine, digest. The last two switch between the light and dark look | |
 | The filter bar and table | Filter by country, score, posting age and next step; search by name; click a column heading to sort; click a job to open it in a panel on the right | `jsa jobs` |
 | **Shortlist** | Draft emails, look for addresses, save drafts to Gmail, send the ready emails | `jsa email`, `jsa contacts`, `jsa send --gmail-drafts`, `jsa send` |
-| A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; buttons for applied, skipped, interview, offer, rejected | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa apply` |
+| A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; an **Apply on the job site** button that opens the posting and asks afterwards whether you applied; buttons for applied, skipped, interview, offer, rejected | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa apply` |
 | **In progress**, **Follow-ups** | Applications under way (choose "Set aside" in the Stage filter for skipped and rejected jobs); follow-ups that are due, with a button to send them | `jsa applications`, `jsa followups` |
 | **All matches** | Every scored job, with the score filter and a digest download | `jsa jobs`, `jsa digest` |
 | **Add a job from a post** | Paste a LinkedIn post; it is read, scored and shortlisted | `jsa add` |

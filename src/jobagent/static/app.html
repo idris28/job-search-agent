@@ -615,9 +615,9 @@ function toast(msg, bad) {
   $("#toasts").append(t); setTimeout(() => t.remove(), bad ? 9000 : 4500);
 }
 const fail = e => toast(e.message, true);
-function ask(title, text, ok) {
+function ask(title, text, ok, no = "Cancel") {
   const d = $("#ask");
-  $("h2", d).textContent = title; $("p", d).textContent = text; $(".primary", d).textContent = ok;
+  $("h2", d).textContent = title; $("p", d).textContent = text; $(".primary", d).textContent = ok; $("[value=no]", d).textContent = no;
   d.showModal();
   return new Promise(res => {
     const done = v => { d.close(); d.onclick = null; d.oncancel = null; res(v); };
@@ -876,6 +876,7 @@ function nextSteps() {
   if (t && t.running) out.push(["blue", "refresh", `${t.label} is running`, "Its progress shows under the cards above.", "Show output", "v:activity"]);
   if (due) out.push(["amber", "clock", `${plural(due, "follow-up is", "follow-ups are")} due`, "No reply yet to an email you sent.", "Open follow-ups", "v:followups"]);
   if (n) out.push(["green", "send", `${plural(n, "email is", "emails are")} ready to send`, "Draft and address are both in place.", "Send", "send-all"]);
+  if (sl.length) out.push(["blue", "link", `${plural(sl.length, "shortlisted job", "shortlisted jobs")} to apply for`, "Open each posting, apply on its site, then say so.", "Start applying", "apply-first"]);
   if (nd) out.push(["violet", "edit", `${plural(nd, "shortlisted job has", "shortlisted jobs have")} no email draft`, "Written from your template and resume.", "Draft emails", "draft-all"]);
   if (na) out.push(["cyan", "at", `${plural(na, "job has", "jobs have")} no recruiter address`, "Looked up on each company's own site.", "Look for addresses", "contacts-all"]);
   if (!sl.length) out.push(["blue", "zap", "Your shortlist is empty", "Search the job sites for new postings.", "Find new jobs", "run"]);
@@ -941,8 +942,9 @@ function renderDetail(keep) {
   const sc = m ? m.score : null, C = 2 * Math.PI * 38;
   const chips = (xs, c) => xs && xs.length ? `<ul class="chipsl">${xs.map(x => `<li class="tag ${c}">${esc(x)}</li>`).join("")}</ul>` : "";
   const stBtn = (to, label, cls = "") => `<button class="btn ${cls}" data-act="status" data-to="${to}">${label}</button>`;
-  const moves = { "": stBtn("shortlisted", "Add to shortlist", "primary") + stBtn("skipped", "Not for me"),
-    shortlisted: stBtn("applied", "I applied", "primary") + stBtn("skipped", "Skip"),
+  const canApply = http(j.url) && (s === "" || s === "shortlisted"), pri = canApply ? "" : "primary";
+  const moves = { "": stBtn("shortlisted", "Add to shortlist", pri) + stBtn("skipped", "Not for me"),
+    shortlisted: stBtn("applied", "I applied", pri) + stBtn("skipped", "Skip"),
     applied: stBtn("interviewing", "Got an interview", "primary") + stBtn("rejected", "Rejected"),
     interviewing: stBtn("offer", "Got an offer", "primary") + stBtn("rejected", "Rejected") }[s] ?? stBtn("shortlisted", "Back to shortlist");
   const pay = j.salary_text || (m && m.salary_estimate);
@@ -985,7 +987,7 @@ function renderDetail(keep) {
       ${sc == null ? "" : `<div class="dial ${tier(sc)}" role="img" aria-label="Match score ${sc} out of 100"><svg viewBox="0 0 88 88" width="88" height="88"><circle class="track" cx="44" cy="44" r="38"/><circle class="val" cx="44" cy="44" r="38" stroke-dasharray="${C}" style="stroke-dashoffset:${keep ? C * (1 - sc / 100) : C}" data-to="${C * (1 - sc / 100)}"/></svg><b>${sc}</b></div>`}
     </div>
     <div class="acts">
-      ${http(j.url) ? `<a class="btn" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer">${ic("link")}Open the posting</a>` : `<span class="tag c-slate">from a pasted post</span>`}
+      ${http(j.url) ? `<a class="btn ${canApply ? "primary" : ""}" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer"${canApply ? " data-apply" : ""}>${ic("link")}${canApply ? "Apply on the job site" : "Open the posting"}</a>` : `<span class="tag c-slate">from a pasted post: apply by email below</span>`}
       ${moves}
       <select id="setstatus" aria-label="Set another status"><option value="">Other status</option>${["shortlisted", "applied", "interviewing", "offer", "rejected", "withdrawn", "skipped"].filter(x => x !== s).map(x => `<option>${x}</option>`).join("")}</select>
     </div>
@@ -1162,6 +1164,7 @@ const A = {
   "save-note": () => change("/api/note", { job_id: S.sel, note: $("#note").value }),
   "followup-done": () => change("/api/followup-done", { job_id: S.sel }),
   status: b => change("/api/status", { job_id: S.sel, status: b.dataset.to }),
+  "apply-first": () => { const l = ids(() => true); l.length ? openJob(l[0]) : toast("Your shortlist is empty."); },
   back: () => closeDrawer(),
   prev: () => step(-1),
   next: () => step(1),
@@ -1177,11 +1180,11 @@ const A = {
 };
 const go = x => x.startsWith("v:") ? showView(x.slice(2)) : A[x]();
 const PALETTE = [
-  ["Find new jobs", "search every site and score", "run"], ["Collect jobs without scoring", "no AI cost", "run-noscore"],
+  ["Find new jobs", "search every site and score", "run"], ["Collect jobs without scoring", "cheaper, scored next time", "run-noscore"],
   ["Run the morning routine", "search, digest, summary email", "daily"], ["Add a job from a pasted post", "LinkedIn, WhatsApp, email", "add"],
   ["Draft emails for the shortlist", "jobs with no draft yet", "draft-all"], ["Look for recruiter addresses", "on each company's own site", "contacts-all"],
   ["Save ready drafts to Gmail", "review and send from Gmail", "gmail-all"], ["Send ready emails", "from your Gmail, CV attached", "send-all"],
-  ["Send follow-ups that are due", "", "followups"], ["Download a digest of top matches", "Markdown file", "digest"],
+  ["Send follow-ups that are due", "", "followups"], ["Apply for shortlisted jobs", "opens each posting on its site", "apply-first"], ["Download a digest of top matches", "Markdown file", "digest"],
   ["Open the shortlist", "", "v:shortlist"], ["Open applications in progress", "", "v:progress"],
   ["Open follow-ups", "", "v:followups"], ["Browse all scored matches", "", "v:matches"], ["See skill gaps and weekly progress", "", "v:insights"],
   ["See past searches and task output", "", "v:activity"], ["Schedule the daily run", "", "v:settings"], ["Edit the email template", "", "v:settings"],
@@ -1197,8 +1200,18 @@ function drawPalette() {
 }
 function runPalette(a) { $("#palette").close(); go(a); }
 
+async function askApplied() {
+  const p = S.applyPending;
+  if (!p || document.hidden || document.querySelector("dialog[open]")) return;
+  S.applyPending = null;
+  if (await ask("Did you apply?", `${p.title} at ${p.company}. Yes moves it to In progress and records today's date.`, "Yes, I applied", "Not yet"))
+    change("/api/status", { job_id: p.id, status: "applied" });
+}
+document.addEventListener("visibilitychange", askApplied);
+window.addEventListener("focus", askApplied);
 document.addEventListener("click", e => {
   const t = e.target;
+  if (t.closest("[data-apply]") && S.detail) S.applyPending = { id: S.detail.job.id, title: S.detail.job.title, company: S.detail.job.company };
   const p = t.closest("[data-p]"); if (p) return runPalette(p.dataset.p);
   const act = t.closest("[data-act]");
   if (!act || act.dataset.act !== "run-menu") $("#runmenu").hidden = true;
