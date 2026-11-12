@@ -48,12 +48,13 @@ def test_full_run(conn):
     assert top[0]["application_status"] == "shortlisted"
     run = db.list_runs(conn)[0]
     assert run["status"] == "partial" and run["jobs_scored"] == 2 and run["tokens_used"] == 200
+    assert run["error"] == "1 site could not be read: Broken"  # the reason is stored with the search
 
     # Second run: nothing changed -> no re-scoring, nothing new, status not overridden.
     db.set_application_status(conn, pid, top[0]["job_id"], "applied", "sent CV")
     llm2 = FakeLLM(scores={"Backend Engineer II": 80})
     s2 = run_agent(conn, make_cfg(), llm2, FakeBrowser({}), http=http, only_source="Acme")
-    assert s2.status == "succeeded" and s2.new == 0
+    assert s2.status == "succeeded" and s2.new == 0 and db.list_runs(conn)[0]["error"] is None
     assert llm2.scored_titles == ["Backend Engineer II"]  # only the one that failed before
     assert s2.skipped_unchanged == 2
     statuses = {r["title"]: r["status"] for r in db.list_applications(conn, pid)}
@@ -103,7 +104,8 @@ def test_a_stopped_search_records_where_it_ended_and_keeps_what_it_saved(conn):
         run_agent(conn, make_cfg(concurrency=1), llm, FakeBrowser({}), http=http)
 
     run = db.list_runs(conn)[0]
-    assert run["status"] == "partial" and run["error"] == db.STOPPED_EARLY and run["finished_at"]
+    assert run["status"] == "partial" and run["finished_at"]
+    assert run["error"] == "Stopped before it finished; 1 site could not be read: Broken"
     assert (run["jobs_found"], run["jobs_scored"], run["tokens_used"]) == (3, 1, 100)
     top = db.top_matches(conn, pid, min_score=0)
     assert [(r["title"], r["application_status"]) for r in top] == [("Senior Java Engineer", "shortlisted")]
@@ -193,4 +195,28 @@ def test_the_stop_signal_reaches_a_running_search_which_records_its_end(conn):
     finally:
         program.kill()
     run = db.list_runs(conn)[0]
-    assert (run["status"], run["error"], run["jobs_found"]) == ("partial", db.STOPPED_EARLY, 2)
+    assert (run["status"], run["jobs_found"]) == ("partial", 2) and run["error"].startswith(db.STOPPED_EARLY)
+
+
+def test_the_reason_a_search_is_partly_finished():
+    assert db.partial_reason([]) == ""
+    assert db.partial_reason(["Bayt"]) == "1 site could not be read: Bayt"
+    assert db.partial_reason(list("ABCDEF"), "token limit reached (9 of 5)") == \
+        "Stopped early: token limit reached (9 of 5); 6 sites could not be read: A, B, C, D and 2 more"
+
+
+def test_older_searches_get_their_reason_from_what_they_logged(conn):
+    """A search recorded before the reason was stored is given the same reason a new one stores."""
+    db.save_profile(conn, "Alex", "resume", {})
+    http = mock_http({"boards-api.greenhouse.io/v1/boards/acme/jobs": gh(
+        ("Senior Java Engineer", "Dubai"), ("Backend Engineer", "Dubai"), ("Java Developer", "Dubai"))})
+    run_agent(conn, make_cfg(max_tokens_per_run=150, concurrency=1), FakeLLM(), FakeBrowser({}), http=http)
+    run_agent(conn, make_cfg(), FakeLLM(), FakeBrowser({}), http=http, only_source="Acme")  # finishes fully
+    stored = db.list_runs(conn)[1]["error"]
+    assert stored == "Stopped early: token limit reached (200 of 150); 1 site could not be read: Broken"
+
+    conn.execute("UPDATE runs SET error = NULL")  # as the rows were before
+    assert db.fill_missing_reasons(conn) == 1
+    finished, partial = db.settled_runs(conn)
+    assert partial["error"] == stored and finished["error"] is None
+    assert db.fill_missing_reasons(conn) == 0

@@ -209,9 +209,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         with connect() as conn:
             pid = profile_id(conn)
             total, gaps = db.skill_gaps(conn, pid, days, 50, 12)
-            db.close_dead_runs(conn)  # so a search that was cut off is not listed as still running
             return {"days": days, "gap_jobs": total, "gaps": gaps, "progress": db.progress(conn, pid, 7),
-                    "waiting": len(db.shortlisted_job_ids(conn, pid, 100000)), "runs": db.list_runs(conn, 15)}
+                    "waiting": len(db.shortlisted_job_ids(conn, pid, 100000)), "runs": db.settled_runs(conn, 15)}
 
     def settings_info() -> dict:
         c = config()

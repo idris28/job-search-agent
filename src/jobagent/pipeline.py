@@ -148,16 +148,18 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Clie
 
         summary.tokens = getattr(llm, "tokens_used", 0)
         summary.status = "partial" if summary.source_errors or summary.stopped else "succeeded"
-        db.finish_run(conn, run_id, status=summary.status, stats=summary.__dict__)
+        db.finish_run(conn, run_id, status=summary.status, stats=summary.__dict__,
+                      error=db.partial_reason(list(summary.source_errors), summary.stopped) or None)
         return summary
     except KeyboardInterrupt:
         # Ctrl-C, the page's Stop button, or the program being closed. What was saved is kept:
         # shortlist the jobs already scored high enough, then record where the search ended.
+        why = "; ".join(filter(None, [db.STOPPED_EARLY, db.partial_reason(list(summary.source_errors), summary.stopped)]))
         summary.status, summary.stopped = "partial", "stopped before it finished"
         summary.tokens = getattr(llm, "tokens_used", 0)
         try:
             summary.shortlisted = db.shortlist_many(conn, profile["id"], strong)
-            db.finish_run(conn, run_id, status="partial", stats=summary.__dict__, error=db.STOPPED_EARLY)
+            db.finish_run(conn, run_id, status="partial", stats=summary.__dict__, error=why)
         except Exception as e:  # noqa: BLE001 - the stop can land mid-query; close_dead_runs ends it later
             log.warning("could not record that run %s was stopped: %s", run_id, e)
         raise

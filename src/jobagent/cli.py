@@ -806,8 +806,7 @@ def cmd_digest(args, settings):
 
 def cmd_runs(args, settings):
     with _conn(settings) as conn:
-        db.close_dead_runs(conn)
-        rows = db.list_runs(conn, args.limit)
+        rows = db.settled_runs(conn, args.limit)
     cols = [("id", "Run", 5), ("status", "Status", 10), ("started_at", "Started", 19),
             ("jobs_found", "Found", 6), ("jobs_new", "New", 5), ("jobs_scored", "Scored", 6),
             ("tokens_used", "Tokens", 8), ("error", "Error", 30)]

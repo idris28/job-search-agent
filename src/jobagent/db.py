@@ -170,6 +170,46 @@ def list_runs(conn, limit: int = 20) -> list[dict]:
     return conn.execute("SELECT * FROM runs ORDER BY id DESC LIMIT %s", (limit,)).fetchall()
 
 
+def partial_reason(unread: list[str], stopped: str = "") -> str:
+    """Why a search ended only partly finished, as one line: a limit reached, sites not read."""
+    parts = [f"Stopped early: {stopped}"] if stopped else []
+    if unread:
+        names = ", ".join(unread[:4]) + (f" and {len(unread) - 4} more" if len(unread) > 4 else "")
+        parts.append(f"{len(unread)} site{'' if len(unread) == 1 else 's'} could not be read: {names}")
+    return "; ".join(parts)
+
+
+def fill_missing_reasons(conn) -> int:
+    """Give a reason to partial searches recorded before the reason was stored. Returns how many.
+
+    It is worked out from what each search logged: an error event for a site means that site
+    could not be read, and a warning names the spending limit that was reached.
+    """
+    rows = conn.execute(
+        """SELECT r.id,
+                  array_agg(s.name ORDER BY e.id) FILTER (
+                      WHERE e.level = 'error' AND s.id IS NOT NULL AND e.message LIKE %s) AS unread,
+                  max(substring(e.message FROM %s)) FILTER (WHERE e.level = 'warning') AS stopped
+           FROM runs r JOIN run_events e ON e.run_id = r.id LEFT JOIN sources s ON s.id = e.source_id
+           WHERE r.status = 'partial' AND r.error IS NULL
+           GROUP BY r.id""",
+        ("%: failed: %", r"((?:token|browser time) limit reached \([^)]*\))")).fetchall()
+    filled = 0
+    for r in rows:
+        reason = partial_reason(r["unread"] or [], r["stopped"] or "")
+        if reason:
+            conn.execute("UPDATE runs SET error = %s WHERE id = %s AND error IS NULL", (reason, r["id"]))
+            filled += 1
+    return filled
+
+
+def settled_runs(conn, limit: int = 20) -> list[dict]:
+    """The latest searches to show: cut-off ones are ended and missing reasons filled in first."""
+    close_dead_runs(conn)
+    fill_missing_reasons(conn)
+    return list_runs(conn, limit)
+
+
 # --- jobs -------------------------------------------------------------------
 
 

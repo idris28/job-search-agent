@@ -164,7 +164,7 @@ email and cover letter leave the name out: "applying for the Java Developer posi
 | **Follow-ups** | Emails with no reply after six days. | Send follow-ups |
 | **All matches** | Every job that was scored, not only the shortlist. Starts at score 70 or more; change the Score filter to see the rest. Open one and click **Add to shortlist** to act on it. | Download digest |
 | **Insights** | Your last seven days, the skills job postings ask for most that your resume lacks, and which sites deliver. | |
-| **Activity** | Everything the running or last task reported, and a list of past searches. | |
+| **Activity** | Everything the running or last task reported, and a list of past searches. When a search is only **Partly finished**, the Problem column says why: a spending limit was reached, some sites could not be read, or it was stopped. | |
 | **Settings** | Setup, the morning routine, your templates, duplicate jobs, limits, and stopping the program. | |
 
 ## Sending emails

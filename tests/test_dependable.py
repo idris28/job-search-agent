@@ -74,7 +74,8 @@ def test_run_stops_scoring_at_the_token_limit(conn):
     s = run_agent(conn, cfg, FakeLLM(), FakeBrowser({}), http=many_jobs(8))  # 100 tokens per score
     assert "token limit reached" in s.stopped and s.status == "partial"
     assert s.scored == 2 and s.tokens == 200  # one batch over the limit, then it stops
-    assert db.list_runs(conn)[0]["status"] == "partial"
+    run = db.list_runs(conn)[0]
+    assert run["status"] == "partial" and run["error"] == "Stopped early: token limit reached (200 of 150)"
 
 
 def test_run_stops_collecting_at_the_browser_time_limit(conn):
