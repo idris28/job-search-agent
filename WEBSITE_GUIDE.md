@@ -33,20 +33,22 @@ cross).
 
 | Part | Where | What it is for |
 |---|---|---|
-| Menu | Top | Switches between the seven screens: Shortlist, In progress, Follow-ups, All matches, Insights, Activity, Settings. |
-| Search, bell, your initials | Top right | The search icon opens **All actions**. The bell shows how many follow-ups are due. Your initials open Settings. |
-| Add from a post, Find new jobs | Under the menu, right | The two ways to bring jobs in. |
-| Round buttons | Down the left | One-click actions that work from any screen. Hover over one to see its name. The last two switch between the light and dark look. |
-| Six cards | Across the top | How many jobs are at each stage. Click a card to see those jobs. |
-| Progress strip | Under the cards | Appears while a task runs: what it is doing right now, **Show output** and **Stop**. |
+| Menu | Down the left | Switches between the seven screens: Shortlist, In progress, Follow-ups, All matches, Insights, Activity, Settings. A number beside a name is how many jobs are waiting there. On a narrow window the menu opens from the button with three lines at the top left. |
+| Search | Top of the menu | Opens **All actions**. |
+| Actions | Under the screens, in the menu | One-click actions that work from any screen, each with its name. |
+| Your name, Light and Dark | Bottom of the menu | Your name opens Settings. The two buttons switch the look. |
+| Add from a post, Find new jobs | Top right | The two ways to bring jobs in. |
+| Six numbers | Across the top | How many jobs are at each stage. Click a number to see those jobs. |
+| Progress strip | Under the numbers | Appears while a task runs: what it is doing right now, **Show output** and **Stop**. |
 | Filter bar and table | Middle | The jobs for the screen you are on. |
-| Pipeline, Top matches | Right | A ring of your jobs by stage, and your best-scoring jobs. |
+| Pipeline, Top matches | Right | One small mark for each job on your lists, coloured by stage, and your best-scoring jobs. Click a mark to open that job. |
+| Postmark | End of a row | A round stamp with a date: the day you emailed that employer. |
 | Where the jobs are, Next steps | Bottom | Scored jobs by country, and what is worth doing next, each with a button. |
 
 ## A normal day
 
-1. **Find new jobs.** Click the blue **Find new jobs** button. The Found and Scored cards glow while
-   it works, and the strip under them shows progress. A full search takes several minutes.
+1. **Find new jobs.** Click the **Find new jobs** button. A blue line moves under the Found and Scored
+   numbers while it works, and the strip under them shows progress. A full search takes several minutes.
 2. **Look at the shortlist.** Jobs scoring 75 or more land on **Shortlist**, newest first. Click a
    job to open it in a panel on the right and read why it matched.
 3. **Draft the emails.** Click **Draft emails**. One email is written per job from your template and
@@ -61,7 +63,7 @@ cross).
    site**. The posting opens in a new tab; apply there. When you come back, the page asks "Did you
    apply?" Answer **Yes, I applied** and the job moves to In progress.
 7. **Follow up.** When an email has had no reply for six days (the number is in `config.yaml`), the job appears under **Follow-ups**
-   and the bell shows a number. Click **Send all follow-ups**.
+   and the menu shows a number beside it. Click **Send all follow-ups**.
 
 The **Next steps** panel at the bottom of the page always shows which of these is waiting, with a
 button for it.
@@ -128,7 +130,7 @@ Each screen shows its jobs in the same table.
 | See more | Use the page buttons under the table. Eight jobs show per page. |
 | Clear filters | If nothing matches, click **Clear the filters**. |
 
-The **Score** is out of 100. Green is 85 or more, blue is 75 to 84, amber is 60 to 74.
+The **Score** is out of 100. The bar under it turns blue at 85 or more.
 
 ## A job, opened
 
@@ -183,7 +185,7 @@ Anything slow (searching, drafting, looking for addresses, writing a cover lette
 post) runs as a task.
 
 - Only one task runs at a time. Starting a second one shows a message asking you to wait.
-- The strip under the cards shows the latest line of progress. **Show output** opens the full
+- The strip under the numbers shows the latest line of progress. **Show output** opens the full
   report on the Activity screen.
 - **Stop** ends the task. Everything it had already saved is kept.
 - When it finishes, a message appears at the bottom right and the lists refresh by themselves.

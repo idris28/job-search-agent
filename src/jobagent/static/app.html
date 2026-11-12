@@ -20,7 +20,7 @@
 --r-s:6px;--r-m:8px;--r-l:12px;--r-xl:16px;
 --ease:cubic-bezier(.22,1,.36,1);
 --sans:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"Geist Mono",ui-monospace,Menlo,monospace;
---blue:#8aa6ff;--cyan:#5fc4d8;--violet:#a99bf5;--green:#4cc38a;--slate:#5b6274}
+--aside:#363c4b}
 :root[data-theme=light]{color-scheme:light;
 --s0:#eceff4;--s1:#f5f7fa;--s2:#fff;--s3:#eceff4;
 --t1:#111827;--t2:#4b5565;--t3:#6b7487;
@@ -29,7 +29,7 @@
 --ok:#15803d;--warn:#a15c07;--bad:#dc2626;
 --main-bg:#111827;--main-ink:#fff;
 --shadow:0 8px 24px rgba(0,0,0,.08);
---blue:#2f55d4;--cyan:#0e8ba3;--violet:#6d5bd0;--green:#15803d;--slate:#9aa3b2}
+--aside:#c3c9d4}
 
 /* base */
 *{box-sizing:border-box}
@@ -129,7 +129,7 @@ kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 
 .cicon{display:none}
 
 /* status */
-.c-green{--c:var(--ok)}.c-amber{--c:var(--warn)}.c-red{--c:var(--bad)}.c-blue{--c:var(--accent)}.c-violet,.c-cyan,.c-slate{--c:var(--t3)}
+.c-green{--c:var(--ok)}.c-amber{--c:var(--warn)}.c-red{--c:var(--bad)}.c-blue{--c:var(--accent)}.c-violet,.c-cyan,.c-slate{--c:var(--t3)}.c-paper{--c:var(--t1)}.c-aside{--c:var(--aside)}
 .tag{display:inline-flex;align-items:center;gap:8px;max-width:100%;font-size:13px;color:var(--t2);white-space:nowrap}
 .tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c,var(--t3));flex:none}
 .tag .ic{display:none}
@@ -139,16 +139,16 @@ kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* stage cards and the running task */
-.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
-.stat{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;padding:16px 20px;text-align:left;overflow:hidden;color:var(--t1);transition:background .14s var(--ease),border-color .14s var(--ease)}
-.stat:hover{background:var(--s3)}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;border:1px solid var(--line);border-radius:var(--r-l);background:var(--line) padding-box;overflow:hidden}
+.stat{position:relative;display:grid;align-content:start;gap:4px;min-width:0;padding:16px 20px;border:0;background:var(--s2);text-align:left;overflow:hidden;color:var(--t1);transition:background .14s var(--ease)}
+.stat:hover,.stat.on{background:var(--s3)}
+.stat:focus-visible{outline-offset:-2px}
+.stat span{order:-1;font-size:13px;color:var(--t2);white-space:nowrap}
+.stat.on span{color:var(--t1)}
 .stat b{font:500 28px/32px var(--mono);font-variant-numeric:tabular-nums}
-.stat span{font-size:13px;color:var(--t2);white-space:nowrap}
-.stat small{flex-basis:100%;min-width:0;margin-top:4px;font-size:12px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat small{min-width:0;font-size:12px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stat small .up{font-style:normal;font-family:var(--mono);color:var(--ok)}
-.stat.on{border-color:var(--line-2);background:var(--s3)}
 .stat.alert b{color:var(--warn)}
-.stat.hot{border-color:var(--accent)}
 .stat.hot::after,.task.running::after{content:"";position:absolute;bottom:0;left:0;width:32%;height:2px;background:var(--accent);transform:translateX(-100%);animation:sweep 1.8s var(--ease) infinite}
 @keyframes sweep{to{transform:translateX(320%)}}
 .task{display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px;overflow:hidden}
@@ -194,8 +194,7 @@ textarea.field.short{min-height:88px}
 .scroll-x{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
 table.jobs{table-layout:fixed}
-table.jobs th:nth-child(2){width:22%}table.jobs th:nth-child(3){width:80px}table.jobs th:nth-child(4){width:96px}table.jobs th:nth-child(5){width:168px}
-table.jobs .av{display:none}
+table.jobs th:nth-child(2){width:22%}table.jobs th:nth-child(3){width:80px}table.jobs th:nth-child(4){width:96px}table.jobs th:nth-child(5){width:168px}table.jobs.sent th:nth-child(5){width:208px}
 table.jobs td{overflow:hidden}
 th{height:36px;padding:0 20px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);text-align:left;font-size:12px;font-weight:400;color:var(--t3);white-space:nowrap;user-select:none}
 th[data-sort]{cursor:pointer}
@@ -212,15 +211,16 @@ tr.row{cursor:pointer;transition:background .14s var(--ease)}
 tr.row:hover{background:var(--s3)}
 tr.row[aria-selected=true]{background:var(--accent-soft);box-shadow:inset 2px 0 0 var(--accent)}
 tr.row:focus-visible{outline-offset:-2px}
-.jobc{display:flex;align-items:center;gap:12px;min-width:0}
 .jt{display:grid;min-width:0}
 .jt b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .jt small{font-size:13px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .loc{white-space:nowrap;text-overflow:ellipsis;color:var(--t2)}
-.loc .fl,.gl>span{display:none}
 td.nw{font:400 13px var(--mono);color:var(--t2)}
-.av{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--s3);border:1px solid var(--line);font:400 12px var(--mono);color:var(--t2);flex:none}
-.av.lg{display:none}
+.stc{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.pm{display:block;width:54px;height:36px;flex:none;color:var(--accent);transform:rotate(-6deg)}
+.pm circle,.pm path{fill:none;stroke:currentColor;stroke-width:1}
+.pm text{fill:currentColor;font:400 12px var(--mono);text-anchor:middle}
+.pm text:first-of-type{font-weight:500}
 .sc{display:inline-grid;gap:4px;min-width:40px}
 .sc b{font:500 14px var(--mono);font-variant-numeric:tabular-nums}
 .bar{display:block;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
@@ -240,28 +240,27 @@ td.nw{font:400 13px var(--mono);color:var(--t2)}
 
 /* panels beside and below the table */
 .panel{padding:0}
-.donut{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:16px 20px}
-.ringbox{position:relative;width:148px;height:148px;flex:none}
-.ringbox svg{display:block;width:100%;height:100%;transform:rotate(-90deg)}
-.ringbox circle{fill:none;stroke-width:14}
-.ringbox .track{stroke:var(--line)}
-.ringbox .seg{transition:stroke-dasharray .5s var(--ease)}
-.ringbox .mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
-.ringbox .mid b{font:500 28px/32px var(--mono)}
-.ringbox .mid span{font-size:12px;color:var(--t3)}
-.legend{flex:1 1 148px;min-width:0;display:grid;gap:8px;font-size:13px}
-.legend div{display:grid;grid-template-columns:8px 1fr auto;gap:8px;align-items:center}
-.legend i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+.tray{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 16px}
+.tray i{width:4px;height:20px;border-radius:1px;background:var(--c)}
+.tray i[data-job]{cursor:pointer;transition:opacity .14s var(--ease)}
+.tray:hover i[data-job]{opacity:.4}
+.tray i[data-job]:hover{opacity:1}
+.tray.deal i{animation:deal .32s var(--ease) both;animation-delay:calc(var(--i)*4ms)}
+@keyframes deal{from{opacity:0;transform:translateY(4px)}}
+.legend{display:grid;gap:8px;font-size:13px}
+.legend div{display:grid;grid-template-columns:4px minmax(0,1fr) auto 40px;gap:8px;align-items:center}
+.legend i{width:4px;height:12px;border-radius:1px;background:var(--c)}
 .legend span{color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .legend b{font:400 13px var(--mono)}
+.legend small{font:400 12px var(--mono);color:var(--t3);text-align:right}
+.legend+.faint{margin:12px 0 0;font-size:12px}
 .tlist{display:grid}
-.tm{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:4px 12px;align-items:center;width:100%;padding:8px;margin:0 -8px;border:0;border-radius:var(--r-m);background:none;text-align:left;color:var(--t1)}
+.tm{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;width:100%;padding:8px;margin:0 -8px;border:0;border-radius:var(--r-m);background:none;text-align:left;color:var(--t1)}
 .tm:hover{background:var(--s3)}
-.tm .av{grid-row:1/3}
 .tm .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tm .n small{margin-left:8px;font-size:12px;color:var(--t3)}
 .tm .v{font:400 13px var(--mono);color:var(--t2)}
-.tm .bar{grid-column:2/4;height:2px}
+.tm .bar{grid-column:1/3;height:2px}
 #geo{display:flex;flex-direction:column}
 .geo{flex:1;display:grid;align-content:space-evenly}
 .gr{display:grid;grid-template-columns:minmax(0,136px) minmax(0,1fr);gap:16px;align-items:end;padding:8px 0}
@@ -387,7 +386,9 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
   .task .line{order:5;flex-basis:100%}
   table.jobs th:nth-child(2),table.jobs td:nth-child(2),table.jobs th:nth-child(4),table.jobs td:nth-child(4){display:none}
   table.jobs th:nth-child(3){width:64px}
-  table.jobs th:nth-child(5){width:144px}
+  table.jobs th:nth-child(5){width:144px}table.jobs.sent th:nth-child(5){width:176px}
+  .pm{width:36px}
+  .pm path{display:none}
   td,th{padding-left:12px;padding-right:12px}
   .ttl,.tsearch,.tfoot{padding-left:12px;padding-right:12px}
   .drawer{width:100vw;padding:16px 16px 32px;border-left:0;border-radius:0}
@@ -506,12 +507,12 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 
     <div class="content">
       <div class="stats" id="stats">
-        <button class="card stat" data-n="found" data-view="matches"><b>0</b><span>Found</span><small></small></button>
-        <button class="card stat" data-n="scored" data-view="matches" data-on="matches"><b>0</b><span>Scored</span><small></small></button>
-        <button class="card stat" data-n="shortlisted" data-view="shortlist" data-on="shortlist"><b>0</b><span>Shortlisted</span><small></small></button>
-        <button class="card stat" data-n="emailed" data-view="progress"><b>0</b><span>Emailed</span><small></small></button>
-        <button class="card stat" data-n="applied" data-view="progress" data-on="progress"><b>0</b><span>Applied</span><small></small></button>
-        <button class="card stat" data-n="due" data-view="followups" data-on="followups"><b>0</b><span>To follow up</span><small></small></button>
+        <button class="stat" data-n="found" data-view="matches"><b>0</b><span>Found</span><small></small></button>
+        <button class="stat" data-n="scored" data-view="matches" data-on="matches"><b>0</b><span>Scored</span><small></small></button>
+        <button class="stat" data-n="shortlisted" data-view="shortlist" data-on="shortlist"><b>0</b><span>Shortlisted</span><small></small></button>
+        <button class="stat" data-n="emailed" data-view="progress"><b>0</b><span>Emailed</span><small></small></button>
+        <button class="stat" data-n="applied" data-view="progress" data-on="progress"><b>0</b><span>Applied</span><small></small></button>
+        <button class="stat" data-n="due" data-view="followups" data-on="followups"><b>0</b><span>To follow up</span><small></small></button>
       </div>
       <div class="card task" id="live" hidden aria-live="polite"></div>
 
@@ -591,7 +592,7 @@ const ACTIVE = ["applied", "interviewing", "offer"], ASIDE = ["skipped", "reject
 const calm = matchMedia("(prefers-reduced-motion:reduce)").matches;
 const S = { state: null, inited: false, view: "shortlist", sel: null, detail: null, matches: null, q: "", page: 0,
             f: { country: "", score: 0, posted: 0, extra: "" }, sort: { key: "", dir: 1 }, lsig: "", wsig: "",
-            lines: [], taskId: 0, wasRunning: false, polling: false, dirty: false, counted: false, dismissed: 0, settings: null, insights: null };
+            lines: [], taskId: 0, wasRunning: false, polling: false, dirty: false, dealt: false, dismissed: 0, settings: null, insights: null };
 const VIEWS = {
   shortlist: ["Shortlist", "Jobs that scored well against your resume. Draft the email, find the address, send."],
   progress: ["In progress", "Applications under way, and the jobs you set aside."],
@@ -603,11 +604,10 @@ const VIEWS = {
 };
 const HOT = { run: ["found", "scored"], daily: ["found", "scored", "shortlisted"], add: ["found", "scored", "shortlisted"], contacts: ["shortlisted"], email: ["shortlisted"],
               send: ["shortlisted", "emailed", "applied"], "gmail-drafts": ["shortlisted"], "cover-letter": ["shortlisted"], followups: ["due"] };
-const STATUS_C = { shortlisted: "c-blue", applied: "c-cyan", interviewing: "c-violet", offer: "c-green", rejected: "c-red", skipped: "c-slate", withdrawn: "c-slate" };
-const COUNTRIES = [["UAE", "🇦🇪", /\b(uae|united arab emirates|dubai|abu dhabi|sharjah|ajman)\b/], ["Saudi Arabia", "🇸🇦", /\b(saudi|ksa|riyadh|jeddah|dammam|khobar)\b/], ["Qatar", "🇶🇦", /\b(qatar|doha)\b/],
-  ["India", "🇮🇳", /\b(india|ahmedabad|gandhinagar|bengaluru|bangalore|pune|hyderabad|mumbai|chennai|gurugram|gurgaon|noida|delhi|kolkata)\b/]];
-const countryOf = loc => { const l = (loc || "").toLowerCase(); return (COUNTRIES.find(c => c[2].test(l)) || ["Remote"])[0]; };
-const flagOf = c => (COUNTRIES.find(x => x[0] === c) || [0, "🌐"])[1];
+const STATUS_C = { shortlisted: "c-paper", applied: "c-blue", interviewing: "c-amber", offer: "c-green", rejected: "c-red", skipped: "c-aside", withdrawn: "c-aside" };
+const COUNTRIES = [["UAE", /\b(uae|united arab emirates|dubai|abu dhabi|sharjah|ajman)\b/], ["Saudi Arabia", /\b(saudi|ksa|riyadh|jeddah|dammam|khobar)\b/], ["Qatar", /\b(qatar|doha)\b/],
+  ["India", /\b(india|ahmedabad|gandhinagar|bengaluru|bangalore|pune|hyderabad|mumbai|chennai|gurugram|gurgaon|noida|delhi|kolkata)\b/]];
+const countryOf = loc => { const l = (loc || "").toLowerCase(); return (COUNTRIES.find(c => c[1].test(l)) || ["Remote"])[0]; };
 const countryName = c => c === "Remote" ? "Remote or other" : c;
 
 async function api(path, body, raw) {
@@ -649,8 +649,10 @@ const statusOf = r => r.status || r.application_status || "";
 const http = u => /^https?:\/\//.test(u || "");
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const initials = n => (n || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
-const hue = s => { let h = 0; for (const ch of String(s || "")) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
-const avatar = (name, cls = "") => `<span class="av ${cls}" style="--h:${hue(name)}" aria-hidden="true">${esc(((name || "").trim()[0] || "?").toUpperCase())}</span>`;
+function postmark(iso) {  // the one signature: a dated mark on anything that has been sent
+  const d = new Date(iso), mon = d.toLocaleDateString(undefined, { month: "short" });
+  return `<svg class="pm" viewBox="0 0 54 36" role="img" aria-label="Emailed ${d.getDate()} ${esc(mon)}"><title>Emailed ${esc(when(iso))}</title><circle cx="18" cy="18" r="17.5"/><text x="18" y="16">${d.getDate()}</text><text x="18" y="28">${esc(mon)}</text><path d="M38 11q2-2 4 0t4 0 4 0 4 0M38 18q2-2 4 0t4 0 4 0 4 0M38 25q2-2 4 0t4 0 4 0 4 0"/></svg>`;
+}
 const grow = root => requestAnimationFrame(() => requestAnimationFrame(() => $$("u[data-w]", root).forEach(u => u.style.width = u.dataset.w + "%")));
 
 /* ---------- state and chrome ---------- */
@@ -679,22 +681,16 @@ function renderChrome() {
   const hot = t && t.running ? HOT[t.action] || [] : [];
   $$("#stats .stat").forEach(b => {
     const k = b.dataset.n, n = c[k] ?? 0, num = $("b", b), sm = $("small", b);
-    if (!S.counted && n > 0 && !calm) countUp(num, n); else num.textContent = n.toLocaleString();
+    num.textContent = n.toLocaleString();
     if (sm.dataset.k !== subs[k]) { sm.innerHTML = subs[k]; sm.dataset.k = subs[k]; }
     b.classList.toggle("on", b.dataset.on === S.view);
     b.classList.toggle("hot", hot.includes(k));
     b.classList.toggle("alert", k === "due" && n > 0);
   });
-  if (st.counts) S.counted = true;
   const sel = $("#onesite");
   if (sel.options.length !== st.sources.length + 1)
     sel.innerHTML = '<option value="">Choose a site</option>' + st.sources.map(s => `<option>${esc(s)}</option>`).join("");
   renderLive();
-}
-function countUp(el, n) {
-  const t0 = performance.now(), dur = 800;
-  const step = t => { const k = Math.min(1, (t - t0) / dur); el.textContent = Math.round(n * (1 - Math.pow(1 - k, 3))).toLocaleString(); if (k < 1) requestAnimationFrame(step); };
-  requestAnimationFrame(step);
 }
 function renderLive() {
   const t = S.state.task, live = $("#live");
@@ -815,7 +811,7 @@ function tagFor(r, due) {
     return `<span class="tag c-violet">${ic("edit")}No draft yet</span>`;
   }
   if (!s) return `<span class="tag c-slate">Not listed yet</span>`;
-  return `<span class="tag ${STATUS_C[s] || "c-slate"}">${esc(s)}</span>${r.outreach_sent_at ? ` <span class="faint nw">emailed ${esc(day(r.outreach_sent_at))}</span>` : ""}`;
+  return `<span class="tag ${STATUS_C[s] || "c-slate"}">${esc(s)}</span>`;
 }
 function emptyText(total) {
   if (!S.state.setup.profile) return "<h3>Nothing here yet</h3>Finish the setup step at the top first.";
@@ -837,6 +833,7 @@ function renderList(force) {
   $("#ttitle").textContent = { shortlist: "Shortlisted jobs", progress: S.f.extra === "aside" ? "Set aside" : "Applications", followups: "Follow-ups due", matches: "All scored jobs" }[S.view];
   $("#tcount").textContent = rows.length === all.length ? all.length : `${rows.length} of ${all.length}`;
   $("#thlast").textContent = S.view === "shortlist" ? "Next step" : "Status";
+  $("table.jobs").classList.toggle("sent", S.view !== "shortlist");
   let tb = "", hint = "";
   if (S.view === "shortlist") {
     tb = `<button class="btn sm" data-act="draft-all">${ic("edit")}Draft emails (${nd})</button><button class="btn sm" data-act="contacts-all">${ic("at")}Look for addresses (${na})</button>
@@ -854,11 +851,11 @@ function renderList(force) {
   const body = $("#tbody");
   if (S.view === "matches" && S.matches === null) body.innerHTML = `<tr><td colspan="5"><div class="empty">Loading matches</div></td></tr>`;
   else body.innerHTML = slice.map(r => `<tr class="row" data-job="${r.job_id}" tabindex="0" aria-selected="${r.job_id === S.sel}">
-      <td><div class="jobc">${avatar(r.company)}<span class="jt"><b>${esc(r.title)}</b><small>${esc(r.company)}</small></span></div></td>
-      <td class="loc"><span class="fl" aria-hidden="true">${flagOf(countryOf(r.location))}</span>${esc(r.location || "Not given")}</td>
+      <td><span class="jt"><b>${esc(r.title)}</b><small>${esc(r.company)}</small></span></td>
+      <td class="loc">${esc(r.location || "Not given")}</td>
       <td>${r.score == null ? '<span class="faint">none</span>' : `<span class="sc ${tier(r.score)}"><b>${r.score}</b><span class="bar"><u style="width:${r.score}%"></u></span></span>`}</td>
       <td class="nw">${esc(ago(r.posted_at)) || '<span class="faint">not shown</span>'}</td>
-      <td>${tagFor(r, due)}</td></tr>`).join("") || `<tr><td colspan="5"><div class="empty">${emptyText(all.length)}</div></td></tr>`;
+      <td><div class="stc">${tagFor(r, due)}${r.outreach_sent_at ? postmark(r.outreach_sent_at) : ""}</div></td></tr>`).join("") || `<tr><td colspan="5"><div class="empty">${emptyText(all.length)}</div></td></tr>`;
   const from = rows.length ? S.page * PAGE + 1 : 0, to = Math.min(rows.length, (S.page + 1) * PAGE);
   let pg = "";
   if (pages > 1) {
@@ -900,28 +897,32 @@ function renderWidgets() {
   const sig = JSON.stringify([jobs.map(r => [r.job_id, r.status, r.score, r.has_draft, !!r.contact_email, !!r.outreach_sent_at]), st.countries, st.due, t && [t.id, t.running], !!st.setup.profile]);
   if (sig === S.wsig) return;
   S.wsig = sig;
-  const cnt = k => jobs.filter(r => [].concat(k).includes(r.status)).length;
-  const groups = [["Shortlisted", cnt("shortlisted"), "--blue"], ["Applied", cnt("applied"), "--cyan"], ["Interviewing", cnt("interviewing"), "--violet"], ["Offer", cnt("offer"), "--green"], ["Set aside", cnt(ASIDE), "--slate"]];
-  const total = jobs.length, R = 74, C = 2 * Math.PI * R;
-  let acc = 0;
-  const segs = groups.filter(g => g[1]).map(g => { const len = g[1] / total * C, h = `<circle class="seg" cx="85" cy="85" r="${R}" style="stroke:var(${g[2]})" stroke-dasharray="0 ${C}" stroke-dashoffset="${-acc}" data-len="${Math.max(1, len - 4)}"/>`; acc += len; return h; }).join("");
-  $("#donut").innerHTML = `<div class="chead"><span class="cicon">${ic("pie")}</span><h2>Pipeline</h2><span class="grow"></span><button class="link" data-view="progress">In progress${ic("right")}</button></div>
-    <div class="panel donut"><div class="ringbox"><svg viewBox="0 0 170 170" width="170" height="170" role="img" aria-label="${total} tracked jobs by stage"><circle class="track" cx="85" cy="85" r="${R}"/>${segs}</svg><div class="mid"><b>${total}</b><span>tracked</span></div></div>
-    <div class="legend">${groups.map(g => `<div><i style="--c:var(${g[2]})"></i><span>${g[0]}</span><b>${total ? Math.round(100 * g[1] / total) : 0}%</b></div>`).join("")}</div></div>`;
-  requestAnimationFrame(() => requestAnimationFrame(() => $$("#donut .seg").forEach(s => s.style.strokeDasharray = `${s.dataset.len} ${C}`)));
+  const STAGES = [["Shortlisted", ["shortlisted"], "c-paper"], ["Applied", ["applied"], "c-blue"], ["Interviewing", ["interviewing"], "c-amber"], ["Offer", ["offer"], "c-green"], ["Set aside", ASIDE, "c-aside"]];
+  const groups = STAGES.map(([name, keys, c]) => ({ name, c, rows: jobs.filter(r => keys.includes(r.status)).sort((x, y) => (y.score ?? -1) - (x.score ?? -1)) }));
+  const total = jobs.length, unit = Math.max(1, Math.ceil(total / 180));
+  let i = 0;
+  const marks = groups.map(g => unit === 1
+    ? g.rows.map(r => `<i class="${g.c}" style="--i:${i++}" data-job="${r.job_id}" title="${esc(r.title)}, ${esc(r.company)}"></i>`).join("")
+    : Array.from({ length: g.rows.length ? Math.max(1, Math.round(g.rows.length / unit)) : 0 }, () => `<i class="${g.c}" style="--i:${i++}"></i>`).join("")).join("");
+  const said = groups.filter(g => g.rows.length).map(g => `${g.rows.length} ${g.name.toLowerCase()}`).join(", ");
+  $("#donut").innerHTML = `<div class="chead"><h2>Pipeline</h2><span class="count">${total.toLocaleString()} tracked</span><span class="grow"></span><button class="link" data-view="progress">In progress${ic("right")}</button></div>
+    ${total ? `<div class="tray${S.dealt ? "" : " deal"}" role="img" aria-label="Tracked jobs by stage: ${esc(said)}">${marks}</div>
+    <div class="legend">${groups.map(g => `<div><i class="${g.c}"></i><span>${g.name}</span><b>${g.rows.length.toLocaleString()}</b><small>${Math.round(100 * g.rows.length / total)}%</small></div>`).join("")}</div>
+    ${unit > 1 ? `<p class="faint">One mark is ${unit} jobs</p>` : ""}` : '<div class="empty">No tracked jobs yet.</div>'}`;
+  if (total) S.dealt = true;
 
   const top = jobs.filter(r => r.score != null).sort((a, b) => b.score - a.score).slice(0, 9);
-  $("#tops").innerHTML = `<div class="chead"><span class="cicon">${ic("award")}</span><h2>Top matches</h2><span class="grow"></span><button class="link" data-view="matches">View all${ic("right")}</button></div>
-    <div class="panel tlist">${top.map(r => `<button class="tm" data-job="${r.job_id}">${avatar(r.company)}<span class="n">${esc(r.title)}<small>${esc(r.company)}</small></span><span class="v">${r.score}</span><span class="bar"><u data-w="${r.score}"></u></span></button>`).join("") || '<div class="empty">No scored jobs on your lists yet.</div>'}</div>`;
+  $("#tops").innerHTML = `<div class="chead"><h2>Top matches</h2><span class="grow"></span><button class="link" data-view="matches">View all${ic("right")}</button></div>
+    <div class="panel tlist">${top.map(r => `<button class="tm" data-job="${r.job_id}"><span class="n">${esc(r.title)}<small>${esc(r.company)}</small></span><span class="v">${r.score}</span><span class="bar"><u data-w="${r.score}"></u></span></button>`).join("") || '<div class="empty">No scored jobs on your lists yet.</div>'}</div>`;
 
   const tally = {};
   jobs.forEach(r => { const c = countryOf(r.location); tally[c] = (tally[c] || 0) + 1; });
   const cs = (st.countries && st.countries.length ? st.countries : Object.entries(tally).map(([country, n]) => ({ country, jobs: n })).sort((a, b) => b.jobs - a.jobs)).slice(0, 5);
   const ct = cs.reduce((a, c) => a + c.jobs, 0), cmax = Math.max(1, ...cs.map(c => c.jobs));
   $("#geo").innerHTML = `<div class="chead"><h2>Where the jobs are</h2><span class="grow"></span><span class="faint nw">${plural(ct, "scored job", "scored jobs")}</span></div>
-    <div class="geo">${cs.map(c => { const w = Math.max(3, 92 * c.jobs / cmax); return `<div class="gr"><span class="gl"><span aria-hidden="true">${flagOf(c.country)}</span> ${esc(countryName(c.country))}</span><span class="gb" style="--w:${w}%"><b>${Math.round(100 * c.jobs / ct)}%</b><span class="bar"><u data-w="${w}"></u></span></span></div>`; }).join("") || '<div class="empty">Nothing scored yet.</div>'}</div>`;
+    <div class="geo">${cs.map(c => { const w = Math.max(3, 92 * c.jobs / cmax); return `<div class="gr"><span class="gl">${esc(countryName(c.country))}</span><span class="gb" style="--w:${w}%"><b>${Math.round(100 * c.jobs / ct)}%</b><span class="bar"><u data-w="${w}"></u></span></span></div>`; }).join("") || '<div class="empty">Nothing scored yet.</div>'}</div>`;
 
-  $("#next").innerHTML = `<div class="chead"><span class="cicon">${ic("compass")}</span><h2>Next steps</h2></div>
+  $("#next").innerHTML = `<div class="chead"><h2>Next steps</h2></div>
     <div class="steps">${nextSteps().map(([c, i, title, sub, label, go]) => `<div class="step"><span class="dot c-${c}">${ic(i)}</span><div><b>${esc(title)}</b><small>${esc(sub)}</small></div><button class="btn sm" data-go="${go}">${label}</button></div>`).join("")}</div>`;
   grow($("#work"));
 }
@@ -994,7 +995,7 @@ function renderDetail(keep) {
       <button class="round sm" data-act="prev" aria-label="Previous job"${at > 0 ? "" : " disabled"}>${ic("left")}</button>
       <button class="round sm" data-act="next" aria-label="Next job"${at >= 0 && at < rows.length - 1 ? "" : " disabled"}>${ic("right")}</button>
     </div>
-    <div class="d-head">${avatar(j.company, "lg")}
+    <div class="d-head">
       <div><h2>${esc(j.title)}</h2><div class="meta"><span>${ic("briefcase")}${esc(j.company)}</span><span>${ic("pin")}${esc(j.location || "Location not given")}</span>${j.posted_at ? `<span>${ic("clock")}posted ${esc(ago(j.posted_at))}</span>` : ""}${pay ? `<span>${ic("trending")}${esc(pay)}</span>` : ""}</div></div>
       ${sc == null ? "" : `<div class="dial ${tier(sc)}" role="img" aria-label="Match score ${sc} out of 100"><svg viewBox="0 0 88 88" width="88" height="88"><circle class="track" cx="44" cy="44" r="38"/><circle class="val" cx="44" cy="44" r="38" stroke-dasharray="${C}" style="stroke-dashoffset:${keep ? C * (1 - sc / 100) : C}" data-to="${C * (1 - sc / 100)}"/></svg><b>${sc}</b></div>`}
     </div>

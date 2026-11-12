@@ -10,8 +10,9 @@ then the screens.
   them against his resume, and writes and tracks the letters to recruiters.
 - **Character.** Steady, exact, quietly hopeful.
 - **World.** A writing desk at night and the post: letters written, sent, and replies awaited.
-- **Moments.** (1) The pipeline drawn as one careful chart from found to applied, each colour a
-  stage. (2) The email draft shown as a real sheet of paper in the job panel.
+- **Moments.** (1) The pipeline drawn as a tray of letters seen from the edge: one mark for each
+  tracked job, each colour a stage. (2) The email draft shown as a real sheet of paper in the job
+  panel.
 - **Signature.** A small postmark with the date on anything that has been sent. Nowhere else.
 
 The rule behind all of it: the chrome is quiet, and colour and craft go into the two moments.
@@ -39,6 +40,9 @@ One neutral ramp, ink, tinted slightly toward night. Surfaces never read as blue
   place a running task is working. Never on a surface.
 - **The main button is not the accent.** It is the primary text colour as a fill (off-white on dark,
   near-black on light) with the page colour as its text.
+- **Stage colours,** used in the pipeline tray and on status labels: shortlisted = primary text
+  (paper on the desk), applied = accent (in the post), interviewing = amber (needs you), offer =
+  green, set aside = `--aside` (`#363c4b` / `#c3c9d4`), rejected = red.
 - **Status colours carry meaning only:** green `#4cc38a` / `#15803d` = ready or done, amber
   `#d9a23b` / `#a15c07` = needs you, red `#f0686c` / `#dc2626` = a problem. Everything else is
   neutral. No violet, no cyan, no colour chosen for variety.
@@ -99,6 +103,9 @@ task is really running. Nothing lifts or scales on hover.
 | Keycap | 20px square, raised surface, hairline, mono 12. |
 | Dialog and job panel | `--s2`, hairline, radius 16, soft neutral shadow. The backdrop is a plain dim, no blur. |
 | Message | `--s3`, hairline, radius 8, one line. Short messages end without a full stop. |
+| Stage numbers | One strip of six, hairlines between, no card per number. Label at 13, figure at 28 mono, one line of muted text. The current screen's number sits on the raised surface. |
+| Pipeline tray | Marks 4 wide and 20 tall, 4 apart, wrapping in rows. One mark is one job, in stage order, and opens that job. Over 180 jobs, one mark stands for several and a line under the legend says how many. The legend gives count and share. |
+| Postmark | A 36px ring holding the day over the month, with three wavy lines to its right, in accent ink, turned 6 degrees. It sits at the end of a row for a job that has been emailed. On a phone the wavy lines go. |
 
 ## Layout
 
@@ -108,14 +115,13 @@ are.
 
 ## Still to do, screen by screen
 
-The global layer above is in place. These follow the same rules:
+The global layer and the four list screens (Shortlist, In progress, Follow-ups, All matches) are
+done. These follow the same rules:
 
-1. **Shortlist, In progress, Follow-ups, All matches.** Stage cards become plain numbers. The
-   pipeline ring becomes the first moment, one drawn chart. Company letter-circles and emoji flags
-   go. Sent rows get the postmark.
-2. **Job panel.** The email draft becomes the second moment, a sheet of paper.
-3. **Insights, Activity, Settings.** One chart leads on Insights; lists stay lists.
-4. **Email preview page** written by `report.py`.
+1. **Job panel.** The email draft becomes the second moment, a sheet of paper. The sent line gets
+   the postmark.
+2. **Insights, Activity, Settings.** One chart leads on Insights; lists stay lists.
+3. **Email preview page** written by `report.py`.
 
 ## Checklist for any change
 
