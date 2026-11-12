@@ -5,7 +5,7 @@ from jobagent.browser import PageContent
 from jobagent.config import OutreachPrefs, Settings
 from jobagent.models import (JobPosting, RecruiterEmail, RecruiterReview, TemplateEmail,
                              unfilled_placeholders)
-from jobagent.report import email_body_html
+from jobagent.report import email_body_html, emails_html
 
 from conftest import TEST_DB
 
@@ -80,7 +80,7 @@ def test_email_shortlisted(conn, monkeypatch, tmp_path):
 
     md = (tmp_path / "emails.md").read_text()
     html = (tmp_path / "emails.html").read_text()
-    assert html.count('class="card"') == 2 and "Looks closed" in html and "Still open" in html
+    assert html.count('class="job"') == 2 and "Looks closed" in html and "Still open" in html
     assert "&lt;on Bayt&gt;" in html  # model text is escaped
     assert "Copy email" in html and "Follow-up" in html and "example.ae/tips" in html
     assert "Recruiter review 9/10" in html
@@ -174,6 +174,21 @@ def test_template_email_preview_keeps_paragraphs_and_line_breaks():
     bold = filled("**Key skills:** Java, Spring Boot\n\n**Relevant experience:**\n- Shipped 15+ APIs")
     assert email_body_html(bold) == ("<p><b>Key skills:</b> Java, Spring Boot</p>"
                                      "<p><b>Relevant experience:</b><br>- Shipped 15+ APIs</p>")
+
+
+def test_preview_page_leaves_out_an_unnamed_company_and_a_link_that_is_not_a_web_address():
+    e = filled("Dear Hiring Team,\n\nI build Java services.")
+
+    def item(**job):
+        return {"job": {"id": 7, "title": "Java Developer", "location": "Doha, Qatar", **job}, "email": e,
+                "status": "open", "research": None, "review": None, "unfilled": []}
+    named = emails_html([item(company="Careem", url="https://example.com/j/7")], title="Emails")
+    assert "<h2>Java Developer</h2>" in named and "<span>Careem</span>" in named
+    assert '<a href="https://example.com/j/7">View posting</a>' in named
+    # "Copy email" copies this element's own HTML, so it must hold the email and nothing else.
+    assert '<div class="mail" id="b0"><p>Dear Hiring Team,</p><p>I build Java services.</p></div>' in named
+    unnamed = emails_html([item(company="Unknown", url="general:hr@x.example")], title="Emails")
+    assert "Unknown" not in unnamed and "View posting" not in unnamed and "general:" not in unnamed
 
 
 def test_unfilled_placeholders():

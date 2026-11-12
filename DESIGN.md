@@ -111,6 +111,7 @@ task is really running. Nothing lifts or scales on hover.
 | Run table (Activity) | Rows 48 tall. Numbers are mono, right-aligned, in the `3,209` format. The result is a status label. |
 | Setup rows (Settings) | An 8px status dot, the name, then one line of text: green = ready, red = missing, dim = optional and not set. |
 | Templates (Settings) | One card for the three templates with a switch at its top right. Template text is mono 13. |
+| Email preview page | A single column 720 wide. Each job is a heading, a status label and one muted line, then its email on a sheet, then the copy buttons. The follow-up and the notes stay quiet raised blocks. It follows the computer's light or dark setting. No postmark: these are drafts. |
 | Job panel heading | Title at 20, company under it, then location, posting age and pay as muted text with no icons. The score is a figure at 28 mono with the thin bar from the table. |
 
 ## Layout
@@ -119,11 +120,11 @@ The app fills the window: sidebar on the left, content fluid up to 1480 wide. On
 the sidebar slides in from a menu button. The sections of each screen and their order stay as they
 are.
 
-## Still to do, screen by screen
+## Still to do
 
-The global layer and every screen of the website are done. This follows the same rules:
-
-1. **Email preview page** written by `report.py`.
+Nothing. The global layer, every screen of the website, and the email preview page written by
+`report.py` are done. The preview page carries its own copy of the tokens, because it is a
+separate file that opens without the website: change them in both places.
 
 ## Checklist for any change
 
