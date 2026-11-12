@@ -82,3 +82,19 @@ def test_minimum_salary_drops_only_jobs_that_state_less():
     assert reject_reason(job("5 years | 18-28 Lacs PA"), prefs) is None       # range reaches 20
     assert reject_reason(job("5 years | Not Disclosed"), prefs) is None       # unknown pay is kept
     assert reject_reason(job("x" * 1300 + " similar job 5-8 Lacs PA"), prefs) is None  # other jobs' pay ignored
+
+
+def test_remote_jobs_tied_to_another_country_are_dropped():
+    from jobagent.config import SearchPrefs
+    prefs = SearchPrefs(locations=["India", "Dubai", "UAE"], remote_ok=True)
+
+    def why(location, remote_type="unknown"):
+        return reject_reason(JobPosting(title="Engineer", company="X", url="u", location=location,
+                                        remote_type=remote_type), prefs)
+
+    for place in ("Remote", "Remote - India", "Remote (EMEA)", "Remote, APAC", "Remote, anywhere", "Hybrid - Dubai"):
+        assert why(place) is None, place
+    assert why(None, "remote") is None and why("Bengaluru, India", "remote") is None
+    for place in ("Remote - Brazil", "Remote, United States", "Remote (Canada)"):
+        assert "not in preferred locations" in why(place), place
+    assert "not in preferred locations" in why("San Francisco", "remote")  # flagged remote, but based elsewhere

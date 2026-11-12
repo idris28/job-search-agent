@@ -256,6 +256,32 @@ page. Treat an estimate as a rough guide, not a fact; it never lowers a score on
 Everything else (`jobs`, `show`, `apply`, `status`, `applications`, `digest`, `runs`, `migrate`)
 is free.
 
+## Which companies are searched
+
+The agent searches only the sites listed under `sources:` in `config.yaml`. There are four kinds:
+
+| Kind | What it covers | Needs a browser |
+|---|---|---|
+| `generic` | Job boards such as Naukri and Naukrigulf, by their search page | Yes |
+| `greenhouse`, `lever`, `ashby` | Companies whose careers page runs on one of those three systems (Okta, Razorpay, CRED and others) | No |
+| `amazon`, `microsoft` | Those two companies' own job feeds | No |
+| `workday` | Any company whose careers address ends in `myworkdayjobs.com` (Salesforce, eBay, HP, Target and many others) | No |
+
+To add a Workday company, open its careers page, copy the address, and add a line like the
+existing ones:
+
+```
+  - {kind: workday, name: Adobe, urls: ["https://adobe.wd5.myworkdayjobs.com/external_experienced"]}
+```
+
+Amazon, Microsoft and Workday list thousands of jobs, so the agent asks them only for your
+countries and reads the full description only for jobs that pass your title and age rules.
+Google and Meta have no open job feed, so they are not covered.
+
+Big companies name the same job differently. If a company's jobs are missing, check that
+`include_title_keywords` has the words it uses: Amazon says "Software Development Engineer",
+Adobe says "Computer Scientist", Salesforce says "Member of Technical Staff".
+
 ## Limits to know about
 
 - When a posting does not name the company ("Unknown", "Confidential Company"), emails and cover

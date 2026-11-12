@@ -76,6 +76,9 @@ Everything lives in `config.yaml` (see `config.example.yaml`):
 | `greenhouse` | `board: <token>` from `boards.greenhouse.io/<token>` | public job board API |
 | `lever` | `board: <company>` from `jobs.lever.co/<company>` | public postings API |
 | `ashby` | `board: <name>` from `jobs.ashbyhq.com/<name>` | public posting API |
+| `amazon` | nothing | amazon.jobs search feed, asked for your countries only |
+| `microsoft` | nothing | Microsoft careers search, then one request per job that fits your rules |
+| `workday` | `urls: [<careers address>]`, e.g. `https://adobe.wd5.myworkdayjobs.com/external_experienced` | the careers system shared by Salesforce, eBay, HP and many others; filtered to your countries |
 | `generic` | `urls: [...]` any careers or search results page | Browserbase renders it, the LLM picks out the postings (URLs must exist on the page), then up to `max_detail_pages` detail pages are visited |
 
 ## Daily use
@@ -222,7 +225,7 @@ TEST_DATABASE_URL=postgresql://... pytest         # plus database and pipeline t
 src/jobagent/
   cli.py        jsa commands
   pipeline.py   one run: collect → store → filter → score → shortlist
-  sources/      greenhouse, lever, ashby (ats.py) and generic (Browserbase + LLM)
+  sources/      greenhouse, lever, ashby (ats.py); amazon, microsoft, workday (big.py); generic (Browserbase + LLM)
   mailer.py     Gmail: save drafts or send
   actions.py    add a pasted job, send a stored draft (shared by the CLI and the web page)
   contacts.py   check a found application address against the company's own page

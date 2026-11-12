@@ -177,7 +177,7 @@ Not in the diagram:
 |---|---|---|
 | `jsa` commands | `src/jobagent/cli.py` | Reads the command and drives everything else |
 | Pipeline | `src/jobagent/pipeline.py` | One run: collect, store, filter, score, shortlist, within the spending limits |
-| Sources | `src/jobagent/sources/` | Job boards through the browser (`generic.py`); company career feeds over plain HTTP (`ats.py`) |
+| Sources | `src/jobagent/sources/` | Job boards through the browser (`generic.py`); company career feeds over plain HTTP (`ats.py` for Greenhouse, Lever and Ashby; `big.py` for Amazon, Microsoft and Workday) |
 | Browser | `src/jobagent/browser.py` | A Browserbase session, or local Chromium, behind one `fetch()`; counts the minutes used |
 | AI model | `src/jobagent/llm.py`, `llm_anthropic.py` | Every AI task: read pages, score jobs, read pasted posts, draft emails, with the resume and template sent as a cached prefix |
 | Rule filters | `src/jobagent/filters.py` | Free checks before any AI call |

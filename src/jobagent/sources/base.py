@@ -22,6 +22,7 @@ class SourceContext:
     browser: Browser
     llm: object  # jobagent.llm.LLM
     log: Callable[[str], None] = lambda msg: None
+    prefs: object = None  # config.SearchPrefs: lets a reader skip jobs the rule filters would drop
 
 
 class Source(ABC):

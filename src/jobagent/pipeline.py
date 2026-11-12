@@ -72,7 +72,8 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Clie
             source_id = db.upsert_source(conn, scfg.kind, scfg.name, scfg.identity_url,
                                          scfg.model_dump(mode="json"))
             ctx = SourceContext(http=http, browser=browser, llm=llm,
-                                log=lambda m, sid=source_id: event(m, source_id=sid))
+                                log=lambda m, sid=source_id: event(m, source_id=sid),
+                                prefs=cfg.search)
             try:
                 postings = build_source(scfg).fetch(ctx)
             except Exception as e:  # noqa: BLE001 - one bad source must not kill the run

@@ -17,6 +17,22 @@ def _contains_any(text: str, words: list[str]) -> str | None:
     return None
 
 
+# A remote job is open to the candidate when its location is just "Remote", names one of their
+# places, or names a region wide enough to include them.
+_ANYWHERE = ("remote", "anywhere", "worldwide", "global", "international", "emea", "apac", "asia",
+             "middle east", "mena", "gcc", "work from home", "wfh", "hybrid", "home based", "home-based")
+
+
+def _remote_elsewhere(location: str | None, places: list[str]) -> bool:
+    """True for a remote job tied to a place that is not the candidate's ("Remote - Brazil")."""
+    rest = (location or "").lower()
+    if not rest.strip() or _contains_any(rest, places):
+        return False
+    for word in _ANYWHERE:
+        rest = rest.replace(word, " ")
+    return bool(re.search(r"[a-z]{2,}", rest))
+
+
 _LPA_RE = re.compile(r"(?:(\d+(?:\.\d+)?)\s*(?:-|to)\s*)?(\d+(?:\.\d+)?)\s*(?:lacs?|lakhs?|lpa)\b", re.I)
 
 
@@ -46,7 +62,7 @@ def reject_reason(job: JobPosting, prefs: SearchPrefs, now: datetime | None = No
         loc_ok = bool(job.location) and _contains_any(job.location, prefs.locations) is not None
         remote_ok = prefs.remote_ok and (
             job.remote_type == "remote" or "remote" in (job.location or "").lower()
-        )
+        ) and not _remote_elsewhere(job.location, prefs.locations)
         # Unknown location: let the LLM judge rather than silently dropping it.
         if job.location and not (loc_ok or remote_ok):
             return f"location '{job.location}' not in preferred locations"

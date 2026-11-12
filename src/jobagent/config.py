@@ -179,7 +179,7 @@ class MatchingPrefs(BaseModel):
 
 
 class SourceConfig(BaseModel):
-    kind: Literal["greenhouse", "lever", "ashby", "generic"]
+    kind: Literal["greenhouse", "lever", "ashby", "amazon", "microsoft", "workday", "generic"]
     name: str
     # greenhouse/ashby: board token; lever: company slug; generic: list page URL(s)
     board: str | None = None
@@ -191,7 +191,7 @@ class SourceConfig(BaseModel):
 
     @property
     def identity_url(self) -> str:
-        return self.board or ",".join(self.urls)
+        return self.board or ",".join(self.urls) or self.kind
 
 
 class AgentConfig(BaseModel):

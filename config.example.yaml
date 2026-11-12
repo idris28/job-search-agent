@@ -40,7 +40,9 @@ search:
     - Doha
   remote_ok: true
   include_title_keywords: [java, backend, back-end, platform, software engineer, software developer,
-                           full stack, full-stack, spring, api, sde]
+                           full stack, full-stack, spring, api, sde, sde2, sde3,
+                           software development, software dev, member of technical staff,
+                           computer scientist]
   exclude_title_keywords: [intern, internship, manager, director, sales, recruiter, android, ios,
                            data scientist, qa, test engineer, marketing]
   # Company names containing these words are dropped before scoring.
@@ -191,6 +193,51 @@ sources:
   - {kind: ashby, name: Plane, board: plane}
   - {kind: lever, name: Hevo Data, board: hevodata}
   - {kind: lever, name: FamPay, board: fampay}
+  # Large employers with their own careers systems (no browser needed). Each asks only for jobs in
+  # your countries; `extra: {query: "..."}` changes the search words (default "software engineer").
+  - {kind: amazon, name: Amazon}
+  - {kind: microsoft, name: Microsoft, max_detail_pages: 25}
+  # Workday is the careers system many large companies share: give the careers page address.
+  - {kind: workday, name: Salesforce, urls: ["https://salesforce.wd12.myworkdayjobs.com/External_Career_Site"], max_detail_pages: 15}
+  - {kind: workday, name: eBay, urls: ["https://ebay.wd5.myworkdayjobs.com/apply"], max_detail_pages: 15}
+  - {kind: workday, name: HP, urls: ["https://hp.wd5.myworkdayjobs.com/ExternalCareerSite"], max_detail_pages: 15}
+  - {kind: workday, name: Target, urls: ["https://target.wd5.myworkdayjobs.com/targetcareers"], max_detail_pages: 15}
+  - {kind: workday, name: Nasdaq, urls: ["https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site"], max_detail_pages: 15}
+  - {kind: workday, name: Thomson Reuters, urls: ["https://thomsonreuters.wd5.myworkdayjobs.com/External_Career_Site"], max_detail_pages: 15}
+  - {kind: workday, name: Unisys, urls: ["https://unisys.wd5.myworkdayjobs.com/External"], max_detail_pages: 15}
+  - {kind: workday, name: Sabre, urls: ["https://sabre.wd1.myworkdayjobs.com/SabreJobs"], max_detail_pages: 15}
+  - {kind: workday, name: Equinix, urls: ["https://equinix.wd1.myworkdayjobs.com/External"], max_detail_pages: 15}
+  - {kind: workday, name: CrowdStrike, urls: ["https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers"], max_detail_pages: 15}
+  - {kind: workday, name: Trimble, urls: ["https://trimble.wd1.myworkdayjobs.com/TrimbleCareers"], max_detail_pages: 15}
+  - {kind: workday, name: "AT&T", urls: ["https://att.wd1.myworkdayjobs.com/ATTGeneral"], max_detail_pages: 15}
+  - {kind: workday, name: athenahealth, urls: ["https://athenahealth.wd1.myworkdayjobs.com/External"], max_detail_pages: 15}
+  - {kind: workday, name: Cadence, urls: ["https://cadence.wd1.myworkdayjobs.com/External_Careers"], max_detail_pages: 15}
+  - {kind: workday, name: Analog Devices, urls: ["https://analogdevices.wd1.myworkdayjobs.com/External"], max_detail_pages: 15}
+  - {kind: workday, name: Marvell, urls: ["https://marvell.wd1.myworkdayjobs.com/MarvellCareers"], max_detail_pages: 15}
+  - {kind: workday, name: KLA, urls: ["https://kla.wd1.myworkdayjobs.com/Search"], max_detail_pages: 15}
+  - {kind: workday, name: Boeing, urls: ["https://boeing.wd1.myworkdayjobs.com/EXTERNAL_CAREERS"], max_detail_pages: 15}
+  - {kind: workday, name: 3M, urls: ["https://3m.wd1.myworkdayjobs.com/Search"], max_detail_pages: 15}
+  # More company career pages, each checked to have jobs in India or the Gulf.
+  - {kind: greenhouse, name: Elastic, board: elastic}
+  - {kind: greenhouse, name: Razorpay, board: razorpaysoftwareprivatelimited}
+  - {kind: greenhouse, name: Glean, board: gleanwork}
+  - {kind: greenhouse, name: Fivetran, board: fivetran}
+  - {kind: greenhouse, name: Harness, board: harnessinc}
+  - {kind: greenhouse, name: Coinbase, board: coinbase}
+  - {kind: greenhouse, name: Airbnb, board: airbnb}
+  - {kind: greenhouse, name: Scale AI, board: scaleai}
+  - {kind: greenhouse, name: Datadog, board: datadog}
+  - {kind: greenhouse, name: Groww, board: groww}
+  - {kind: greenhouse, name: SingleStore, board: singlestore}
+  - {kind: greenhouse, name: Careem, board: careem}
+  - {kind: greenhouse, name: Starburst, board: starburst}
+  - {kind: lever, name: Zeta, board: zeta}
+  - {kind: lever, name: Mindtickle, board: mindtickle}
+  - {kind: lever, name: CRED, board: cred}
+  - {kind: ashby, name: Snowflake, board: snowflake}
+  - {kind: ashby, name: ElevenLabs, board: elevenlabs}
+  - {kind: ashby, name: ClickHouse, board: clickhouse}
+  - {kind: ashby, name: Lean Technologies, board: leantech}
   # - kind: lever
   #   name: Example Lever Company
   #   board: examplecompany
