@@ -365,6 +365,7 @@ details>summary{margin:8px 0;cursor:pointer;font-size:13px;color:var(--t2)}
 .page td{height:48px}
 .page .num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
 .page td.num{font-size:13px}
+.runs th:last-child{min-width:320px}
 .sdot{justify-self:center;width:8px;height:8px;border-radius:50%;background:var(--c,var(--t3))}
 textarea.tplbox{min-height:320px;font:400 13px/20px var(--mono)}
 pre.out{margin:0;max-height:440px;overflow:auto;padding:16px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--s0);color:var(--t2);font:400 12px/20px var(--mono);white-space:pre-wrap}
@@ -1192,7 +1193,7 @@ function renderPage() {
 function runsTable(runs) {
   if (!runs.length) return `<p class="sub" style="margin:0">None yet</p>`;
   const num = v => `<td class="num">${v == null ? "" : Number(v).toLocaleString()}</td>`;
-  return `<div class="scroll-x"><table><tr><th>Search</th><th>Started</th><th>Result</th><th class="num">Found</th><th class="num">New</th><th class="num">Scored</th><th class="num">AI tokens</th><th>Problem</th></tr>
+  return `<div class="scroll-x"><table class="runs"><tr><th>Search</th><th>Started</th><th>Result</th><th class="num">Found</th><th class="num">New</th><th class="num">Scored</th><th class="num">AI tokens</th><th>Problem</th></tr>
     ${runs.map(r => `<tr><td class="nw">#${r.id}</td><td class="nw">${esc(when(r.started_at))}</td><td><span class="tag ${r.status === "succeeded" ? "c-green" : r.status === "running" ? "c-blue" : r.status === "failed" ? "c-red" : "c-amber"}">${esc(RUN_L[r.status] || cap(r.status))}</span></td>${num(r.jobs_found)}${num(r.jobs_new)}${num(r.jobs_scored)}${num(r.tokens_used || 0)}<td>${esc((r.error || "").slice(0, 120))}</td></tr>`).join("")}</table></div>`;
 }
 
