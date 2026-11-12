@@ -16,7 +16,13 @@ from .report import MATCH_COLS, age, digest_markdown, table
 
 def _conn(settings: Settings):
     settings.require("database_url")
-    return db.connect(settings.database_url)
+    conn = db.connect(settings.database_url)
+    pending = db.pending_migrations(conn)
+    if pending:
+        conn.close()
+        raise ConfigError(f"The database is {len(pending)} update(s) behind ({', '.join(pending)}). "
+                          "Run: jsa migrate")
+    return conn
 
 
 def _llm(settings: Settings):
@@ -40,7 +46,8 @@ def _matches_table(rows) -> str:
 
 
 def cmd_migrate(args, settings):
-    with _conn(settings) as conn:
+    settings.require("database_url")
+    with db.connect(settings.database_url) as conn:
         applied = db.migrate(conn)
     print("Applied: " + ", ".join(applied) if applied else "Database is up to date.")
 
@@ -80,7 +87,11 @@ def cmd_run(args, settings):
             print(f"\nRun #{s.run_id}: {s.status}. {s.found} jobs found, {s.new} new, "
                   f"{s.filtered} filtered out, {s.scored} scored "
                   f"({s.skipped_unchanged} unchanged, not re-scored), "
-                  f"{s.shortlisted} shortlisted, {s.tokens} tokens.")
+                  f"{s.shortlisted} shortlisted, {s.tokens} tokens"
+                  + (f" ({llm.cache_read_tokens:,} read from cache)" if getattr(llm, "cache_read_tokens", 0) else "")
+                  + (f", {browser.minutes_used:.1f} browser minutes" if browser.minutes_used else "") + ".")
+            if s.stopped:
+                print(f"  ! Stopped early: {s.stopped}. Raise the limit in config.yaml or run again later.")
             for name, err in s.source_errors.items():
                 print(f"  ! {name}: {err}")
             rows = db.top_matches(conn, _profile_id(conn), run_id=s.run_id,
@@ -268,51 +279,207 @@ def cmd_email(args, settings):
           f"and {stem.with_suffix('.md')}")
 
 
+def _send_slots(conn, pid, outreach) -> int:
+    """How many more emails may be sent today under outreach.max_sends_per_day."""
+    if not outreach.max_sends_per_day:
+        return 10**9
+    return max(0, outreach.max_sends_per_day - db.sends_today(conn, pid))
+
+
 def _deliver(items, settings, outreach, *, send: bool) -> None:
     """Send each ready draft from the user's Gmail, or save it to Gmail Drafts.
 
     A draft is ready only with a recipient on the posting, an open posting and no unfilled
-    placeholder. A job already marked applied is never emailed again.
+    placeholder. A job already marked applied is never emailed again. Sending stops at the
+    daily cap and pauses between emails.
     """
-    from .mailer import build_message, save_drafts, send_messages
+    import time
+
+    from . import mailer
     from .report import email_body_html
 
     settings.require("gmail_address", "gmail_app_password")
-    cv = Path(outreach.resume_path).expanduser() if outreach.resume_path else None
-    if cv is not None and not cv.is_file():
-        raise ConfigError(f"outreach.resume_path not found: {cv}")
-    if send and cv is None:
-        raise ConfigError("Set outreach.resume_path before sending: the emails say the CV is attached.")
+
+    def cv_for(it) -> tuple[str, Path | None]:
+        name, path = outreach.resume_for(f"{it['job']['title']} {it['job']['description'] or ''}")
+        cv = Path(path).expanduser() if path else None
+        if cv is not None and not cv.is_file():
+            raise ConfigError(f"CV file not found for '{name}': {cv}")
+        return name, cv
+
     with _conn(settings) as conn:
         pid = _profile_id(conn)
         done = {a["job_id"] for a in db.list_applications(conn, pid) if a["status"] != "shortlisted"}
+        slots = _send_slots(conn, pid, outreach) if send else 10**9
         ready = []
         for it in items:
             jid = it["job"]["id"]
             why = ("no email address on the posting" if not it["email"].contact_email else
                    "posting looks closed" if it["status"] == "closed" else
                    "unfilled placeholders" if it["unfilled"] else
-                   "already applied or set aside" if send and jid in done else None)
+                   "already applied or set aside" if send and jid in done else
+                   f"daily limit of {outreach.max_sends_per_day} emails reached" if len(ready) >= slots
+                   else None)
             if why:
                 print(f"  not emailed: #{jid} ({why}): {it['job']['url']}")
             else:
                 ready.append(it)
-        messages = [build_message(settings.gmail_address, it["email"].contact_email,
-                                  it["email"].subject, it["email"].plain_text(),
-                                  email_body_html(it["email"]), cv) for it in ready]
-        if not messages:
+        built = []
+        for it in ready:
+            name, cv = cv_for(it)
+            if send and cv is None:
+                raise ConfigError("Set outreach.resume_path before sending: the emails say the CV is attached.")
+            built.append((it, name, cv, mailer.build_message(
+                settings.gmail_address, it["email"].contact_email, it["email"].subject,
+                it["email"].plain_text(), email_body_html(it["email"]), cv)))
+        if not built:
             print("No emails to " + ("send." if send else "save as drafts."))
         elif send:
-            for it, msg in zip(ready, messages):
-                send_messages(settings.gmail_address, settings.gmail_app_password, [msg])
+            for n, (it, name, cv, msg) in enumerate(built):
+                if n and outreach.send_pause_seconds:
+                    time.sleep(outreach.send_pause_seconds)
+                mailer.send_messages(settings.gmail_address, settings.gmail_app_password, [msg])
                 db.set_application_status(conn, pid, it["job"]["id"], "applied",
                                           f"emailed {it['email'].contact_email}")
-                print(f"  sent: #{it['job']['id']} to {it['email'].contact_email}")
-            print(f"Sent {len(messages)} email(s) from {settings.gmail_address}.")
+                db.mark_outreach_sent(conn, pid, it["job"]["id"])
+                print(f"  sent: #{it['job']['id']} to {it['email'].contact_email} (CV: {cv.name})")
+            print(f"Sent {len(built)} email(s) from {settings.gmail_address}. A follow-up is due in "
+                  f"{outreach.follow_up_days} days: jsa followups")
         else:
-            n = save_drafts(settings.gmail_address, settings.gmail_app_password, messages)
-            print(f"Saved {n} draft(s) to Gmail Drafts" + ("" if cv else " (no CV attached: set "
-                  "outreach.resume_path)") + ". Review and send them from Gmail.")
+            n = mailer.save_drafts(settings.gmail_address, settings.gmail_app_password,
+                                   [m for _, _, _, m in built])
+            for it, name, cv, _ in built:
+                print(f"  draft: #{it['job']['id']} (CV: {cv.name if cv else 'none, set outreach.resume_path'})")
+            print(f"Saved {n} draft(s) to Gmail Drafts. Review and send them from Gmail.")
+
+
+def cmd_followups(args, settings):
+    """List emailed jobs whose follow-up is due, and send those follow-ups with --send."""
+    import time
+
+    from . import mailer
+    from .report import _paragraphs_html
+
+    cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+    outreach = cfg.outreach
+    with _conn(settings) as conn:
+        pid = _profile_id(conn)
+        due = db.followups_due(conn, pid, outreach.follow_up_days)
+        if not due:
+            print(f"No follow-ups due. One becomes due {outreach.follow_up_days} days after an email is sent.")
+            return
+        print(f"{len(due)} follow-up(s) due today:")
+        for r in due:
+            print(f"  #{r['job_id']} {r['title']} at {r['company']}: emailed "
+                  f"{r['outreach_sent_at']:%d %b} to {r['contact_email']}")
+        if not args.send:
+            print("Send them with: jsa followups --send   (or reply in Gmail and run: jsa followups --done <id>)")
+            for jid in args.done or []:
+                db.mark_follow_up_sent(conn, pid, jid)
+                print(f"  #{jid} marked as followed up")
+            return
+        settings.require("gmail_address", "gmail_app_password")
+        slots = _send_slots(conn, pid, outreach)
+        for n, r in enumerate(due):
+            if n >= slots:
+                print(f"  not sent: #{r['job_id']} (daily limit of {outreach.max_sends_per_day} emails reached)")
+                continue
+            if not (r["contact_email"] and r["follow_up_body"]):
+                print(f"  not sent: #{r['job_id']} (no address or follow-up text stored)")
+                continue
+            if n and outreach.send_pause_seconds:
+                time.sleep(outreach.send_pause_seconds)
+            msg = mailer.build_message(settings.gmail_address, r["contact_email"], r["follow_up_subject"],
+                                       r["follow_up_body"], _paragraphs_html(r["follow_up_body"]))
+            mailer.send_messages(settings.gmail_address, settings.gmail_app_password, [msg])
+            db.mark_follow_up_sent(conn, pid, r["job_id"])
+            print(f"  sent follow-up: #{r['job_id']} to {r['contact_email']}")
+
+
+def cmd_daily(args, settings):
+    """The morning job: search, write the digest, list follow-ups, and email yourself one summary."""
+    from datetime import date
+
+    from . import mailer
+    from .browser import LazyBrowser
+    from .pipeline import run_agent
+    from .report import _paragraphs_html
+
+    cfg = AgentConfig.load(args.config)
+    llm, browser = _llm(settings), LazyBrowser(settings)
+    try:
+        with _conn(settings) as conn:
+            s = run_agent(conn, cfg, llm, browser)
+            pid = _profile_id(conn)
+            new = db.top_matches(conn, pid, run_id=s.run_id, min_score=cfg.matching.shortlist_min_score, limit=20)
+            due = db.followups_due(conn, pid, cfg.outreach.follow_up_days)
+            waiting = len(db.shortlisted_job_ids(conn, pid, 1000))
+    finally:
+        browser.close()
+    Path("digests").mkdir(exist_ok=True)
+    digest = Path(f"digests/{date.today():%Y-%m-%d}.md")
+    digest.write_text(digest_markdown(new, title=f"New matches {date.today():%d %b %Y}"), encoding="utf-8")
+    lines = [f"Run #{s.run_id}: {s.status}. {s.found} jobs found, {s.new} new, {s.scored} scored, "
+             f"{s.shortlisted} shortlisted, {s.tokens:,} tokens."]
+    lines += [f"Stopped early: {s.stopped}."] if s.stopped else []
+    lines += [f"Site problem: {name}: {str(err).splitlines()[0]}" for name, err in s.source_errors.items()]
+    lines += ["", f"New strong matches ({len(new)}):"] + [
+        f"- #{r['job_id']} {r['title']} at {r['company']} ({r['location'] or 'n/a'}), score {r['score']}"
+        for r in new] or ["- none today"]
+    lines += ["", f"Follow-ups due ({len(due)}):"] + [
+        f"- #{r['job_id']} {r['title']} at {r['company']}" for r in due]
+    lines += ["", f"{waiting} job(s) on your shortlist. Next: jsa email --gmail-drafts, jsa apply, jsa followups."]
+    summary = "\n".join(lines)
+    print(summary + f"\nDigest: {digest}")
+    if settings.gmail_address and settings.gmail_app_password:
+        msg = mailer.build_message(settings.gmail_address, settings.gmail_address,
+                                   f"Job search: {len(new)} new matches, {len(due)} follow-ups due",
+                                   summary, _paragraphs_html(summary))
+        mailer.send_messages(settings.gmail_address, settings.gmail_app_password, [msg])
+        print(f"Summary emailed to {settings.gmail_address}.")
+
+
+def cmd_schedule(args, settings):
+    """Install, remove or show the launchd job that runs `jsa daily` each morning."""
+    from . import scheduler
+
+    if args.action == "status":
+        print(scheduler.status())
+    elif args.action == "remove":
+        print("Daily schedule removed." if scheduler.remove() else "No daily schedule was installed.")
+    else:
+        hour, _, minute = args.time.partition(":")
+        if not (hour.isdigit() and minute.isdigit() and int(hour) < 24 and int(minute) < 60):
+            raise ConfigError("--time must be HH:MM, for example 08:00")
+        for needed in (".env", "config.yaml"):
+            if not Path(needed).exists():
+                raise ConfigError(f"Run this from the project folder: {needed} was not found here.")
+        path = scheduler.install(Path.cwd(), int(hour), int(minute))
+        print(f"Installed. `jsa daily` will run every day at {int(hour):02d}:{int(minute):02d} "
+              f"while this Mac is awake.\n{path}\nRemove it with: jsa schedule remove")
+
+
+def cmd_web(args, settings):
+    """Open the local web page for the shortlist."""
+    import webbrowser
+
+    from . import web
+
+    cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+    with _conn(settings):
+        pass  # fail early with a clear message if the database is missing or behind
+    server = web.serve(settings.database_url, args.port)
+    server.handler.follow_up_days = cfg.outreach.follow_up_days
+    url = f"http://127.0.0.1:{args.port}/"
+    print(f"Job search page: {url}   (Ctrl-C to stop)")
+    if not args.no_open:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nStopped.")
+    finally:
+        server.server_close()
 
 
 def cmd_apply(args, settings, *, open_url=None, ask=input):
@@ -480,6 +647,27 @@ def build_parser() -> argparse.ArgumentParser:
     ad.add_argument("--url", help="link to the post, if you have one")
     ad.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
     ad.set_defaults(fn=cmd_add)
+
+    fu = sub.add_parser("followups", help="list follow-ups that are due; --send sends them")
+    fu.add_argument("--send", action="store_true", help="send the due follow-ups from your Gmail")
+    fu.add_argument("--done", type=int, nargs="*", help="mark these jobs as followed up by hand")
+    fu.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    fu.set_defaults(fn=cmd_followups)
+
+    dl = sub.add_parser("daily", help="search, write the digest and email yourself one summary")
+    dl.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    dl.set_defaults(fn=cmd_daily)
+
+    sc = sub.add_parser("schedule", help="run `jsa daily` every morning (macOS)")
+    sc.add_argument("action", choices=["install", "remove", "status"])
+    sc.add_argument("--time", default="08:00", help="when to run each day, HH:MM (default 08:00)")
+    sc.set_defaults(fn=cmd_schedule)
+
+    wb = sub.add_parser("web", help="open a local web page of your shortlist, drafts and status")
+    wb.add_argument("--port", type=int, default=8765)
+    wb.add_argument("--no-open", action="store_true", help="do not open the browser")
+    wb.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    wb.set_defaults(fn=cmd_web)
 
     d = sub.add_parser("digest", help="write a Markdown digest of top matches")
     d.add_argument("--min-score", type=int, default=75)

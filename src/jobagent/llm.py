@@ -162,6 +162,7 @@ class BaseLLM:
 
     def __init__(self) -> None:
         self._tokens = 0
+        self.cache_read_tokens = 0  # input tokens served from the provider's prompt cache
         self._lock = threading.Lock()
 
     @property
@@ -172,7 +173,10 @@ class BaseLLM:
         with self._lock:
             self._tokens += n or 0
 
-    def _parse(self, instructions: str, user_input: str, schema: type[T]) -> T:
+    def _parse(self, instructions: str, user_input: str, schema: type[T], *,
+               cached_prefix: str = "") -> T:
+        """cached_prefix is the part of the message that repeats across calls (the resume, the
+        template); it is sent first so the provider can cache it."""
         raise NotImplementedError
 
     def _text(self, instructions: str, user_input: str) -> str:
@@ -194,9 +198,10 @@ class BaseLLM:
                 "excluded_industries": prefs.exclude_industries,
                 "notes": prefs.notes,
             }, indent=1)
-            + "\n\nJOB POSTING:\n" + job.as_prompt_text()
+            + "\n\n"
         )
-        result = self._parse(MATCH_INSTRUCTIONS, payload, MatchResult)
+        result = self._parse(MATCH_INSTRUCTIONS, "JOB POSTING:\n" + job.as_prompt_text(),
+                             MatchResult, cached_prefix=payload)
         result.score = max(0, min(100, result.score))
         return result
 
@@ -234,18 +239,19 @@ class BaseLLM:
             prefs = {k: v for k, v in outreach.model_dump().items()
                      if k in ("notice_period", "resume_filename", "email",
                               "linkedin_url") and v}
-        payload = (f"RESUME:\n{resume_text}\n\nSTORED JOB POSTING:\n{job_text}"
-                   f"\n\nLIVE POSTING PAGE TEXT:\n{live}")
+        resume = f"RESUME:\n{resume_text}\n\n"  # the same for every job, so sent as a cached prefix
+        payload = f"STORED JOB POSTING:\n{job_text}\n\nLIVE POSTING PAGE TEXT:\n{live}"
         prefs_text = f"\n\nOUTREACH PREFERENCES:\n{json.dumps(prefs) if prefs else '(none)'}"
         if template:
-            return self._parse(TEMPLATE_EMAIL_INSTRUCTIONS,
-                               f"TEMPLATE:\n{template}\n\n{payload}{prefs_text}", TemplateEmail)
+            return self._parse(TEMPLATE_EMAIL_INSTRUCTIONS, payload + prefs_text, TemplateEmail,
+                               cached_prefix=f"TEMPLATE:\n{template}\n\n{resume}")
         payload += f"\n\nRECRUITER GUIDANCE:\n{guidance_notes or '(none)'}{prefs_text}"
         if previous is not None and review is not None:
             payload += (f"\n\nPREVIOUS DRAFT:\nSubject: {previous.subject}\n\n"
                         f"{previous.plain_text()}\n\nRECRUITER REVIEW:\n"
                         f"{review.model_dump_json(indent=1)}")
-        return self._parse(RECRUITER_EMAIL_INSTRUCTIONS, payload, RecruiterEmail)
+        return self._parse(RECRUITER_EMAIL_INSTRUCTIONS, payload, RecruiterEmail,
+                           cached_prefix=resume)
 
     def cover_letter(self, resume_text: str, job_text: str) -> str:
         return self._text(COVER_LETTER_INSTRUCTIONS, f"RESUME:\n{resume_text}\n\nJOB:\n{job_text}")
@@ -266,11 +272,12 @@ class OpenAILLM(BaseLLM):
         if usage is not None:
             self._add_tokens(getattr(usage, "total_tokens", 0))
 
-    def _parse(self, instructions: str, user_input: str, schema: type[T]) -> T:
+    def _parse(self, instructions: str, user_input: str, schema: type[T], *,
+               cached_prefix: str = "") -> T:
         resp = self.client.responses.parse(
             model=self.model,
             instructions=instructions,
-            input=user_input,
+            input=cached_prefix + user_input,  # OpenAI caches a repeated prefix on its own
             text_format=schema,
         )
         self._count(resp)

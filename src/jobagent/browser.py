@@ -6,6 +6,7 @@ Adapters only see `Browser.fetch(url) -> PageContent`, so they don't care which 
 from __future__ import annotations
 
 import logging
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Iterator, Protocol
@@ -116,11 +117,14 @@ class LazyBrowser:
         self._cm = None
         self._browser: Browser | None = None
         self.sessions_opened = 0
+        self._seconds = 0.0          # browser time in sessions already closed
+        self._opened_at: float | None = None
 
     def _open(self) -> Browser:
         cm = open_browser(self._settings)
         self._browser = cm.__enter__()
         self._cm = cm
+        self._opened_at = time.monotonic()
         self.sessions_opened += 1
         return self._browser
 
@@ -137,7 +141,16 @@ class LazyBrowser:
         self.close()
         return self._open().fetch(url, wait_ms=wait_ms)
 
+    @property
+    def minutes_used(self) -> float:
+        """Browser session time so far in this run, which is what Browserbase bills."""
+        live = time.monotonic() - self._opened_at if self._opened_at is not None else 0.0
+        return (self._seconds + live) / 60
+
     def close(self) -> None:
         cm, self._cm, self._browser = self._cm, None, None
+        if self._opened_at is not None:
+            self._seconds += time.monotonic() - self._opened_at
+            self._opened_at = None
         if cm is not None:
             cm.__exit__(None, None, None)

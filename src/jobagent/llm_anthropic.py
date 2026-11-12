@@ -20,14 +20,19 @@ class ClaudeLLM(BaseLLM):
         self.model = model
         self.effort = effort
 
-    def _common(self, instructions: str, user_input: str) -> dict:
+    def _common(self, instructions: str, user_input: str, cached_prefix: str = "") -> dict:
         extra = {"output_config": {"effort": self.effort}} if self.effort else {}
+        # Prompt caching: everything up to the marked block (the instructions, then the resume or
+        # template) is stored for a few minutes and re-read at a fraction of the price on the next
+        # job. A prefix shorter than the model's minimum is simply not cached.
+        content = ([{"type": "text", "text": cached_prefix, "cache_control": {"type": "ephemeral"}},
+                    {"type": "text", "text": user_input}] if cached_prefix else user_input)
         return dict(
             **extra,
             model=self.model,
             max_tokens=16000,
             system=instructions,
-            messages=[{"role": "user", "content": user_input}],
+            messages=[{"role": "user", "content": content}],
             betas=[_FALLBACK_BETA],
             fallbacks="default",
         )
@@ -35,7 +40,11 @@ class ClaudeLLM(BaseLLM):
     def _count(self, resp) -> None:
         u = getattr(resp, "usage", None)
         if u is not None:
-            self._add_tokens((u.input_tokens or 0) + (u.output_tokens or 0))
+            read = getattr(u, "cache_read_input_tokens", 0) or 0
+            written = getattr(u, "cache_creation_input_tokens", 0) or 0
+            self._add_tokens((u.input_tokens or 0) + (u.output_tokens or 0) + read + written)
+            with self._lock:
+                self.cache_read_tokens += read
 
     @staticmethod
     def _check(resp) -> None:
@@ -45,9 +54,10 @@ class ClaudeLLM(BaseLLM):
         if resp.stop_reason == "max_tokens":
             raise RuntimeError("Claude response hit max_tokens before finishing")
 
-    def _parse(self, instructions: str, user_input: str, schema: type[T]) -> T:
+    def _parse(self, instructions: str, user_input: str, schema: type[T], *,
+               cached_prefix: str = "") -> T:
         resp = self.client.beta.messages.parse(
-            **self._common(instructions, user_input),
+            **self._common(instructions, user_input, cached_prefix),
             output_format=schema,
         )
         self._count(resp)

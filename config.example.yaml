@@ -59,6 +59,8 @@ search:
 matching:
   shortlist_min_score: 75   # auto-shortlist jobs at or above this score
   max_jobs_to_score: 100    # cost cap per run
+  max_tokens_per_run: 600000        # stop a run after this many AI tokens (0 = no limit)
+  max_browser_minutes_per_run: 30   # stop collecting after this much Browserbase time (0 = no limit)
   concurrency: 4
 
 # Recruiter emails (`jsa email`)
@@ -68,6 +70,15 @@ outreach:
   email: ""                # contact email in the sign-off; the resume's when empty
   linkedin_url: ""         # shown in emails as a clickable "LinkedIn" link
   resume_path: ""          # CV file attached to sent emails and Gmail drafts, e.g. ~/Documents/My_CV.pdf
+  # Other CVs. The first one whose keyword appears in the job title or description is attached
+  # instead of resume_path. Leave path empty to keep a variant switched off.
+  resume_variants:
+    - name: Java + AI
+      path: ""             # e.g. ~/Documents/My_CV_Java_AI.pdf
+      keywords: [llm, genai, generative ai, machine learning, ai/ml, agentic, langchain, rag]
+  follow_up_days: 6        # a follow-up is due this many days after an email was sent
+  max_sends_per_day: 10    # `jsa email --send` stops at this many emails a day (0 = no limit)
+  send_pause_seconds: 20   # wait between sent emails
   research: true           # web-search what recruiters in each country look for (Claude only)
   max_searches: 4          # web searches per country (Anthropic bills web search per use)
   review: true             # review each draft as a recruiter would, then revise
@@ -117,16 +128,26 @@ sources:
     # To retry, paste the URL of a GulfTalent search from your own browser above.
     enabled: false
 
-  # --- Company boards (no browser needed). Add companies you like here. ---
-  # Find the token in the careers URL:
+  # --- Company boards (no browser needed, cannot be blocked) ---
+  # Each of these listed matching roles in India or the Gulf when checked on 12 Nov 2026.
+  # Delete the ones you would not work for, and add your own. Find the token in the careers URL:
   #   boards.greenhouse.io/<board>   jobs.lever.co/<board>   jobs.ashbyhq.com/<board>
-  # - kind: greenhouse
-  #   name: Example Company
-  #   board: examplecompany
+  - {kind: greenhouse, name: Okta, board: okta}
+  - {kind: greenhouse, name: Databricks, board: databricks}
+  - {kind: greenhouse, name: GitLab, board: gitlab}
+  - {kind: greenhouse, name: Zscaler, board: zscaler}
+  - {kind: greenhouse, name: Rubrik, board: rubrik}
+  - {kind: greenhouse, name: MongoDB, board: mongodb}
+  - {kind: greenhouse, name: Stripe, board: stripe}
+  - {kind: greenhouse, name: Druva, board: druva}
+  - {kind: greenhouse, name: Twilio, board: twilio}
+  - {kind: greenhouse, name: Tamara, board: tamara}
+  - {kind: ashby, name: Ziina, board: ziina}
+  - {kind: ashby, name: Sarvam AI, board: sarvam}
+  - {kind: ashby, name: Atlan, board: atlan}
+  - {kind: lever, name: Paytm, board: paytm}
+  - {kind: lever, name: Meesho, board: meesho}
   # - kind: lever
   #   name: Example Lever Company
   #   board: examplecompany
   #   extra: {api_base: "https://api.eu.lever.co"}   # for EU-hosted Lever boards
-  # - kind: ashby
-  #   name: Example Ashby Company
-  #   board: examplecompany

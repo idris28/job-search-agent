@@ -58,6 +58,31 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
 
+_COMPANY_SUFFIXES = {"pvt", "private", "ltd", "limited", "llc", "inc", "llp", "fze", "fzco", "fz",
+                     "co", "corp", "corporation", "plc", "wll", "india"}
+_TITLE_NOISE = {"job", "jobs", "opening", "openings", "urgent", "urgently", "hiring", "required",
+                "requirement", "wanted", "vacancy", "for", "in", "at", "the", "a", "an", "and",
+                "immediate", "joiner", "joiners", "position", "role"}
+_TITLE_ALIASES = {"sr": "senior", "jr": "junior", "dev": "developer", "engg": "engineer"}
+
+
+def company_key(name: str) -> str:
+    """A company name without its legal suffix: "Acme Pvt. Ltd." and "Acme" are the same."""
+    words = [w for w in _norm(name).split() if w not in _COMPANY_SUFFIXES]
+    return " ".join(words) or _norm(name)
+
+
+def title_key(title: str, location: str | None = None) -> str:
+    """A job title reduced to its meaningful words, in any order.
+
+    "Sr. Java Developer - Dubai" and "Senior Java Developer" give the same key; "Java Developer"
+    and "Java Developer II" do not, so different jobs are never merged.
+    """
+    place = set(_norm(location or "").split())
+    words = {_TITLE_ALIASES.get(w, w) for w in _norm(title).split()}
+    return " ".join(sorted(w for w in words if w not in _TITLE_NOISE and w not in place))
+
+
 # --- LLM structured outputs -------------------------------------------------
 
 

@@ -10,7 +10,8 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from .models import JobPosting, MatchResult
+from .filters import country_of
+from .models import JobPosting, MatchResult, company_key, title_key
 
 APPLICATION_STATUSES = (
     "shortlisted", "applied", "interviewing", "offer", "rejected", "withdrawn", "skipped",
@@ -43,7 +44,28 @@ def migrate(conn: psycopg.Connection) -> list[str]:
             conn.execute(f.read_text())
             conn.execute("INSERT INTO schema_migrations (name) VALUES (%s)", (f.name,))
         applied.append(f.name)
+    _backfill_match_keys(conn)
     return applied
+
+
+def pending_migrations(conn: psycopg.Connection) -> list[str]:
+    """Migration files not yet applied to this database."""
+    exists = conn.execute("SELECT to_regclass('schema_migrations') AS t").fetchone()["t"]
+    done = {r["name"] for r in conn.execute("SELECT name FROM schema_migrations")} if exists else set()
+    names = sorted(f.name for f in resources.files("jobagent.migrations").iterdir()
+                   if f.name.endswith(".sql"))
+    return [n for n in names if n not in done]
+
+
+def match_key(title: str, company: str, location: str | None) -> str:
+    """Identity of a job across job boards: company, meaningful title words, country."""
+    return f"{company_key(company)}|{title_key(title, location)}|{country_of(location).lower()}"
+
+
+def _backfill_match_keys(conn) -> None:
+    for r in conn.execute("SELECT id, title, company, location FROM jobs WHERE match_key IS NULL").fetchall():
+        conn.execute("UPDATE jobs SET match_key = %s WHERE id = %s",
+                     (match_key(r["title"], r["company"], r["location"]), r["id"]))
 
 
 # --- profiles ---------------------------------------------------------------
@@ -121,12 +143,26 @@ def list_runs(conn, limit: int = 20) -> list[dict]:
 
 
 def upsert_job(conn, job: JobPosting, source_id: int | None, run_id: int | None) -> tuple[int, bool]:
-    """Insert or refresh a job. Returns (job_id, is_new)."""
+    """Insert or refresh a job. Returns (job_id, is_new).
+
+    The same job listed on another board, with a slightly different title or company suffix,
+    refreshes the row already stored instead of creating a second one.
+    """
+    key = match_key(job.title, job.company, job.location)
+    twin = conn.execute(
+        "SELECT id FROM jobs WHERE match_key = %s AND fingerprint <> %s ORDER BY id LIMIT 1",
+        (key, job.fingerprint)).fetchone()
+    if twin:
+        conn.execute(
+            """UPDATE jobs SET last_seen_at = now(), is_active = TRUE,
+                   description = COALESCE(description, %s), posted_at = COALESCE(posted_at, %s)
+               WHERE id = %s""", (job.description, job.posted_at, twin["id"]))
+        return twin["id"], False
     row = conn.execute(
         """INSERT INTO jobs (source_id, external_id, fingerprint, url, title, company, location,
                              remote_type, employment_type, salary_text, description, posted_at,
-                             first_run_id, raw)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                             first_run_id, raw, match_key)
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
            ON CONFLICT (fingerprint) DO UPDATE SET
                url = EXCLUDED.url,
                description = COALESCE(EXCLUDED.description, jobs.description),
@@ -141,7 +177,7 @@ def upsert_job(conn, job: JobPosting, source_id: int | None, run_id: int | None)
             source_id, job.external_id, job.fingerprint, job.url, job.title, job.company,
             job.location, job.remote_type, job.employment_type, job.salary_text,
             job.description, job.posted_at, run_id,
-            Jsonb(json.loads(json.dumps(job.raw, default=str))) if job.raw else None,
+            Jsonb(json.loads(json.dumps(job.raw, default=str))) if job.raw else None, key,
         ),
     ).fetchone()
     return row["id"], row["inserted"]
@@ -306,3 +342,55 @@ def list_applications(conn, profile_id: int) -> list[dict]:
            WHERE a.profile_id = %s ORDER BY a.updated_at DESC""",
         (profile_id,),
     ).fetchall()
+
+
+def is_other_listing(conn, job_id: int, job: JobPosting) -> bool:
+    """True when this posting was merged into a job first stored from a different listing."""
+    row = conn.execute("SELECT fingerprint FROM jobs WHERE id = %s", (job_id,)).fetchone()
+    return bool(row) and row["fingerprint"] != job.fingerprint
+
+
+# --- sending, follow-ups and the dashboard ------------------------------------
+
+
+def mark_outreach_sent(conn, profile_id: int, job_id: int) -> None:
+    conn.execute("UPDATE applications SET outreach_sent_at = now() WHERE profile_id = %s AND job_id = %s",
+                 (profile_id, job_id))
+
+
+def mark_follow_up_sent(conn, profile_id: int, job_id: int) -> None:
+    conn.execute("UPDATE applications SET follow_up_sent_at = now() WHERE profile_id = %s AND job_id = %s",
+                 (profile_id, job_id))
+
+
+def sends_today(conn, profile_id: int) -> int:
+    """Emails and follow-ups sent since midnight, for the daily cap."""
+    return conn.execute(
+        """SELECT count(*) FILTER (WHERE outreach_sent_at >= current_date)
+                + count(*) FILTER (WHERE follow_up_sent_at >= current_date) AS n
+           FROM applications WHERE profile_id = %s""", (profile_id,)).fetchone()["n"]
+
+
+def followups_due(conn, profile_id: int, after_days: int) -> list[dict]:
+    """Emailed jobs with no follow-up yet, sent at least `after_days` ago and still 'applied'."""
+    return conn.execute(
+        """SELECT a.job_id, j.title, j.company, a.contact_email, a.outreach_sent_at,
+                  a.follow_up_subject, a.follow_up_body
+           FROM applications a JOIN jobs j ON j.id = a.job_id
+           WHERE a.profile_id = %s AND a.status = 'applied' AND a.outreach_sent_at IS NOT NULL
+             AND a.follow_up_sent_at IS NULL
+             AND a.outreach_sent_at <= now() - make_interval(days => %s)
+           ORDER BY a.outreach_sent_at""", (profile_id, after_days)).fetchall()
+
+
+def dashboard_rows(conn, profile_id: int) -> list[dict]:
+    """Every tracked job with its score and draft, newest postings first."""
+    return conn.execute(
+        """SELECT j.id AS job_id, j.title, j.company, j.location, j.url, j.posted_at,
+                  a.status, a.outreach_subject, a.outreach_body, a.contact_email,
+                  a.outreach_sent_at, a.follow_up_sent_at, m.score, m.summary
+           FROM applications a JOIN jobs j ON j.id = a.job_id
+           LEFT JOIN job_matches m ON m.job_id = a.job_id AND m.profile_id = a.profile_id
+           WHERE a.profile_id = %s
+           ORDER BY (a.status = 'shortlisted') DESC, j.posted_at DESC NULLS LAST, m.score DESC NULLS LAST""",
+        (profile_id,)).fetchall()

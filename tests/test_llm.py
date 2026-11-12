@@ -118,7 +118,11 @@ def test_claude_score_job_request_shape():
     assert body["output_config"]["effort"] == "medium"
     assert body["output_config"]["format"]["type"] == "json_schema"
     assert "server-side-fallback-2026-07-01" in cap["headers"].get("anthropic-beta", "")
-    assert "Riyadh" in body["messages"][0]["content"] and "recruiter" in body["system"]
+    profile_block, job_block = body["messages"][0]["content"]
+    # The profile and preferences repeat for every job, so they are marked for prompt caching.
+    assert profile_block["cache_control"] == {"type": "ephemeral"} and "primary_skills" in profile_block["text"]
+    assert "cache_control" not in job_block and "Riyadh" in job_block["text"]
+    assert "recruiter" in body["system"]
 
 
 def test_claude_refusal_raises():

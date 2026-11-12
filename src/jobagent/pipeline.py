@@ -30,6 +30,7 @@ class RunSummary:
     shortlisted: int = 0
     tokens: int = 0
     source_errors: dict[str, str] = field(default_factory=dict)
+    stopped: str = ""  # why the run stopped early, when a spending limit was reached
 
 
 def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Client | None = None,
@@ -48,11 +49,25 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Clie
         log.log(logging.WARNING if level in ("warning", "error") else logging.INFO, msg)
         db.log_event(conn, run_id, msg, level=level, source_id=source_id, data=data)
 
+    def over_budget() -> str:
+        m = cfg.matching
+        tokens = getattr(llm, "tokens_used", 0)
+        minutes = getattr(browser, "minutes_used", 0.0)
+        if m.max_tokens_per_run and tokens >= m.max_tokens_per_run:
+            return f"token limit reached ({tokens:,} of {m.max_tokens_per_run:,})"
+        if m.max_browser_minutes_per_run and minutes >= m.max_browser_minutes_per_run:
+            return f"browser time limit reached ({minutes:.1f} of {m.max_browser_minutes_per_run:g} minutes)"
+        return ""
+
     try:
         # 1. Collect -----------------------------------------------------------
         candidates: list[tuple[int, JobPosting]] = []
         for scfg in cfg.sources:
             if not scfg.enabled or (only_source and scfg.name != only_source):
+                continue
+            summary.stopped = summary.stopped or over_budget()
+            if summary.stopped:
+                event(f"{scfg.name}: skipped, {summary.stopped}", level="warning")
                 continue
             source_id = db.upsert_source(conn, scfg.kind, scfg.name, scfg.identity_url,
                                          scfg.model_dump(mode="json"))
@@ -80,11 +95,16 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Clie
 
         # 2. Score -------------------------------------------------------------
         if score and candidates:
-            to_score = []
+            to_score, queued = [], set()
             for job_id, p in candidates:
-                if db.existing_match_hash(conn, profile["id"], job_id) == p.content_hash:
+                seen_hash = db.existing_match_hash(conn, profile["id"], job_id)
+                # A second listing of the same job (another board, or twice in this run) is not
+                # scored again for its different wording.
+                if job_id in queued or seen_hash == p.content_hash \
+                        or (seen_hash and db.is_other_listing(conn, job_id, p)):
                     summary.skipped_unchanged += 1
                 else:
+                    queued.add(job_id)
                     to_score.append((job_id, p))
             cap = cfg.matching.max_jobs_to_score
             if len(to_score) > cap:
@@ -93,26 +113,35 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Clie
                 to_score = to_score[:cap]
 
             strong: list[int] = []
-            with ThreadPoolExecutor(max_workers=max(1, cfg.matching.concurrency)) as pool:
-                futures = {
-                    pool.submit(llm.score_job, profile["profile"], cfg.search, p): (job_id, p)
-                    for job_id, p in to_score
-                }
-                for fut in as_completed(futures):
-                    job_id, p = futures[fut]
-                    try:
-                        m = fut.result()
-                    except Exception as e:  # noqa: BLE001
-                        event(f"scoring failed for job {job_id} ({p.title}): {e}", level="error")
-                        continue
-                    db.save_match(conn, profile["id"], job_id, run_id, m, llm.model, p.content_hash)
-                    summary.scored += 1
-                    if m.score >= cfg.matching.shortlist_min_score:
-                        strong.append(job_id)
+            workers = max(1, cfg.matching.concurrency)
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                # Scored a few at a time so a spending limit is checked between batches; jobs
+                # left over stay unscored and are picked up by the next run.
+                for start in range(0, len(to_score), workers):
+                    summary.stopped = summary.stopped or over_budget()
+                    if summary.stopped:
+                        event(f"Scoring stopped with {len(to_score) - start} jobs left: {summary.stopped}",
+                              level="warning")
+                        break
+                    futures = {
+                        pool.submit(llm.score_job, profile["profile"], cfg.search, p): (job_id, p)
+                        for job_id, p in to_score[start:start + workers]
+                    }
+                    for fut in as_completed(futures):
+                        job_id, p = futures[fut]
+                        try:
+                            m = fut.result()
+                        except Exception as e:  # noqa: BLE001
+                            event(f"scoring failed for job {job_id} ({p.title}): {e}", level="error")
+                            continue
+                        db.save_match(conn, profile["id"], job_id, run_id, m, llm.model, p.content_hash)
+                        summary.scored += 1
+                        if m.score >= cfg.matching.shortlist_min_score:
+                            strong.append(job_id)
             summary.shortlisted = db.shortlist_many(conn, profile["id"], strong)
 
         summary.tokens = getattr(llm, "tokens_used", 0)
-        summary.status = "partial" if summary.source_errors else "succeeded"
+        summary.status = "partial" if summary.source_errors or summary.stopped else "succeeded"
         db.finish_run(conn, run_id, status=summary.status, stats=summary.__dict__)
         return summary
     except Exception as e:

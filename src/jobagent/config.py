@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any, Literal
 
@@ -102,12 +103,24 @@ class SearchPrefs(BaseModel):
     notes: str = ""  # free-text preferences passed to the matcher
 
 
+class ResumeVariant(BaseModel):
+    """A CV to attach instead of the default when a job mentions one of the keywords."""
+
+    name: str
+    path: str
+    keywords: list[str] = Field(default_factory=list)
+
+
 class OutreachPrefs(BaseModel):
     notice_period: str = ""      # e.g. "60 days, negotiable"; omitted from emails when empty
     resume_filename: str = ""    # e.g. "Alex_Morgan_Java_Engineer.pdf"
     email: str = ""              # contact email for the sign-off; the resume's when empty
     linkedin_url: str = ""       # shown in emails as a clickable "LinkedIn" link
     resume_path: str = ""        # CV file attached to Gmail drafts (`jsa email --gmail-drafts`)
+    resume_variants: list[ResumeVariant] = Field(default_factory=list)  # other CVs, by keyword
+    follow_up_days: int = 6      # a follow-up is due this many days after an email was sent
+    max_sends_per_day: int = 10  # `--send` stops at this many emails a day (0 = no limit)
+    send_pause_seconds: int = 20  # wait between sent emails
     research: bool = True        # web-search recruiter advice per country (Claude only)
     max_searches: int = 4        # web searches per country researched
     review: bool = True          # have the model review each draft as a recruiter
@@ -116,6 +129,15 @@ class OutreachPrefs(BaseModel):
     # Your own email wording with [placeholders], filled in for each job. When the file is
     # missing (or this is ""), emails use the built-in recruiter-style format instead.
     template_file: str = "email_template.txt"
+
+    def resume_for(self, job_text: str) -> tuple[str, str]:
+        """(name, path) of the CV to attach for a job: the first variant whose keyword the job
+        mentions as a whole word or phrase, otherwise the default resume_path."""
+        text = f" {re.sub(r'[^a-z0-9+#/]+', ' ', job_text.lower())} "
+        for v in self.resume_variants:
+            if v.path and any(f" {k.lower().strip()} " in text for k in v.keywords if k.strip()):
+                return v.name, v.path
+        return "default", self.resume_path
 
     def template(self) -> str | None:
         p = Path(self.template_file) if self.template_file else None
@@ -127,6 +149,8 @@ class OutreachPrefs(BaseModel):
 class MatchingPrefs(BaseModel):
     shortlist_min_score: int = 75
     max_jobs_to_score: int = 100
+    max_tokens_per_run: int = 0            # stop a run after this many AI tokens (0 = no limit)
+    max_browser_minutes_per_run: float = 0  # stop collecting after this much browser time
     concurrency: int = 4
 
 
