@@ -59,6 +59,36 @@ In the rest of this guide the commands are written as `jsa <command>` for short.
 Each job has a **number** (for example 343). Use it wherever a command takes a job, such as
 `jsa show 343`.
 
+## Using it without the terminal
+
+Double-click **Job Search** (the app in the project folder; drag it to the Dock if you like). It
+starts the program if it is not running and opens the page at http://127.0.0.1:8765 in your browser.
+Everything `jsa` does is a button there:
+
+| On the page | What it does | Same as |
+|---|---|---|
+| **Find new jobs** (and the arrow next to it) | Searches every site, or one site, or collects without scoring; also runs the morning routine | `jsa run`, `jsa run --source`, `--no-score`, `jsa daily` |
+| The rail of six numbers | Shows how many jobs are at each stage; click one to see those jobs. While a task runs, a dot travels along the stage it is working on and the line below shows its latest message | |
+| **Shortlist** | Draft emails, look for addresses, save drafts to Gmail, send the ready emails | `jsa email`, `jsa contacts`, `jsa send --gmail-drafts`, `jsa send` |
+| A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; buttons for applied, skipped, interview, offer, rejected | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa apply` |
+| **In progress**, **Follow-ups** | Applications under way; follow-ups that are due, with a button to send them | `jsa applications`, `jsa followups` |
+| **All matches** | Every scored job, with a score slider and a digest download | `jsa jobs`, `jsa digest` |
+| **Add a job from a post** | Paste a LinkedIn post; it is read, scored and shortlisted | `jsa add` |
+| **Insights** | Your week, the skills you miss most, which sites deliver | `jsa progress`, `jsa gaps` |
+| **Activity** | The full output of the running or last task, and past searches | `jsa runs` |
+| **Settings** | Setup checklist, resume import, the daily schedule, the email template, duplicate jobs, a test notification, and **Stop Job Search** | `jsa profile import`, `jsa schedule`, `jsa dedupe`, `jsa notify-test`, `jsa migrate` |
+| **All actions** (Cmd-K) | A searchable list of every action | |
+
+Good to know:
+
+- One task runs at a time. **Stop** ends it; what it already saved is kept.
+- Sending always asks first. "Send ready emails" sends the drafts as they are saved, including your
+  edits; it does not write them again.
+- If the database needs an update after new features arrive, the page says so and offers one button.
+- The page answers only on this Mac. Keys and passwords stay in `.env`; the page never shows them.
+- The program keeps running after you close the tab. Stop it in Settings, or leave it.
+- If Job Search does not open, the reason is at the end of `digests/web.log`.
+
 ## Commands
 
 ### Setup (used rarely)
@@ -131,7 +161,8 @@ in `.env` (an app password from myaccount.google.com/apppasswords), and `outreac
 | `jsa apply --dry-run` | Lists the jobs and links without opening anything. |
 | `jsa status 343 applied --note "via referral"` | Sets a job's status yourself, with an optional note. |
 | `jsa applications` | Lists every job you are tracking and its status. |
-| `jsa web` | Opens a web page on this Mac with your shortlist, scores, estimated pay and a weekly summary. On it you can edit and send an email draft, add a job from a pasted post, keep notes, and mark a job applied or skipped. Press Ctrl-C in the terminal to stop it. |
+| `jsa web` | Starts the page described in "Using it without the terminal" from a terminal instead of the Job Search app. Ctrl-C stops it. |
+| `jsa send` | Sends the saved drafts as they are, edits included, without writing them again. `--gmail-drafts` saves them to Gmail Drafts instead; `--general` also uses a general inbox. |
 
 The statuses are: `shortlisted`, `applied`, `interviewing`, `offer`, `rejected`, `withdrawn`,
 `skipped`.
@@ -171,7 +202,7 @@ The statuses are: `shortlisted`, `applied`, `interviewing`, `offer`, `rejected`,
 4. `jsa email --gmail-drafts` to draft the emails, then review and send them in Gmail.
 5. `jsa apply` for the jobs that have no email address.
 6. `jsa followups` to see which emails need chasing.
-7. `jsa web` (or `jsa applications`) to see where everything stands.
+7. `jsa web` (or `jsa applications`) to see where everything stands. Or do all of this from the Job Search app, with no terminal.
 
 Once `jsa schedule install` is set up, step 1 happens by itself each morning and a summary arrives
 by email.

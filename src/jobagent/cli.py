@@ -487,17 +487,20 @@ def cmd_schedule(args, settings):
 
 
 def cmd_web(args, settings):
-    """Open the local web page for the shortlist."""
+    """Open the local web app: every command as a button, on this Mac only."""
     import webbrowser
 
     from . import web
 
+    settings.require("database_url")
     cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
-    with _conn(settings):
-        pass  # fail early with a clear message if the database is missing or behind
-    server = web.serve(settings, cfg, lambda: _llm(settings), args.port)
+    try:
+        server = web.serve(settings, cfg, args.port, config_path=args.config)
+    except OSError as e:
+        raise ConfigError(f"Port {args.port} is in use: the page may already be open at "
+                          f"http://127.0.0.1:{args.port}/ ({e.strerror})") from e
     url = f"http://127.0.0.1:{args.port}/"
-    print(f"Job search page: {url}   (Ctrl-C to stop)")
+    print(f"Job search page: {url}   (Ctrl-C to stop)", flush=True)
     if not args.no_open:
         webbrowser.open(url)
     try:
@@ -505,7 +508,47 @@ def cmd_web(args, settings):
     except KeyboardInterrupt:
         print("\nStopped.")
     finally:
+        server.runner.stop()
         server.server_close()
+
+
+def cmd_send(args, settings):
+    """Send the saved drafts as they are, edits included, or save them to Gmail Drafts."""
+    import time
+
+    from . import mailer
+    from .actions import ActionError, send_stored_draft, stored_draft_message
+
+    cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+    outreach = cfg.outreach
+    with _conn(settings) as conn:
+        pid = _profile_id(conn)
+        ids = args.job_ids or db.shortlisted_job_ids(conn, pid, args.limit)
+        if not ids:
+            print("Nothing to send: no job ids given and nothing is shortlisted.")
+            return
+        sent, drafts = 0, []
+        for jid in ids:
+            try:
+                if args.gmail_drafts:
+                    msg, to = stored_draft_message(conn, settings, outreach, pid, jid,
+                                                   allow_general=args.general, need_cv=False)
+                    drafts.append(msg)
+                    print(f"  draft: #{jid} to {to}", flush=True)
+                else:
+                    if sent and outreach.send_pause_seconds:
+                        time.sleep(outreach.send_pause_seconds)
+                    to = send_stored_draft(conn, settings, outreach, pid, jid, allow_general=args.general)
+                    sent += 1
+                    print(f"  sent: #{jid} to {to}", flush=True)
+            except ActionError as e:
+                print(f"  not {'saved' if args.gmail_drafts else 'sent'}: #{jid} ({e})", flush=True)
+        if args.gmail_drafts:
+            n = mailer.save_drafts(settings.gmail_address, settings.gmail_app_password, drafts) if drafts else 0
+            print(f"Saved {n} draft(s) to Gmail Drafts. Review and send them from Gmail.")
+        else:
+            print(f"Sent {sent} email(s)." + (f" A follow-up is due in {outreach.follow_up_days} days."
+                                              if sent else ""))
 
 
 def cmd_apply(args, settings, *, open_url=None, ask=input):
@@ -793,11 +836,19 @@ def build_parser() -> argparse.ArgumentParser:
     sc.add_argument("--time", default="08:00", help="when to run each day, HH:MM (default 08:00)")
     sc.set_defaults(fn=cmd_schedule)
 
-    wb = sub.add_parser("web", help="open a local web page of your shortlist, drafts and status")
+    wb = sub.add_parser("web", help="open the local web app: every command as a button")
     wb.add_argument("--port", type=int, default=8765)
     wb.add_argument("--no-open", action="store_true", help="do not open the browser")
     wb.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
     wb.set_defaults(fn=cmd_web)
+
+    sd = sub.add_parser("send", help="send the saved drafts as they are (no redrafting)")
+    sd.add_argument("job_ids", type=int, nargs="*", help="jobs to send (default: shortlisted)")
+    sd.add_argument("--limit", type=int, default=25, help="max shortlisted jobs when no ids given")
+    sd.add_argument("--gmail-drafts", action="store_true", help="save to Gmail Drafts instead of sending")
+    sd.add_argument("--general", action="store_true", help="also use a general inbox (info@...)")
+    sd.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    sd.set_defaults(fn=cmd_send)
 
     ct = sub.add_parser("contacts", help="look for a published application address for shortlisted jobs")
     ct.add_argument("job_ids", type=int, nargs="*", help="jobs to look up (default: shortlisted without one)")

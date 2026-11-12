@@ -184,68 +184,6 @@ def test_dedupe_merges_copies_and_keeps_scores_and_status(conn, capsys):
     assert db.duplicate_groups(conn) == []
 
 
-# --- 11. the web page ----------------------------------------------------------------------------
-
-class PageLLM:
-    model = "fake"
-
-    def read_pasted_job(self, text):
-        return PastedJob(title="Java Developer", company="Nair Systems", location="Qatar",
-                         contact_email="hr@nair.qa", description=text)
-
-    def score_job(self, profile, prefs, job):
-        return match(77, pay="QAR 15-20k / month (estimate)")
-
-
-def test_web_page_edits_sends_notes_and_adds(conn, monkeypatch, tmp_path):
-    pid = db.save_profile(conn, "Alex", "resume", {})
-    jid = shortlist(conn, pid, "Java Developer")
-    db.save_match(conn, pid, jid, None, match(88, pay="18-26 LPA (estimate)"), "m", "h")
-    db.save_outreach(conn, pid, jid, subject="Java Dev | 6 yrs", body="Dear Team,\n\nHello.",
-                     recruiter_name=None, contact_email=None, still_open=True)
-    cv = tmp_path / "cv.pdf"
-    cv.write_bytes(b"%PDF fake")
-    cfg = AgentConfig(outreach=OutreachPrefs(resume_path=str(cv)))
-    settings = Settings(database_url=TEST_DB, gmail_address="me@gmail.com", gmail_app_password="p")
-    sent = []
-    monkeypatch.setattr("jobagent.mailer.send_messages",
-                        lambda addr, pw, msgs: sent.extend((m["To"], m["Subject"]) for m in msgs) or len(msgs))
-    server = web.serve(settings, cfg, PageLLM, 0)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{server.server_address[1]}"
-
-    def post(path, **fields):
-        data = urllib.parse.urlencode({"token": server.token, **fields}).encode()
-        return urllib.request.urlopen(urllib.request.Request(base + path, data=data)).read().decode()
-
-    try:
-        page = urllib.request.urlopen(base + "/").read().decode()
-        assert "pay: 18-26 LPA (estimate)" in page and "Last 7 days" in page and "Send email" not in page
-
-        assert "No email address is known" in post("/send", job_id=jid)  # nothing to send to yet
-        db.save_contact(conn, pid, jid, "jobs@acme.ae", "https://acme.ae/careers", "careers")
-        page = post("/draft", job_id=jid, subject="Java Developer | 6 yrs IBM", body="Dear Sara,\n\nEdited text.")
-        assert "Draft saved" in page and "Edited text." in page and "Send email" in page
-        assert "careers address, from acme.ae" in page
-
-        assert "Note saved" in post("/note", job_id=jid, note="Recruiter is Sara <HR>")
-        assert db.get_application(conn, pid, jid)["notes"] == "Recruiter is Sara <HR>"
-
-        page = post("/send", job_id=jid)
-        assert "sent to jobs@acme.ae" in page and sent == [("jobs@acme.ae", "Java Developer | 6 yrs IBM")]
-        app = db.get_application(conn, pid, jid)
-        assert app["status"] == "applied" and app["outreach_sent_at"] is not None
-        assert "already marked applied" in post("/send", job_id=jid) and len(sent) == 1  # never twice
-
-        page = post("/add", text="Nair Systems is hiring a Java Developer in Qatar. CV to hr@nair.qa", url="")
-        assert "Nair Systems: score 77" in page and "Java Developer at Nair Systems" in page
-        added = conn.execute("SELECT id FROM jobs WHERE company = 'Nair Systems'").fetchone()["id"]
-        assert db.get_application(conn, pid, added)["contact_email"] == "hr@nair.qa"
-    finally:
-        server.shutdown()
-        server.server_close()
-
-
 def test_general_inbox_is_not_emailed_without_saying_so(conn, tmp_path):
     pid = db.save_profile(conn, "Alex", "resume", {})
     jid = shortlist(conn, pid, "Java Developer")

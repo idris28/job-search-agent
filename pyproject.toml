@@ -29,7 +29,7 @@ jsa = "jobagent.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-jobagent = ["migrations/*.sql"]
+jobagent = ["migrations/*.sql", "static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

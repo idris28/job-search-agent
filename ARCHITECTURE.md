@@ -149,9 +149,11 @@ sequenceDiagram
 
 Not in the diagram:
 
-- `jsa web` is a separate, long-running page: `web.py` serves `http://127.0.0.1:8765`, reads
-  `dashboard_rows()` for each view, and its forms post back to change status, save a note or an
-  edited draft, send a stored draft, or add a pasted post.
+- `jsa web` (or the Job Search app) is a separate, long-running page: `web.py` serves
+  `static/app.html` and a JSON API on `http://127.0.0.1:8765`. Quick changes (status, notes, saving
+  or sending one draft) happen in the request. Anything slow is started as a `jsa` child process by
+  `TaskRunner`, one at a time, and the page polls its output; so the page runs exactly the same
+  code as the terminal commands.
 - `jsa contacts` runs between parts 1 and 3: the AI web-searches for a published application
   address, `contacts.py` verifies it on the company's page, and `save_contact()` stores it for
   `jsa email` to use.
@@ -182,7 +184,7 @@ Not in the diagram:
 | Database | `src/jobagent/db.py`, `migrations/` | PostgreSQL: jobs, scores, applications, send times, runs |
 | Preview | `src/jobagent/report.py` | Terminal tables, the Markdown digest, the HTML email preview |
 | Gmail | `src/jobagent/mailer.py` | Builds the message; saves it to Drafts or sends it |
-| Web page | `src/jobagent/web.py` | A local page of the shortlist: edit and send drafts, add pasted posts, notes, status |
+| Web app | `src/jobagent/web.py`, `static/app.html`, `Job Search.app` | Every command as a button: a JSON API, a runner that executes `jsa` commands as tasks, and a double-click launcher |
 | Shared actions | `src/jobagent/actions.py` | Add a pasted job and send a stored draft, used by both the commands and the web page |
 | Contact check | `src/jobagent/contacts.py` | Confirms a found application address is printed on the company's own page |
 | Notifications | `src/jobagent/notifier.py` | Sends strong new matches to Telegram, or to your own email |

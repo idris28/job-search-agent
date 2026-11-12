@@ -1,0 +1,28 @@
+#!/bin/sh
+# Double-click launcher: starts the job search page if it is not running, then opens it.
+# The project folder is the one this app sits in.
+DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+URL="http://127.0.0.1:8765/"
+cd "$DIR" || exit 1
+
+alert() { osascript -e "display alert \"Job Search\" message \"$1\"" >/dev/null 2>&1; }
+up() { curl -s -o /dev/null --max-time 2 "$URL"; }
+
+if ! up; then
+  if [ ! -x .venv/bin/python ]; then
+    alert "The program is not installed in $DIR (no .venv folder). Follow the Setup steps in README.md once, then open Job Search again."
+    exit 1
+  fi
+  mkdir -p digests
+  nohup .venv/bin/python -m jobagent.cli web --no-open >> digests/web.log 2>&1 &
+  n=0
+  until up; do
+    n=$((n + 1))
+    if [ "$n" -gt 40 ]; then
+      alert "Job Search did not start. The reason is at the end of digests/web.log in $DIR."
+      exit 1
+    fi
+    sleep 0.5
+  done
+fi
+open "$URL"

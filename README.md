@@ -143,9 +143,11 @@ repeated calls in one run read them at a fraction of the price.
 when Gmail is configured, emails you one summary. `jsa schedule install --time 08:00` sets macOS to
 run it daily; `jsa schedule status` and `jsa schedule remove` manage it.
 
-**Web page.** `jsa web` opens a page on this Mac only (http://127.0.0.1:8765) with your shortlist,
-scores, estimated pay and a weekly summary. You can edit and send a draft, add a pasted post, keep
-notes, and mark a job applied or skipped.
+**No terminal needed.** Double-click `Job Search.app` in the project folder, or run `jsa web`. A page
+opens on this Mac only (http://127.0.0.1:8765) where every command is a button: search, draft, find
+addresses, send, follow up, schedule the daily run, import a resume, update the database. Slow
+commands run as one background task at a time, with live progress and a Stop button. GUIDE.md has the
+full map of buttons to commands. `jsa send` sends saved drafts as they are (the page uses it).
 
 **New jobs first.** The agent reads how long ago each job was posted ("2 days ago") from the
 job boards. `search.max_age_days` (7 in the example) drops older postings, and lists, emails and
@@ -217,7 +219,8 @@ src/jobagent/
   actions.py    add a pasted job, send a stored draft (shared by the CLI and the web page)
   contacts.py   check a found application address against the company's own page
   notifier.py   Telegram or email message about strong new matches
-  web.py        local web page of the shortlist
+  web.py        local web app: JSON API, and a runner that executes jsa commands as tasks
+  static/       the page itself (app.html)
   scheduler.py  macOS launchd job for `jsa daily`
   browser.py    Browserbase session (or local Chromium) behind one fetch() interface
   llm.py        shared prompts + OpenAI provider: profile, match score, listing extraction, cover letter

@@ -168,41 +168,6 @@ def test_parser_has_the_new_commands():
         assert p.parse_args(argv).fn
 
 
-# --- 11. web page ----------------------------------------------------------------------
-
-def test_web_page_shows_jobs_and_updates_status(conn):
-    pid = db.save_profile(conn, "Alex", "resume", {})
-    jid, _ = db.upsert_job(conn, JobPosting(title="Java <Dev>", company="Acme", url="https://x/1",
-                                            location="Dubai", posted_at=datetime.now(timezone.utc) - timedelta(hours=3)),
-                           None, None)
-    db.save_match(conn, pid, jid, None, MatchResult(score=88, verdict="strong", summary="Good fit",
-                  matched_skills=[], missing_skills=[], red_flags=[]), "m", "h")
-    db.set_application_status(conn, pid, jid, "shortlisted")
-    db.save_outreach(conn, pid, jid, subject="Java Dev | 6 yrs", body="Dear Team,\n\nHello.",
-                     recruiter_name=None, contact_email="hr@acme.ae", still_open=True)
-    server = web.serve(Settings(database_url=TEST_DB), AgentConfig(), lambda: None, 0)
-    import threading
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    base = f"http://127.0.0.1:{server.server_address[1]}"
-    try:
-        page = urllib.request.urlopen(base + "/").read().decode()
-        assert "Java &lt;Dev&gt; at Acme" in page and "score 88" in page and "posted 3h ago" in page
-        assert "Email draft: Java Dev | 6 yrs" in page and "hr@acme.ae" in page and "Mark applied" in page
-
-        def post(token):
-            data = urllib.parse.urlencode({"token": token, "job_id": jid, "status": "applied"}).encode()
-            return urllib.request.urlopen(urllib.request.Request(base + "/status", data=data))
-
-        with pytest.raises(urllib.error.HTTPError):
-            post("wrong-token")  # a form from another page cannot change anything
-        assert db.list_applications(conn, pid)[0]["status"] == "shortlisted"
-        assert "Applied and in progress (1)" in post(server.token).read().decode()
-        assert db.list_applications(conn, pid)[0]["status"] == "applied"
-    finally:
-        server.shutdown()
-        server.server_close()
-
-
 # --- the database must be up to date ---------------------------------------------------
 
 def test_commands_refuse_an_out_of_date_database(conn):

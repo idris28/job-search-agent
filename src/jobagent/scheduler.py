@@ -47,11 +47,20 @@ def remove() -> bool:
     return True
 
 
-def status() -> str:
+def info() -> dict:
+    """The schedule as data: {"installed": False} or the time, folder and whether it is loaded."""
     if not PLIST.exists():
-        return "No daily schedule is installed."
+        return {"installed": False}
     d = plistlib.loads(PLIST.read_bytes())
     t = d["StartCalendarInterval"]
-    loaded = _launchctl("print", f"gui/{os.getuid()}/{LABEL}").returncode == 0
-    return (f"Daily at {t['Hour']:02d}:{t['Minute']:02d} in {d['WorkingDirectory']} "
-            f"({'loaded' if loaded else 'file present but not loaded'}). Log: {d['StandardOutPath']}")
+    return {"installed": True, "time": f"{t['Hour']:02d}:{t['Minute']:02d}",
+            "folder": d["WorkingDirectory"], "log": d["StandardOutPath"],
+            "loaded": _launchctl("print", f"gui/{os.getuid()}/{LABEL}").returncode == 0}
+
+
+def status() -> str:
+    i = info()
+    if not i["installed"]:
+        return "No daily schedule is installed."
+    return (f"Daily at {i['time']} in {i['folder']} "
+            f"({'loaded' if i['loaded'] else 'file present but not loaded'}). Log: {i['log']}")

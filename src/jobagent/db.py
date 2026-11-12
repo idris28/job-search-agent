@@ -400,6 +400,29 @@ def dashboard_rows(conn, profile_id: int) -> list[dict]:
         (profile_id,)).fetchall()
 
 
+def overview(conn, profile_id: int | None) -> dict:
+    """How many jobs sit at each stage, for the web page."""
+    return conn.execute(
+        """SELECT (SELECT count(*) FROM jobs WHERE is_active) AS found,
+                  (SELECT count(*) FROM job_matches m JOIN jobs j ON j.id = m.job_id
+                   WHERE m.profile_id = %s AND j.is_active) AS scored,
+                  count(*) FILTER (WHERE status = 'shortlisted') AS shortlisted,
+                  count(*) FILTER (WHERE outreach_sent_at IS NOT NULL) AS emailed,
+                  count(*) FILTER (WHERE status IN ('applied', 'interviewing', 'offer')) AS applied
+           FROM applications WHERE profile_id = %s""", (profile_id, profile_id)).fetchone()
+
+
+def get_match(conn, profile_id: int, job_id: int) -> dict | None:
+    return conn.execute("SELECT * FROM job_matches WHERE profile_id = %s AND job_id = %s",
+                        (profile_id, job_id)).fetchone()
+
+
+def application_events(conn, application_id: int) -> list[dict]:
+    return conn.execute(
+        "SELECT from_status, to_status, note, created_at FROM application_events"
+        " WHERE application_id = %s ORDER BY created_at, id", (application_id,)).fetchall()
+
+
 def get_application(conn, profile_id: int, job_id: int) -> dict | None:
     return conn.execute("SELECT * FROM applications WHERE profile_id = %s AND job_id = %s",
                         (profile_id, job_id)).fetchone()
