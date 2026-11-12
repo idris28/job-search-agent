@@ -208,3 +208,32 @@ def test_claude_content_research_uses_web_search_and_resumes_pause():
     assert bodies[1]["messages"][-1]["role"] == "assistant"
     assert "UAE" in bodies[0]["messages"][0]["content"]
     assert "Do not research specific companies or people" in bodies[0]["system"]
+
+
+def test_cover_letter_fills_the_users_template_when_there_is_one():
+    from jobagent.config import OutreachPrefs
+    from jobagent.llm import (BaseLLM, COVER_LETTER_INSTRUCTIONS,
+                              COVER_LETTER_TEMPLATE_INSTRUCTIONS)
+
+    class Recorder(BaseLLM):
+        model = "fake"
+
+        def __init__(self):
+            super().__init__()
+            self.calls = []
+
+        def _text(self, instructions, user_input):
+            self.calls.append((instructions, user_input))
+            return "letter"
+
+    llm = Recorder()
+    assert llm.cover_letter("my resume", "the job") == "letter"
+    assert llm.calls[-1][0] == COVER_LETTER_INSTRUCTIONS and "TEMPLATE" not in llm.calls[-1][1]
+
+    prefs = OutreachPrefs(notice_period="immediately", email="me@example.com", resume_path="/secret/cv.pdf")
+    llm.cover_letter("my resume", "the job", "Dear Hiring Manager,\n[Job Title]", prefs)
+    instructions, sent = llm.calls[-1]
+    assert instructions == COVER_LETTER_TEMPLATE_INSTRUCTIONS
+    assert sent.startswith("TEMPLATE:\nDear Hiring Manager,\n[Job Title]\n\nRESUME:\nmy resume\n\nJOB POSTING:\nthe job")
+    assert '"notice_period": "immediately"' in sent and "me@example.com" in sent and "TODAY'S DATE: " in sent
+    assert "/secret/cv.pdf" not in sent  # only what the letter needs is passed on

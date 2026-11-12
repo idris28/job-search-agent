@@ -98,6 +98,10 @@ def test_state_job_detail_and_quick_changes(conn, page):
     assert d["application"]["unfilled"] == ["[Job Title]"] and "<b>Key skills:</b>" in d["application"]["body_html"]
     assert [e["to_status"] for e in d["events"]] == ["shortlisted"]
     assert page.call("/api/job?id=99999")[1]["error"] == "That job was not found."
+    conn.execute("UPDATE jobs SET company = 'Confidential Company' WHERE id = %s", (jid,))
+    db.save_draft_text(conn, pid, jid, "Java Dev", "the role at Confidential Company.")
+    assert page.call(f"/api/job?id={jid}")[1]["application"]["unfilled"] == ['company name ("Confidential Company" is not a real name)']
+    conn.execute("UPDATE jobs SET company = 'Acme' WHERE id = %s", (jid,))
 
     assert page.call("/api/draft", {"job_id": jid, "subject": "", "body": "x"})[0] == 400
     assert page.call("/api/draft", {"job_id": jid, "subject": "New subject", "body": "Edited."})[1]["message"] == "Draft saved."
@@ -231,6 +235,10 @@ def test_settings_schedule_and_template(conn, page, monkeypatch, tmp_path):
     assert page.call("/api/template", {"text": "Dear [Company Name],"})[0] == 200
     assert (tmp_path / "email_template.txt").read_text() == "Dear [Company Name],\n"
     assert page.call("/api/settings")[1]["template"]["text"] == "Dear [Company Name],\n"
+    assert page.call("/api/settings")[1]["cover_template"] == {"file": "cover_letter_template.txt", "found": False, "text": ""}
+    assert "cover letters" in page.call("/api/template", {"kind": "cover", "text": "Dear Hiring Manager,"})[1]["message"]
+    assert (tmp_path / "cover_letter_template.txt").read_text() == "Dear Hiring Manager,\n"
+    assert (tmp_path / "email_template.txt").read_text() == "Dear [Company Name],\n"  # the email one is untouched
 
 
 def test_send_command_sends_saved_drafts_without_redrafting(conn, monkeypatch, tmp_path, capsys):

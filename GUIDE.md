@@ -143,7 +143,7 @@ Good to know:
 | `jsa contacts` | For shortlisted jobs with no address, searches each company's own website for a published application address. Uses AI web search. An address is kept only if it is really printed on that page. |
 | `jsa contacts 343` | The same for specific jobs. |
 | `jsa email --general` | Also uses a general inbox (such as `info@`) found by `jsa contacts`. Without it, general inboxes are never emailed. |
-| `jsa cover-letter 343` | Writes a cover letter for one job and saves it with the application. |
+| `jsa cover-letter 343` | Writes a cover letter for one job and saves it with the application. It fills in your own letter from `cover_letter_template.txt` (text in [square brackets] is replaced for the job); without that file it writes a short built-in letter. |
 | `jsa followups` | Lists emails sent 6 or more days ago that have had no follow-up. |
 | `jsa followups --send` | Sends the stored follow-up email for each one that is due. |
 | `jsa followups --done 343` | Records a follow-up you sent yourself, so it stops being listed. |
@@ -256,6 +256,10 @@ Everything else (`jobs`, `show`, `apply`, `status`, `applications`, `digest`, `r
 is free.
 
 ## Limits to know about
+
+- When a posting does not name the company ("Unknown", "Confidential Company"), emails and cover
+  letters leave the company out instead of writing that stand-in, and a draft that still contains
+  it is flagged before sending.
 
 - Job sites block automated browsers, so the agent cannot log in or click Apply for you. That is
   why `jsa apply` opens the page in your own browser.

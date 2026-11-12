@@ -24,7 +24,7 @@ from . import db, scheduler
 from .actions import ActionError, send_slots, send_stored_draft
 from .config import AgentConfig
 from .contacts import _EMAIL_RE
-from .models import unfilled_placeholders
+from .models import names_missing_company, unfilled_placeholders
 from .report import _paragraphs_html, digest_markdown
 
 MAX_LINES = 4000
@@ -92,6 +92,12 @@ class TaskRunner:
 
 def _first_line(e: Exception) -> str:
     return (str(e).strip().splitlines() or [type(e).__name__])[0]
+
+
+def _template_info(file: str) -> dict:
+    p = Path(file) if file else None
+    found = bool(p and p.is_file())
+    return {"file": file, "found": found, "text": p.read_text(encoding="utf-8") if found else ""}
 
 
 def _page(token: str) -> bytes:
@@ -182,8 +188,10 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         if app:
             app = {k: v for k, v in app.items() if k not in ("company_research", "review_notes")}
             app["body_html"] = _paragraphs_html(app["outreach_body"])
-            app["unfilled"] = unfilled_placeholders(
-                f"{app['outreach_subject'] or ''}\n{app['outreach_body'] or ''}\n{app['follow_up_body'] or ''}")
+            draft = f"{app['outreach_subject'] or ''}\n{app['outreach_body'] or ''}\n{app['follow_up_body'] or ''}"
+            app["unfilled"] = unfilled_placeholders(draft)
+            if names_missing_company(draft, job["company"]):
+                app["unfilled"].append(f'company name ("{job["company"]}" is not a real name)')
         return {"job": job, "match": match, "application": app, "events": events, "due": due}
 
     def matches(min_score: int) -> dict:
@@ -213,6 +221,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             "cv": {"path": o.resume_path, "found": bool(cv and cv.is_file())},
             "template": {"file": o.template_file, "found": bool(template and template.is_file()),
                          "text": template.read_text(encoding="utf-8") if template and template.is_file() else ""},
+            "cover_template": _template_info(o.cover_letter_template_file),
             "limits": {"sends_per_day": o.max_sends_per_day, "pause_seconds": o.send_pause_seconds,
                        "follow_up_days": o.follow_up_days, "tokens_per_run": c.matching.max_tokens_per_run,
                        "browser_minutes": c.matching.max_browser_minutes_per_run,
@@ -307,14 +316,16 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             scheduler.install(Path.cwd(), int(hour), int(minute))
             return {"message": f"The morning routine will run every day at {int(hour):02d}:{int(minute):02d}."}
         if path == "/api/template":
-            file = config().outreach.template_file
+            cover = body.get("kind") == "cover"
+            o = config().outreach
+            file = o.cover_letter_template_file if cover else o.template_file
             if not file:
-                raise ActionError("outreach.template_file is switched off in config.yaml.")
+                raise ActionError("This template is switched off in config.yaml.")
             text = str(body.get("text") or "").strip()
             if not text:
                 raise ActionError("The template cannot be empty.")
             Path(file).write_text(text + "\n", encoding="utf-8")
-            return {"message": "Template saved. New drafts will use it."}
+            return {"message": "Template saved. New " + ("cover letters" if cover else "drafts") + " will use it."}
 
         jid = int(body.get("job_id") or 0)
         with connect() as conn:

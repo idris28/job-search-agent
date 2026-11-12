@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 import threading
 from typing import TypeVar
 
@@ -46,7 +47,41 @@ has no job postings, return an empty list."""
 COVER_LETTER_INSTRUCTIONS = """Write a concise, specific cover letter (under 250 words) for this
 candidate and job. Lead with the strongest 2-3 relevant achievements from the resume, mapped to the
 job's stated needs. No clichés, no invented facts, no placeholders except [Hiring Manager] if no
-name is known. Plain text."""
+name is known. If the posting does not name the company, do not write a company name or a stand-in
+such as "Unknown". Plain text."""
+
+
+# Used instead of COVER_LETTER_INSTRUCTIONS when the candidate supplies their own letter
+# (outreach.cover_letter_template_file): the layout and wording are theirs, only the blanks are ours.
+COVER_LETTER_TEMPLATE_INSTRUCTIONS = """You fill in a job candidate's own cover letter TEMPLATE for
+one specific job. Inputs: the template, the resume, the job posting, outreach preferences and
+today's date. Reply with the finished letter only, as plain text.
+
+- Keep the template as the candidate wrote it: the same lines, paragraphs, sentences and sign-off,
+  in the same order. Do not add, remove, merge or rephrase them.
+- Replace every [placeholder] with what it asks for, for THIS job. A placeholder is either a label
+  ("[Job Title]") or a short description of what to write there. Job title, company and location:
+  as the posting gives them. Everything about the candidate (name, phone, years, field, employers,
+  skills, responsibilities, achievements, results): from the resume. Email address, LinkedIn URL
+  and when they can join: from the outreach preferences (the resume's where the preferences give
+  none). The date: today's date as given, written like "12 November 2026".
+- If the posting does not name the company (its Company line says "(not named in the posting)"),
+  never write a company name or a stand-in such as "Unknown", "Confidential" or "your company".
+  Leave out the words that need it: "the Java Developer position at [Company Name]" becomes "the
+  Java Developer position". Leave out an address line that would hold only the company.
+- A placeholder's own limits and conditions ("only if", "leave out if") are rules: follow them.
+- Make it specific to the posting. Skills and responsibilities: ones this posting asks for that
+  the resume shows, in the posting's own terms where they mean the same thing. An achievement with
+  its result: one resume statement that gives both, the one closest to what this posting stresses;
+  never join separate achievements into one claim. Never invent or inflate anything.
+- Change the template's fixed words only where they would be untrue or ungrammatical for this
+  candidate and job (for example "previous role" when the work is from the current role, or
+  "I was responsible" when it should read "I am responsible" for a current role).
+- If there is nothing true to put in a placeholder, or the placeholder says to leave its sentence
+  out for this job, leave that line, sentence or phrase out. Never output a square-bracket
+  placeholder.
+- Plain text only: no Markdown, no bold marks, no bullet symbols the template does not have.
+  Write web addresses out in full. Keep the template's line breaks and blank lines."""
 
 
 # Built from recruiter guidance: Bayt (Gulf), Agile Consultants UAE ("how recruiters actually read
@@ -83,7 +118,8 @@ Follow the RECRUITER GUIDANCE notes where they add market-specific points.
 FORMAT
 - subject: under 60 characters, "<Role> | <credential> | <key skills>", e.g.
   "Senior Java Engineer | 6 yrs IBM & Oracle | Spring Boot".
-- greeting: "Hi <first name>," if a name is on the posting, else "Hi <Company> Hiring Team,".
+- greeting: "Hi <first name>," if a name is on the posting, else "Hi <Company> Hiring Team,"
+  ("Hi Hiring Team," when the company is not named).
   Never "Dear Sir/Madam", "To whom it may concern", "Hi All".
 - opener: 1-2 sentences covering point 1 and, if present, company_hook.
 - signature: name, phone with country code (note WhatsApp only for an Indian mobile), email,
@@ -92,6 +128,10 @@ FORMAT
 - Banned: "I am writing to express", "fast learner", "team player", "perfect fit", "Please find my
   CV attached", "I need this job", exclamation marks, invented facts.
 - follow_up: 50-80 words for 5-7 days later, adds one new relevant result, subject "Re: <subject>".
+- If the posting does not name the company (its Company line says "(not named in the posting)"),
+  never write a company name or a stand-in such as "Unknown", "Confidential" or "your company".
+  Leave out the words that need it: "the Java Developer position at [Company Name]" becomes "the
+  Java Developer position". This applies to the subject and the follow-up as well.
 - If a RECRUITER REVIEW is given, fix every issue it lists while keeping all facts true."""
 
 # Used instead of RECRUITER_EMAIL_INSTRUCTIONS when the candidate supplies their own template
@@ -115,6 +155,12 @@ BODY: the template, made specific to this job
   resume's if the preferences give none).
 - Write a LinkedIn URL as the link [LinkedIn](URL), never as a bare URL. Copy any [text](URL)
   link already in the template unchanged, and keep its **bold** marks exactly where they are.
+- A placeholder's own limits and conditions are rules: the number of items it asks for, a word
+  limit, "only if", "leave out if". Follow them exactly.
+- If the posting does not name the company (its Company line says "(not named in the posting)"),
+  never write a company name or a stand-in such as "Unknown", "Confidential" or "your company".
+  Leave out the words that need it: "the Java Developer position at [Company Name]" becomes "the
+  Java Developer position". This applies to the subject and the follow-up as well.
 - Make it specific to the posting. Skills and areas of experience: the ones this posting asks for
   that the resume shows, by name or by work that plainly involves them, most important first and
   in the posting's own terms where they mean the same thing. Leave out anything the resume does
@@ -274,8 +320,21 @@ class BaseLLM:
         return self._parse(RECRUITER_EMAIL_INSTRUCTIONS, payload, RecruiterEmail,
                            cached_prefix=resume)
 
-    def cover_letter(self, resume_text: str, job_text: str) -> str:
-        return self._text(COVER_LETTER_INSTRUCTIONS, f"RESUME:\n{resume_text}\n\nJOB:\n{job_text}")
+    def cover_letter(self, resume_text: str, job_text: str, template: str | None = None,
+                     outreach: OutreachPrefs | None = None) -> str:
+        """Write the cover letter for one job. With a template, the candidate's own letter is
+        filled in for the job; otherwise a short built-in letter is written."""
+        if not template:
+            return self._text(COVER_LETTER_INSTRUCTIONS, f"RESUME:\n{resume_text}\n\nJOB:\n{job_text}")
+        prefs = {}
+        if outreach is not None:
+            prefs = {k: v for k, v in outreach.model_dump().items()
+                     if k in ("notice_period", "email", "linkedin_url") and v}
+        return self._text(
+            COVER_LETTER_TEMPLATE_INSTRUCTIONS,
+            f"TEMPLATE:\n{template}\n\nRESUME:\n{resume_text}\n\nJOB POSTING:\n{job_text}"
+            f"\n\nOUTREACH PREFERENCES:\n{json.dumps(prefs) if prefs else '(none)'}"
+            f"\n\nTODAY'S DATE: {date.today():%d %B %Y}")
 
 
 class OpenAILLM(BaseLLM):

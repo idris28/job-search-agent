@@ -187,6 +187,10 @@ def test_unfilled_placeholders():
 def test_template_file_setting(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert OutreachPrefs().template() is None  # no file: built-in format
+    assert OutreachPrefs().cover_letter_template() is None
+    (tmp_path / "cover_letter_template.txt").write_text("Dear Hiring Manager,\n[Job Title]\n")
+    assert OutreachPrefs().cover_letter_template() == "Dear Hiring Manager,\n[Job Title]"
+    assert OutreachPrefs(cover_letter_template_file="").cover_letter_template() is None
     (tmp_path / "email_template.txt").write_text("Dear [Company Name],\n\n")
     assert OutreachPrefs().template() == "Dear [Company Name],"
     assert OutreachPrefs(template_file="").template() is None  # switched off in config.yaml
@@ -220,3 +224,62 @@ def test_send_emails_only_ready_drafts_and_never_twice(conn, monkeypatch, tmp_pa
     args.job_ids = [1, 2]
     cli.cmd_email(args, settings)  # a second run must not email job 1 again
     assert sent == ["jobs@acme.ae"]
+
+
+def test_cover_letter_command_uses_the_template_and_flags_blanks(conn, monkeypatch, tmp_path, capsys):
+    pid = db.save_profile(conn, "Alex", "resume text", {})
+    jid, _ = db.upsert_job(conn, JobPosting(title="Java Engineer", company="Acme", url="https://x/1",
+                                            location="Dubai"), None, None)
+    (tmp_path / "cover_letter_template.txt").write_text("Dear Hiring Manager,\n[Job Title] at [Company Name]")
+    monkeypatch.chdir(tmp_path)
+    seen = []
+
+    class CoverLLM:
+        model = "fake"
+
+        def cover_letter(self, resume, job_text, template=None, outreach=None):
+            seen.append(template)
+            return "Dear Hiring Manager,\nJava Engineer at [Company Name]"  # one blank left unfilled
+
+    monkeypatch.setattr(cli, "_llm", lambda s: CoverLLM())
+    args = cli.build_parser().parse_args(["cover-letter", str(jid), "--config", str(tmp_path / "missing.yaml")])
+    cli.cmd_cover_letter(args, Settings(database_url=TEST_DB))
+    out = capsys.readouterr().out
+    assert seen == ["Dear Hiring Manager,\n[Job Title] at [Company Name]"]
+    assert "your template (cover_letter_template.txt)" in out and "Fill in before using: [Company Name]" in out
+    assert db.get_application(conn, pid, jid)["cover_letter"].startswith("Dear Hiring Manager,")
+
+
+def test_a_company_the_posting_does_not_name_is_left_out_and_flagged(conn, monkeypatch, tmp_path):
+    from jobagent.models import NOT_NAMED, company_named, names_missing_company
+
+    assert [company_named(c) for c in ("Unknown", "Confidential Company", "", "N/A", "Not disclosed")] == [False] * 5
+    assert all(company_named(c) for c in ("Acme", "ECS ME LLC", "The Emirates Group", "Company 2 Technologies"))
+    assert names_missing_company("the Java Developer position at Unknown.", "Unknown")
+    assert not names_missing_company("the Java Developer position.", "Unknown")
+    assert not names_missing_company("an unknown-size team at Acme", "Acme")
+
+    pid = db.save_profile(conn, "Alex", "resume text", {})
+    jid, _ = db.upsert_job(conn, JobPosting(title="Java Developer", company="Unknown", url="pasted:1",
+                                            location="Dubai"), None, None)
+    db.set_application_status(conn, pid, jid, "shortlisted")
+    (tmp_path / "email_template.txt").write_text(TEMPLATE)
+    monkeypatch.chdir(tmp_path)
+    seen = []
+
+    class UnnamedLLM:
+        model = "fake"
+
+        def recruiter_email(self, resume, job_text, live, notes=None, outreach=None,
+                            previous=None, review=None, template=None):
+            seen.append(job_text)
+            return filled("Dear Hiring Team,\n\nI am applying for the Java Developer position at Unknown.")
+
+    monkeypatch.setattr(cli, "_llm", lambda s: UnnamedLLM())
+    args = SimpleNamespace(job_ids=[], limit=10, no_browse=True, no_research=False, no_review=False,
+                           gmail_drafts=False, send=False, general=False,
+                           config=str(tmp_path / "missing.yaml"), out=str(tmp_path / "emails"))
+    cli.cmd_email(args, Settings(database_url=TEST_DB))
+    assert f"Company: {NOT_NAMED}" in seen[0] and "Unknown" not in seen[0]  # the writer is told, not shown a stand-in
+    assert '**Fill in before sending:** company name ("Unknown" is not a real name)' in (tmp_path / "emails.md").read_text()
+    assert "Fill in before sending: company name" in (tmp_path / "emails.html").read_text()

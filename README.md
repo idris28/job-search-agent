@@ -169,6 +169,10 @@ already signed in, and asks whether you applied; it records your answer. The cli
 because job sites block automated browsers (Bayt and Google both refused one in testing).
 `--dry-run` lists the jobs without opening them.
 
+**Cover letters.** `jsa cover-letter <id>` fills in `cover_letter_template.txt` for the job, the same
+way as the email template below; remove the file or set `outreach.cover_letter_template_file: ""`
+for a short built-in letter.
+
 **Your own wording.** When `email_template.txt` is in the folder you run `jsa` from, step 3
 fills in that template instead of using the format above. Text in `[square brackets]` is replaced
 for each job. A blank can be a label such as `[Job Title]` or a short description of what to

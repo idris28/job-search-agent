@@ -1,0 +1,25 @@
+[Your Full Name]
+[Phone Number] | [Email Address] | [LinkedIn URL]
+
+[today's date]
+
+Hiring Manager
+[Company Name]
+[the job's city and country]
+
+Subject: Application for [Job Title]
+
+Dear Hiring Manager,
+
+I am applying for the position of [Job Title] at [Company Name]. With [X years] of experience in [my field, in a few words], I bring hands-on expertise in [key skill 1 this job asks for] and [key skill 2 this job asks for], and a record of [one key outcome or result from my resume, worded to follow "a record of"].
+
+In my [current or previous] role at [the employer where I did this, from my resume], I was responsible for [one specific responsibility this job cares about]. I contributed to [one specific achievement with its measurable result, from a single resume statement]. This directly aligns with your requirement for [something the job description asks for].
+
+What sets me apart is my ability to [a clear value proposition my resume supports]. I understand the fast-paced and performance-driven work environment in [the job's city, or its country if no city is given] and am prepared to deliver results from day one.
+
+I am currently based in [my city and country]. [only if the job is in another country: one sentence saying I am ready to relocate there and would need an employer-sponsored work visa; otherwise leave this sentence out] I am available to join [when I can join, from my preferences; leave this sentence out if none is given].
+
+I would welcome the opportunity to discuss how I can contribute to your team.
+
+Sincerely,
+[Your Full Name]

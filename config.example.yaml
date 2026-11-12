@@ -89,6 +89,9 @@ outreach:
   # [square brackets] is replaced, the rest is kept as written (research and review above are
   # then skipped). Remove the file or set this to "" to use the built-in format instead.
   template_file: email_template.txt
+  # Your own cover letter, filled in the same way for "Write a cover letter" / `jsa cover-letter`.
+  # Remove the file or set this to "" to get a short built-in cover letter instead.
+  cover_letter_template_file: cover_letter_template.txt
 
 # Job board searches (kind: generic) open in Browserbase, so they need BROWSERBASE_API_KEY
 # (BROWSERBASE_PROJECT_ID is optional). Each search page is read by the LLM, then up to max_detail_pages job

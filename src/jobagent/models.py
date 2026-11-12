@@ -12,6 +12,24 @@ from pydantic import BaseModel, Field
 RemoteType = Literal["remote", "hybrid", "onsite", "unknown"]
 
 
+NOT_NAMED = "(not named in the posting)"
+_NO_COMPANY_RE = re.compile(
+    r"^(unknown|undisclosed|anonymous|hidden|none|company|employer|n/?a|-*|"
+    r"not (disclosed|specified|mentioned|given|available|named))$|confidential|stealth", re.I)
+
+
+def company_named(company: str | None) -> bool:
+    """False when a posting gives no real company name ("Unknown", "Confidential Company", ...)."""
+    return not _NO_COMPANY_RE.search((company or "").strip())
+
+
+def names_missing_company(text: str, company: str | None) -> bool:
+    """True when a draft writes the stand-in name of a company the posting does not name."""
+    stand_in = (company or "").strip()
+    return bool(stand_in) and not company_named(stand_in) and \
+        re.search(rf"(?<![\w-]){re.escape(stand_in)}(?![\w-])", text, re.I) is not None
+
+
 class JobPosting(BaseModel):
     """A job as returned by a source adapter, before it is stored."""
 
@@ -42,7 +60,7 @@ class JobPosting(BaseModel):
     def as_prompt_text(self, max_chars: int = 12000) -> str:
         parts = [
             f"Title: {self.title}",
-            f"Company: {self.company}",
+            f"Company: {self.company if company_named(self.company) else NOT_NAMED}",
             f"Location: {self.location or 'n/a'} ({self.remote_type})",
         ]
         if self.employment_type:

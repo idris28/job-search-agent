@@ -115,13 +115,17 @@ outside it. The arrows at the top, or the J and K keys, move to the next and pre
 | Buttons | **Apply on the job site** opens the posting in a new tab so you can apply there; when you return, the page asks whether you applied. The next buttons record what happened: **I applied**, **Skip**, **Got an interview**, **Got an offer**, **Rejected**. **Other status** has the rest. Once a job is applied, the first button reads **Open the posting**. |
 | Why it matches | A short explanation, the skills you have, the skills asked for that are not on your resume, and anything to check before applying. |
 | Email to the recruiter | The **To** box holds the address it will go to. If the agent found none, type one you found yourself (on LinkedIn or in the posting) and click **Save address**; empty the box and save to remove it. Below it are the subject and the text. Edit either, then **Save changes**. **Send email** sends it after asking you to confirm. **Write it again** replaces the draft with a fresh one. **How it will look** previews it. The follow-up text is underneath. |
-| Cover letter | **Write a cover letter** for sites that ask for one, then **Copy**. |
+| Cover letter | **Write a cover letter** for sites that ask for one, then **Copy**. It follows your own letter in `cover_letter_template.txt`, filled in for this job. |
 | Notes | Anything you want to remember: the recruiter's name, what was said, the next step. Click **Save note**. |
 | History | Every status change with its date. |
 | Full job description | The original posting text. |
 
 A red label in the email section means the draft is not ready: a blank in your template was left
-unfilled, or the posting looked closed.
+unfilled, the posting looked closed, or the draft names a company the posting did not name.
+
+When a posting does not name the company (a pasted post, or a "Confidential Company" listing), the
+email and cover letter leave the name out: "applying for the Java Developer position", with no
+"at ...".
 
 ## The seven screens
 
@@ -186,6 +190,7 @@ force**.
 | Every morning | Pick a time and click **Run every morning**. The Mac then runs the morning routine daily at that time, as long as it is awake. **Switch it off** removes it. **Run it now** runs it once. |
 | Duplicate jobs | If the same job is stored twice, **Merge** folds the copies together and keeps your score and status. This cannot be undone. |
 | Your email template | Edit the wording used for every recruiter email. Text in [square brackets] is filled in for each job; everything else is sent as you wrote it. Click **Save template**. |
+| Your cover letter template | Edit the letter used by **Write a cover letter**. It works like the email template: text in [square brackets] is filled in for each job. Click **Save template**. |
 | Limits in force | Read-only. Change them in `config.yaml`; the page picks up the change straight away. |
 | Close the program | **Stop Job Search**. |
 

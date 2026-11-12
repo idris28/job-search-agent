@@ -176,9 +176,19 @@ def cmd_cover_letter(args, settings):
             sys.exit("Need an imported profile and a valid job id.")
         posting = JobPosting(**{k: job[k] for k in ("title", "company", "url", "location",
                                                      "remote_type", "description")})
-        text = _llm(settings).cover_letter(p["resume_text"], posting.as_prompt_text())
+        cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+        template = cfg.outreach.cover_letter_template()
+        print("Cover letter format: " + (f"your template ({cfg.outreach.cover_letter_template_file})"
+                                         if template else "built-in"))
+        text = _llm(settings).cover_letter(p["resume_text"], posting.as_prompt_text(), template,
+                                           cfg.outreach)
         db.save_cover_letter(conn, p["id"], args.job_id, text)
-    print(text)
+    print("\n" + text)
+    from .models import unfilled_placeholders
+
+    unfilled = unfilled_placeholders(text)
+    if unfilled:
+        print(f"\n! Fill in before using: {', '.join(unfilled)}")
     print("\n(Draft saved to the application record. Review and edit before sending.)")
 
 
@@ -187,7 +197,7 @@ def cmd_email(args, settings):
     from datetime import date
 
     from .browser import LazyBrowser
-    from .models import JobPosting, unfilled_placeholders
+    from .models import JobPosting, names_missing_company, unfilled_placeholders
     from .report import emails_html
 
     cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
@@ -266,6 +276,8 @@ def cmd_email(args, settings):
                     e.contact_email, kind = known["contact_email"], known["contact_kind"] or "recruiter"
                 body = e.plain_text()
                 unfilled = unfilled_placeholders(f"{e.subject}\n{body}\n{e.follow_up_body}")
+                if names_missing_company(f"{e.subject}\n{body}\n{e.follow_up_body}", job["company"]):
+                    unfilled.append(f'company name ("{job["company"]}" is not a real name)')
                 if unfilled:
                     print(f"  ! fill in before sending: {', '.join(unfilled)}")
                 db.save_outreach(conn, p["id"], jid, subject=e.subject, body=body,
@@ -794,6 +806,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     cl = sub.add_parser("cover-letter", help="draft a cover letter for a job")
     cl.add_argument("job_id", type=int)
+    cl.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
     cl.set_defaults(fn=cmd_cover_letter)
 
     em = sub.add_parser("email", help="check live postings and draft recruiter emails (never sends)")

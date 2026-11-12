@@ -110,6 +110,14 @@ class SearchPrefs(BaseModel):
     notes: str = ""  # free-text preferences passed to the matcher
 
 
+def _read_template(file: str) -> str | None:
+    """The text of a template file, or None when the setting is empty or the file is missing."""
+    p = Path(file) if file else None
+    if p is None or not p.is_file():
+        return None
+    return p.read_text(encoding="utf-8").strip() or None
+
+
 class ResumeVariant(BaseModel):
     """A CV to attach instead of the default when a job mentions one of the keywords."""
 
@@ -136,6 +144,9 @@ class OutreachPrefs(BaseModel):
     # Your own email wording with [placeholders], filled in for each job. When the file is
     # missing (or this is ""), emails use the built-in recruiter-style format instead.
     template_file: str = "email_template.txt"
+    # Your own cover letter with [placeholders], filled in for each job by `jsa cover-letter`.
+    # When the file is missing (or this is ""), a short built-in cover letter is written instead.
+    cover_letter_template_file: str = "cover_letter_template.txt"
 
     def resume_for(self, job_text: str) -> tuple[str, str]:
         """(name, path) of the CV to attach for a job: the first variant whose keyword the job
@@ -147,10 +158,10 @@ class OutreachPrefs(BaseModel):
         return "default", self.resume_path
 
     def template(self) -> str | None:
-        p = Path(self.template_file) if self.template_file else None
-        if p is None or not p.is_file():
-            return None
-        return p.read_text(encoding="utf-8").strip() or None
+        return _read_template(self.template_file)
+
+    def cover_letter_template(self) -> str | None:
+        return _read_template(self.cover_letter_template_file)
 
 
 class MatchingPrefs(BaseModel):

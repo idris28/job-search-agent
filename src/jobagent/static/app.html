@@ -1104,6 +1104,8 @@ function renderPage() {
       <p style="margin:14px 0 0"><button class="btn" data-act="dedupe">Merge ${plural(dupes, "duplicate", "duplicates")}</button></p>` : ""}</section>
     <section class="card pad span2">${cardHead("mail", "Your email template")}<p class="sub">${g.template.file ? `Text in [square brackets] is filled in for each job; everything else is sent as you wrote it. Saved to ${esc(g.template.file)}.` : "Switched off in config.yaml, so the built-in format is used."}</p>
       ${g.template.file ? `<textarea class="field" id="tpl" aria-label="Email template" spellcheck="false">${esc(g.template.text)}</textarea><button class="btn" data-act="save-tpl">Save template</button>` : ""}</section>
+    <section class="card pad span2">${cardHead("file", "Your cover letter template")}<p class="sub">${g.cover_template && g.cover_template.file ? `Used by "Write a cover letter" in a job's panel. Text in [square brackets] is filled in for each job; everything else is kept as you wrote it. Saved to ${esc(g.cover_template.file)}.` : "Switched off in config.yaml, so a short built-in cover letter is written."}</p>
+      ${g.cover_template && g.cover_template.file ? `<textarea class="field" id="ctpl" aria-label="Cover letter template" spellcheck="false">${esc(g.cover_template.text)}</textarea><button class="btn" data-act="save-ctpl">Save template</button>` : ""}</section>
     <section class="card pad">${cardHead("filter", "Limits in force")}<p class="sub">Change these in <b>config.yaml</b>; this page picks them up straight away.</p>
       <dl class="kv" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin:0">
         <dt>Emails a day</dt><dd>${L.sends_per_day || "no limit"}, ${L.pause_seconds}s apart</dd>
@@ -1183,6 +1185,7 @@ const A = {
   "sched-on": async () => { try { toast((await api("/api/schedule", { action: "install", time: $("#schedtime").value })).message); loadPage(); } catch (e) { fail(e); } },
   "sched-off": async () => { try { toast((await api("/api/schedule", { action: "remove" })).message); loadPage(); } catch (e) { fail(e); } },
   "save-tpl": async () => { try { toast((await api("/api/template", { text: $("#tpl").value })).message); } catch (e) { fail(e); } },
+  "save-ctpl": async () => { try { toast((await api("/api/template", { kind: "cover", text: $("#ctpl").value })).message); } catch (e) { fail(e); } },
   "theme-light": () => setTheme("light"),
   "theme-dark": () => setTheme("dark"),
   quit: async () => { if (await ask("Stop Job Search?", "Any task that is running is stopped too. Nothing saved is lost.", "Stop it")) { try { await api("/api/quit", {}); } catch {} clearInterval(S.timer);
@@ -1197,7 +1200,7 @@ const PALETTE = [
   ["Send follow-ups that are due", "", "followups"], ["Apply for shortlisted jobs", "opens each posting on its site", "apply-first"], ["Download a digest of top matches", "Markdown file", "digest"],
   ["Open the shortlist", "", "v:shortlist"], ["Open applications in progress", "", "v:progress"],
   ["Open follow-ups", "", "v:followups"], ["Browse all scored matches", "", "v:matches"], ["See skill gaps and weekly progress", "", "v:insights"],
-  ["See past searches and task output", "", "v:activity"], ["Schedule the daily run", "", "v:settings"], ["Edit the email template", "", "v:settings"],
+  ["See past searches and task output", "", "v:activity"], ["Schedule the daily run", "", "v:settings"], ["Edit the email template", "", "v:settings"], ["Edit the cover letter template", "", "v:settings"],
   ["Merge duplicate jobs", "", "v:settings"], ["Send a test notification", "", "notify-test"], ["Import a resume", "PDF or text", "resume"],
   ["Switch to the light theme", "", "theme-light"], ["Switch to the dark theme", "", "theme-dark"],
   ["Update the database", "", "migrate"], ["Stop the running task", "", "stop"],
