@@ -651,7 +651,10 @@ def cmd_contacts(args, settings):
                           f"    from {contact['source_url']}")
                 else:
                     print(f"#{j['job_id']} {j['company']}: none ({why})")
-            print(f"\nFound an address for {found_n} of {len(jobs)} job(s). Next: jsa email --gmail-drafts")
+            print(f"\nFound an address for {found_n} of {len(jobs)} job(s). "
+                  + ("Their emails can now be drafted and sent." if found_n else
+                     "None of these companies publishes one: apply on the job sites, "
+                     "or add an address yourself if you find one."))
     finally:
         http.close()
 

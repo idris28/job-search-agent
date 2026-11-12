@@ -441,8 +441,10 @@ def get_application(conn, profile_id: int, job_id: int) -> dict | None:
                         (profile_id, job_id)).fetchone()
 
 
-def save_contact(conn, profile_id: int, job_id: int, email: str, source: str | None, kind: str) -> None:
-    """Store an application address found away from the posting, with the page it came from."""
+def save_contact(conn, profile_id: int, job_id: int, email: str | None, source: str | None,
+                 kind: str | None) -> None:
+    """Store an application address found away from the posting, with the page it came from.
+    An email of None removes the address."""
     set_application_status_if_missing(conn, profile_id, job_id)
     conn.execute(
         """UPDATE applications SET contact_email = %s, contact_source = %s, contact_kind = %s,

@@ -104,6 +104,13 @@ def test_state_job_detail_and_quick_changes(conn, page):
     assert page.call("/api/note", {"job_id": jid, "note": "Call Sara"})[0] == 200
     app = db.get_application(conn, pid, jid)
     assert (app["outreach_subject"], app["outreach_body"], app["notes"]) == ("New subject", "Edited.", "Call Sara")
+    assert page.call("/api/contact", {"job_id": jid, "email": "not an address"})[0] == 400
+    assert "sara@acme.ae" in page.call("/api/contact", {"job_id": jid, "email": " sara@acme.ae "})[1]["message"]
+    app = db.get_application(conn, pid, jid)
+    assert (app["contact_email"], app["contact_kind"], app["contact_source"]) == ("sara@acme.ae", "recruiter", None)
+    assert page.call("/api/contact", {"job_id": jid, "email": ""})[1]["message"] == "Address removed."
+    assert db.get_application(conn, pid, jid)["contact_email"] is None
+    page.call("/api/contact", {"job_id": jid, "email": "hr@acme.ae"})
     assert "Gmail is not set up" in page.call("/api/send", {"job_id": jid})[1]["error"]
     assert page.call("/api/status", {"job_id": jid, "status": "nonsense"})[0] == 400
     assert page.call("/api/status", {"job_id": jid, "status": "applied"})[0] == 200

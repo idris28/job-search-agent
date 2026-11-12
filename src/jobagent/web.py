@@ -23,6 +23,7 @@ from urllib.parse import parse_qs, urlparse
 from . import db, scheduler
 from .actions import ActionError, send_slots, send_stored_draft
 from .config import AgentConfig
+from .contacts import _EMAIL_RE
 from .models import unfilled_placeholders
 from .report import _paragraphs_html, digest_markdown
 
@@ -342,6 +343,16 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                                        allow_general=bool(body.get("general")))
                 left = send_slots(conn, pid, config().outreach)
                 return {"message": f"Email sent to {to}." + (f" {left} more can go out today." if left < 100 else "")}
+            if path == "/api/contact":
+                email = str(body.get("email") or "").strip()
+                if not email:  # an empty box clears the address
+                    if db.get_application(conn, pid, jid):
+                        db.save_contact(conn, pid, jid, None, None, None)
+                    return {"message": "Address removed."}
+                if not _EMAIL_RE.match(email):
+                    raise ActionError("That does not look like an email address.")
+                db.save_contact(conn, pid, jid, email, None, "recruiter")
+                return {"message": f"Address saved: {email}."}
             if path == "/api/followup-done":
                 db.mark_follow_up_sent(conn, pid, jid)
                 return {"message": f"#{jid} marked as followed up."}
@@ -452,7 +463,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 self._json({"message": "The page has stopped. Open Job Search again to start it."})
                 runner.stop()
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
-            elif path in ("/api/status", "/api/note", "/api/draft", "/api/send", "/api/followup-done",
+            elif path in ("/api/status", "/api/note", "/api/draft", "/api/send", "/api/followup-done", "/api/contact",
                           "/api/schedule", "/api/template"):
                 self._answer(lambda: change(path, body))
             else:

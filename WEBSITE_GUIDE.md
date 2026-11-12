@@ -52,7 +52,8 @@ cross).
 3. **Draft the emails.** Click **Draft emails**. One email is written per job from your template and
    resume. Open a job to read and edit its draft.
 4. **Find the addresses.** Click **Look for addresses**. The agent looks on each company's own site
-   for a published application address.
+   for a published application address. Large companies usually publish none; then either type an
+   address you found yourself into the job's **To** box, or apply on the job site (step 6).
 5. **Send.** Jobs that have both a draft and an address are marked **Ready to send**. Click
    **Send ready** to send them all, or open one job and click **Send email**. Each sent job moves to
    **In progress** as "applied".
@@ -113,7 +114,7 @@ outside it. The arrows at the top, or the J and K keys, move to the next and pre
 | Top | Title, company, location, when it was posted, pay (stated or estimated) and the score. |
 | Buttons | **Apply on the job site** opens the posting in a new tab so you can apply there; when you return, the page asks whether you applied. The next buttons record what happened: **I applied**, **Skip**, **Got an interview**, **Got an offer**, **Rejected**. **Other status** has the rest. Once a job is applied, the first button reads **Open the posting**. |
 | Why it matches | A short explanation, the skills you have, the skills asked for that are not on your resume, and anything to check before applying. |
-| Email to the recruiter | The address it will go to, the subject and the text. Edit either, then **Save changes**. **Send email** sends it after asking you to confirm. **Write it again** replaces the draft with a fresh one. **How it will look** previews it. The follow-up text is underneath. |
+| Email to the recruiter | The **To** box holds the address it will go to. If the agent found none, type one you found yourself (on LinkedIn or in the posting) and click **Save address**; empty the box and save to remove it. Below it are the subject and the text. Edit either, then **Save changes**. **Send email** sends it after asking you to confirm. **Write it again** replaces the draft with a fresh one. **How it will look** previews it. The follow-up text is underneath. |
 | Cover letter | **Write a cover letter** for sites that ask for one, then **Copy**. |
 | Notes | Anything you want to remember: the recruiter's name, what was said, the next step. Click **Save note**. |
 | History | Every status change with its date. |
@@ -206,6 +207,7 @@ force**.
 | "The database is not answering." | PostgreSQL is not running. Start it, then reload. |
 | A yellow bar asking to update the database | Click **Update the database**. It only adds what new features need. |
 | Double-clicking Job Search does nothing | Open `digests/web.log` in the project folder; the reason is at the end. |
-| "No email is ready yet." | A job needs both a draft and an address. Use **Draft emails** and **Look for addresses** first. |
+| "No email is ready yet." | A job needs both a draft and an address. Use **Draft emails** and **Look for addresses** first, or type an address into the job's **To** box. |
+| "Found an address for 0 of 7 jobs" | Those companies publish no application address. Apply on the job sites, or add an address yourself. |
 | A task says "did not finish" | Click **Show output** to read why. A site blocking the search is the usual cause, and the other sites still complete. |
 | New buttons or panels look wrong after an update | Stop the program in Settings, open **Job Search** again, and reload the page. |

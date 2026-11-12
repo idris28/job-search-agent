@@ -299,6 +299,10 @@ body.reading .drawer{transform:none}
 .drawer .tag{white-space:normal;border-radius:12px;text-align:left}
 .drawer .d-bar .tag{white-space:nowrap;border-radius:99px}
 .kv{display:grid;grid-template-columns:120px 1fr;gap:5px 12px;margin:0 0 12px}
+.torow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 6px}
+.torow label{color:var(--muted);width:28px}
+.torow .field{flex:1 1 220px;width:auto;margin:0}
+.toinfo{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;color:var(--muted);font-size:13px}
 .kv dt{color:var(--muted)}
 .kv dd{margin:0;overflow-wrap:anywhere;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
 .field{display:block;width:100%;border:1px solid var(--line-2);border-radius:12px;background:var(--inset);padding:10px 12px;margin:0 0 8px;transition:border-color .15s,box-shadow .15s}
@@ -951,13 +955,14 @@ function renderDetail(keep) {
   const rows = S.state && LIST.includes(S.view) ? shown() : [], at = rows.findIndex(r => r.job_id === j.id);
 
   let mail = "";
+  const sent = a && a.outreach_sent_at ? `<span class="tag c-green">sent ${esc(when(a.outreach_sent_at))}</span>` : "";
+  const toRow = !a ? "" : `<div class="torow"><label for="addr">To</label><input class="field" id="addr" type="email" autocomplete="off" spellcheck="false" placeholder="recruiter@company.com" value="${esc(a.contact_email)}">
+      <button class="btn sm" data-act="save-addr">Save address</button>${a.contact_email ? "" : `<button class="btn sm" data-act="contacts-one">${ic("at")}Look for one</button>`}</div>
+    <p class="toinfo">${a.contact_email ? `${a.contact_kind ? `<span class="tag ${a.contact_kind === "general" ? "c-amber" : "c-slate"}">${esc(a.contact_kind)} address</span>` : ""}${http(a.contact_source) ? ` <a href="${esc(a.contact_source)}" target="_blank" rel="noopener noreferrer">where it was found</a>` : ""} ${sent}`
+      : "No address yet. Type one you found yourself, or let the agent look on the company's site."}</p>`;
   if (a && a.outreach_subject) {
-    const to = a.contact_email
-      ? `${esc(a.contact_email)}${a.contact_kind ? ` <span class="tag ${a.contact_kind === "general" ? "c-amber" : "c-slate"}">${esc(a.contact_kind)} address</span>` : ""}${http(a.contact_source) ? ` <a href="${esc(a.contact_source)}" target="_blank" rel="noopener noreferrer">where it was found</a>` : ""}`
-      : `No address known. <button class="btn sm" data-act="contacts-one">${ic("at")}Look for one</button>`;
-    const sent = a.outreach_sent_at ? `<span class="tag c-green">sent ${esc(when(a.outreach_sent_at))}</span>` : "";
     const canSend = s === "shortlisted" && a.contact_email && !a.outreach_sent_at;
-    mail = `<dl class="kv"><dt>To</dt><dd>${to} ${sent}</dd></dl>
+    mail = `${toRow}
       ${a.unfilled.length ? `<p><span class="tag c-red">Fill in before sending: ${esc(a.unfilled.join(", "))}</span></p>` : ""}
       ${a.posting_open === false ? `<p><span class="tag c-red">The posting looked closed when this was drafted</span></p>` : ""}
       <input class="field" id="subj" aria-label="Subject" value="${esc(a.outreach_subject)}">
@@ -972,8 +977,7 @@ function renderDetail(keep) {
         <p><b>${esc(a.follow_up_subject)}</b></p><div class="mail desc">${esc(a.follow_up_body)}</div>
         ${d.due ? `<div class="acts"><button class="btn" data-act="followup-done">I followed up myself</button></div>` : ""}</details>` : ""}`;
   } else if (s === "shortlisted") {
-    mail = `<p>No email has been drafted for this job yet.</p><div class="acts"><button class="btn primary" data-act="draft-one">${ic("edit")}Draft the email</button>
-      ${a && !a.contact_email ? `<button class="btn" data-act="contacts-one">${ic("at")}Look for an address</button>` : ""}</div>`;
+    mail = `${toRow}<p>No email has been drafted for this job yet.</p><div class="acts"><button class="btn primary" data-act="draft-one">${ic("edit")}Draft the email</button></div>`;
   } else mail = `<p>Shortlist this job to write to its recruiter.</p>`;
 
   el.innerHTML = `<div class="d-bar">
@@ -1004,6 +1008,11 @@ function renderDetail(keep) {
   const val = $(".dial .val", el);
   if (val && !keep) requestAnimationFrame(() => requestAnimationFrame(() => val.style.strokeDashoffset = val.dataset.to));
   if (!keep) { el.scrollTop = 0; $("[data-act=back]", el).focus({ preventScroll: true }); }
+}
+async function keepDraft() {  // saving a note or an address must not throw away edits to the draft
+  const subj = $("#subj"), body = $("#body");
+  if (S.dirty && subj && body && subj.value.trim() && body.value.trim())
+    try { await api("/api/draft", { job_id: S.sel, subject: subj.value, body: body.value }); } catch {}
 }
 async function change(path, body, after = true) {
   try {
@@ -1161,7 +1170,8 @@ const A = {
   "send-one": async () => { const a = S.detail.application;
     if (S.dirty && !await change("/api/draft", { job_id: S.sel, subject: $("#subj").value, body: $("#body").value }, false)) return;
     if (await ask("Send this email now?", `It goes from your Gmail to ${a.contact_email} with your CV attached.`, "Send email")) change("/api/send", { job_id: S.sel, general: a.contact_kind === "general" }); },
-  "save-note": () => change("/api/note", { job_id: S.sel, note: $("#note").value }),
+  "save-note": async () => { const note = $("#note").value; await keepDraft(); change("/api/note", { job_id: S.sel, note }); },
+  "save-addr": async () => { const email = $("#addr").value.trim(); await keepDraft(); change("/api/contact", { job_id: S.sel, email }); },
   "followup-done": () => change("/api/followup-done", { job_id: S.sel }),
   status: b => change("/api/status", { job_id: S.sel, status: b.dataset.to }),
   "apply-first": () => { const l = ids(() => true); l.length ? openJob(l[0]) : toast("Your shortlist is empty."); },
@@ -1224,7 +1234,7 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("input", e => {
   const id = e.target.id;
-  if (id === "subj" || id === "body" || id === "note") S.dirty = true;
+  if (id === "subj" || id === "body" || id === "note" || id === "addr") S.dirty = true;
   if (id === "tq") { S.q = e.target.value; S.page = 0; renderList(); }
   if (id === "pq") drawPalette();
 });
