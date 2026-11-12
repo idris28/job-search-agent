@@ -1,22 +1,19 @@
-Dear Hiring Team,
+Dear [the recruiter's first name if the posting names one, otherwise Hiring Team],
 
-I am applying for the [Job Title] position at [Company Name]. I am a [my current job title] with over [X years] of experience at [my employers].
+I am a [my current job title] with over [X years] of experience at [my employers], applying for the [Job Title] position at [Company Name].
 
-Key skills: [the 6 to 8 skills this job asks for most that my resume backs, most important first]
+**Key skills:** [the 6 to 8 skills this job asks for most that my resume backs, most important first]
 
-Relevant experience:
+**Relevant experience:**
 - [one area of my experience this job asks for, under 12 words, with a number from my resume if it has one]
 - [a second such area, under 12 words]
 - [a third such area, under 12 words]
 - [only if this job asks for AI, LLM or agent experience: my AI work, such as the PVR Triage Agent, under 15 words; otherwise leave this line out]
 
-Location: [my city and country], open to relocating to [the job's city or country, only if it differs from mine]
-Availability: [when I can join, only if my preferences give a notice period]
+Based in [my city and country if the job is in my country; only my country if the job is abroad]. Ready to relocate to [the job's city if it is in my country, or its country if abroad; leave this sentence out if the job is in my city or remote]. Available to join [when I can join, from my preferences; leave this sentence out if none is given].
 
 My CV is attached. I would be glad to discuss the role on a short call.
 
 Best regards,
 [Your Full Name]
-[Phone Number]
-[Email Address]
-[LinkedIn]
+[Phone Number] | [Email Address] | [LinkedIn link]

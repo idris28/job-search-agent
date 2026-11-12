@@ -171,6 +171,9 @@ def test_template_email_preview_keeps_paragraphs_and_line_breaks():
     assert email_body_html(linked) == ('<p>Best regards,<br>Alex<br>'
                                        '<a href="https://www.linkedin.com/in/x-1/">LinkedIn</a></p>')
     assert unfilled_placeholders(linked.body) == []  # a link is not an unfilled blank
+    bold = filled("**Key skills:** Java, Spring Boot\n\n**Relevant experience:**\n- Shipped 15+ APIs")
+    assert email_body_html(bold) == ("<p><b>Key skills:</b> Java, Spring Boot</p>"
+                                     "<p><b>Relevant experience:</b><br>- Shipped 15+ APIs</p>")
 
 
 def test_unfilled_placeholders():

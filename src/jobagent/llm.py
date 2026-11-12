@@ -107,7 +107,7 @@ BODY: the template, made specific to this job
   email address and LinkedIn URL: from the outreach preferences (for the email address, the
   resume's if the preferences give none).
 - Write a LinkedIn URL as the link [LinkedIn](URL), never as a bare URL. Copy any [text](URL)
-  link already in the template unchanged.
+  link already in the template unchanged, and keep its **bold** marks exactly where they are.
 - Make it specific to the posting. Skills and areas of experience: the ones this posting asks for
   that the resume shows, by name or by work that plainly involves them, most important first and
   in the posting's own terms where they mean the same thing. Leave out anything the resume does

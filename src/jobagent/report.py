@@ -109,7 +109,8 @@ def _paragraphs_html(text: str | None) -> str:
     html = "".join("<p>" + "<br>".join(_h(line.strip()) for line in p.splitlines()) + "</p>"
                    for p in paragraphs)
     # [LinkedIn](https://...) becomes a clickable link, which survives "Copy email" into Gmail.
-    return re.sub(r"\[([^\[\]<>]+)\]\((https?://[^\s()<>\"]+)\)", r'<a href="\2">\1</a>', html)
+    html = re.sub(r"\[([^\[\]<>]+)\]\((https?://[^\s()<>\"]+)\)", r'<a href="\2">\1</a>', html)
+    return re.sub(r"\*\*([^*<>]+)\*\*", r"<b>\1</b>", html)  # **Key skills:** becomes bold
 
 
 def email_body_html(e) -> str:

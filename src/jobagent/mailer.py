@@ -18,7 +18,8 @@ def build_message(sender: str, to: str, subject: str, body_text: str, body_html:
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = sender, to, subject
     # Plain-text readers cannot follow a [LinkedIn](url) link, so spell the address out.
-    msg.set_content(_LINK_RE.sub(r"\1: \2", body_text))
+    # ...and cannot show bold, so drop the ** marks.
+    msg.set_content(_LINK_RE.sub(r"\1: \2", body_text).replace("**", ""))
     msg.add_alternative(f"<html><body>{body_html}</body></html>", subtype="html")
     if attachment is not None:
         kind = mimetypes.guess_type(attachment.name)[0] or "application/octet-stream"
