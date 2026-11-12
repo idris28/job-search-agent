@@ -106,6 +106,31 @@ jsa runs                         # run history, tokens used, errors
 Output: `digests/emails-<date>.html` (open in a browser; "Copy email" pastes into Gmail with
 formatting; each card shows the recruiter review) and a Markdown copy. Nothing is ever sent.
 
+**Follow-ups.** When `--send` sends an email, the time is recorded. `jsa followups` lists the emails
+that are `outreach.follow_up_days` (6) old with no follow-up yet; `jsa followups --send` sends the
+stored follow-up text, and `--done <id>` records one you sent by hand.
+
+**Sending limits.** `--send` and `followups --send` stop at `outreach.max_sends_per_day` (10) emails a
+day and wait `outreach.send_pause_seconds` (20) between them.
+
+**CV variants.** `outreach.resume_variants` lists other CVs with keywords. The first variant whose
+keyword appears in the job's title or description is attached instead of `resume_path`.
+
+**Spending limits.** `matching.max_tokens_per_run` and `matching.max_browser_minutes_per_run` stop a run
+when reached: remaining job boards are skipped and unscored jobs wait for the next run. The run is
+marked `partial` and says why. Claude calls mark the resume and template for prompt caching, so
+repeated calls in one run read them at a fraction of the price.
+
+**One job, one row.** The same job on two boards is stored once: it is matched on company name
+(without "Pvt Ltd" and similar), the title's meaningful words, and country.
+
+**Every morning.** `jsa daily` runs the search, writes `digests/<date>.md`, lists follow-ups due and,
+when Gmail is configured, emails you one summary. `jsa schedule install --time 08:00` sets macOS to
+run it daily; `jsa schedule status` and `jsa schedule remove` manage it.
+
+**Web page.** `jsa web` opens a page on this Mac only (http://127.0.0.1:8765) with your shortlist,
+scores, email drafts and status, and buttons to mark a job applied or skipped.
+
 **New jobs first.** The agent reads how long ago each job was posted ("2 days ago") from the
 job boards. `search.max_age_days` (7 in the example) drops older postings, and lists, emails and
 `jsa apply` go newest first. A job whose age the board does not show is kept and listed last.
@@ -172,6 +197,9 @@ src/jobagent/
   cli.py        jsa commands
   pipeline.py   one run: collect → store → filter → score → shortlist
   sources/      greenhouse, lever, ashby (ats.py) and generic (Browserbase + LLM)
+  mailer.py     Gmail: save drafts or send
+  web.py        local web page of the shortlist
+  scheduler.py  macOS launchd job for `jsa daily`
   browser.py    Browserbase session (or local Chromium) behind one fetch() interface
   llm.py        shared prompts + OpenAI provider: profile, match score, listing extraction, cover letter
   llm_anthropic.py  Claude provider for the same tasks

@@ -6,8 +6,8 @@
 project. Every action is `jsa` followed by a word, for example `jsa run` or `jsa email`.
 
 The agent finds jobs for you, scores each one against your resume, writes recruiter emails in your
-own format, and keeps track of what you applied to. It never applies or emails without you asking
-it to.
+own format, reminds you when to follow up, and keeps track of what you applied to. It never applies
+or emails without you asking it to.
 
 ## How it works
 
@@ -17,16 +17,21 @@ job boards  ->  location,    ->  AI compares   ->  score 75+     ->  email, appl
 (Browserbase)   title, age       job to resume     is shortlisted    track status
 ```
 
-1. **Collect.** `jsa run` opens the job board searches listed in `config.yaml` (Naukri, Naukrigulf,
-   Bayt) in a cloud browser called Browserbase. An AI model reads each page and picks out the jobs,
-   including how long ago each was posted.
+1. **Collect.** `jsa run` reads every source listed in `config.yaml`. Job boards (Naukri,
+   Naukrigulf, Bayt) are opened in a cloud browser called Browserbase, and an AI model reads each
+   page and picks out the jobs, including how long ago each was posted. Company career pages
+   (Okta, Databricks and others) are read from their public feeds, with no browser. The same job
+   found on two boards is stored once.
 2. **Filter.** Jobs are dropped for free, before any scoring, if the location is not on your list,
    the title has an excluded word, the company is a bank, or the job is older than 7 days.
 3. **Score.** The AI model (Claude) compares each remaining job with your resume and gives a score
    from 0 to 100, with matched skills, gaps and red flags.
 4. **Shortlist.** Jobs scoring 75 or more are shortlisted automatically.
-5. **Act.** You draft or send recruiter emails, open jobs to apply on the site, and record what
-   happened.
+5. **Act.** You draft or send recruiter emails, open jobs to apply on the site, send follow-ups
+   when they are due, and record what happened.
+
+A run stops early if it reaches the spending limits in `config.yaml` (AI tokens and browser
+minutes); whatever is left waits for the next run.
 
 Everything is stored in a PostgreSQL database on your Mac, so nothing is lost between runs and a
 job is never scored or emailed twice.
@@ -38,7 +43,7 @@ job is never scored or emailed twice.
 | `.env` | Your secret keys (AI model, Browserbase, database, Gmail). Never shared. |
 | `config.yaml` | Your search: roles, locations, keywords, job boards, email settings. |
 | `email_template.txt` | The wording of your recruiter email. Text in `[brackets]` is filled in per job. |
-| `digests/` | Where email previews and summaries are written. |
+| `digests/` | Where email previews, daily digests and the daily log are written. |
 | PostgreSQL database `jobagent` | Every job, score, application and draft. |
 
 ## Before you start
@@ -98,6 +103,9 @@ Each job has a **number** (for example 343). Use it wherever a command takes a j
 | `jsa email --no-browse` | Skips the live check of the posting (no Browserbase use). |
 | `jsa email --limit 5` | Changes how many shortlisted jobs are drafted. |
 | `jsa cover-letter 343` | Writes a cover letter for one job and saves it with the application. |
+| `jsa followups` | Lists emails sent 6 or more days ago that have had no follow-up. |
+| `jsa followups --send` | Sends the stored follow-up email for each one that is due. |
+| `jsa followups --done 343` | Records a follow-up you sent yourself, so it stops being listed. |
 
 An email is **ready** only when the posting shows an email address, the posting is still open, and
 no blank in the template was left unfilled. Other jobs are listed with their link so you can apply
@@ -116,9 +124,19 @@ in `.env` (an app password from myaccount.google.com/apppasswords), and `outreac
 | `jsa apply --dry-run` | Lists the jobs and links without opening anything. |
 | `jsa status 343 applied --note "via referral"` | Sets a job's status yourself, with an optional note. |
 | `jsa applications` | Lists every job you are tracking and its status. |
+| `jsa web` | Opens a web page on this Mac with your shortlist, scores, email drafts and status, and buttons to mark a job applied or skipped. Press Ctrl-C in the terminal to stop it. |
 
 The statuses are: `shortlisted`, `applied`, `interviewing`, `offer`, `rejected`, `withdrawn`,
 `skipped`.
+
+### Running it every day
+
+| Command | What it does |
+|---|---|
+| `jsa daily` | Runs the search, writes `digests/<date>.md`, lists follow-ups due, and emails you one summary if Gmail is set up. |
+| `jsa schedule install --time 08:00` | Tells macOS to run `jsa daily` at that time every day. Run it from the project folder. |
+| `jsa schedule status` | Shows whether the schedule is installed and when it runs. |
+| `jsa schedule remove` | Removes the schedule. |
 
 ### Help
 
@@ -128,6 +146,15 @@ The statuses are: `shortlisted`, `applied`, `interviewing`, `offer`, `rejected`,
 | `jsa email -h` | Shows the options for one command. |
 | `jsa -v run` | Runs a command with detailed log output, useful when something goes wrong. |
 
+### Less common options
+
+| Option | On | What it does |
+|---|---|---|
+| `--config <file>` | `run`, `email`, `add`, `followups`, `daily`, `web` | Use a settings file other than `config.yaml`. |
+| `--no-research`, `--no-review` | `email` | Skip the web research and the recruiter review. These only apply to the built-in email format; with your template they are already skipped. |
+| `--port <number>` | `web` | Serve the page on another port (default 8765). |
+| `--no-open` | `web` | Start the page without opening the browser. |
+
 ## A typical session
 
 1. `jsa run` to collect and score fresh jobs.
@@ -135,7 +162,11 @@ The statuses are: `shortlisted`, `applied`, `interviewing`, `offer`, `rejected`,
 3. `jsa add` for any LinkedIn post you found yourself.
 4. `jsa email --gmail-drafts` to draft the emails, then review and send them in Gmail.
 5. `jsa apply` for the jobs that have no email address.
-6. `jsa applications` to see where everything stands.
+6. `jsa followups` to see which emails need chasing.
+7. `jsa web` (or `jsa applications`) to see where everything stands.
+
+Once `jsa schedule install` is set up, step 1 happens by itself each morning and a summary arrives
+by email.
 
 ## Settings you are most likely to change
 
@@ -151,12 +182,17 @@ All in `config.yaml`:
 | `outreach.email`, `outreach.linkedin_url` | Contact details in the email sign-off. |
 | `outreach.resume_path` | The CV file attached to emails. |
 | `outreach.template_file` | The email wording file (`email_template.txt`). |
+| `outreach.resume_variants` | Other CVs, each with keywords; attached when a job mentions one. |
+| `outreach.follow_up_days` | Days after an email before a follow-up is due (6). |
+| `outreach.max_sends_per_day`, `send_pause_seconds` | Sending limits: emails per day (10) and the wait between them (20 seconds). |
+| `matching.max_tokens_per_run`, `max_browser_minutes_per_run` | Spending limits for one run. |
+| `sources` | Job boards and company career pages to search. |
 
 ## What costs money
 
-- **AI model calls** (Claude): `jsa run` (reading pages and scoring), `jsa email`, `jsa add`,
+- **AI model calls** (Claude): `jsa daily`, `jsa run` (reading pages and scoring), `jsa email`, `jsa add`,
   `jsa cover-letter` and `jsa profile import`.
-- **Browserbase time**: `jsa run`, and the live posting check in `jsa email`.
+- **Browserbase time**: `jsa daily`, `jsa run`, and the live posting check in `jsa email`.
 
 Everything else (`jobs`, `show`, `apply`, `status`, `applications`, `digest`, `runs`, `migrate`)
 is free.
@@ -168,4 +204,7 @@ is free.
 - Most job board postings show no email address, so `--send` only covers the ones that do, plus
   posts you add with `jsa add`.
 - Only the first 15 job pages per site are opened in full each run; the newest postings go first.
+- `--send` stops at 10 emails a day and waits 20 seconds between them; both are settings.
+- The daily schedule only runs while the Mac is awake.
+- After any update to the agent, run `jsa migrate` once; until then every command stops and says so.
 - A job whose posting age the site does not show is kept and listed last.

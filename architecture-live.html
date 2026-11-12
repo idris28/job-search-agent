@@ -74,6 +74,9 @@
     <button data-flow="add" aria-pressed="false">jsa add</button>
     <button data-flow="email" aria-pressed="false">jsa email --send</button>
     <button data-flow="apply" aria-pressed="false">jsa apply</button>
+    <button data-flow="followups" aria-pressed="false">jsa followups --send</button>
+    <button data-flow="daily" aria-pressed="false">jsa daily</button>
+    <button data-flow="web" aria-pressed="false">jsa web</button>
     <span class="gap"></span>
     <button id="play">Play</button>
     <button id="step">Step</button>
@@ -117,6 +120,9 @@ const NODES = {
   report:  { x: 500, y: 540, label: "Preview",        sub: "report.py",               kind: "code" },
   mail:    { x: 940, y: 540, label: "Gmail",          sub: "mailer.py",               kind: "ext" },
   own:     { x: 290, y: 540, label: "Your browser",   sub: "the job site",            kind: "person" },
+  feeds:   { x: 940, y: 185, label: "Company feeds",  sub: "Greenhouse, Lever, Ashby", kind: "ext" },
+  sched:   { x: 90,  y: 150, label: "Schedule",       sub: "macOS launchd",           kind: "ext" },
+  webpage: { x: 110, y: 450, label: "Web page",       sub: "web.py",                  kind: "code" },
 };
 const W = 150, H = 54;
 
@@ -132,11 +138,13 @@ const FLOWS = {
     ["ai","sources","Jobs with title, link and age","Links that are not on the page are thrown away."],
     ["sources","browser","Open the newest job pages","Up to 15 per site, newest first."],
     ["browser","sources","Full job descriptions","Used later for scoring."],
-    ["sources","pipeline","Jobs handed back","Each one is a JobPosting."],
-    ["pipeline","db","Store every job once","upsert_job() uses a fingerprint, so a job is never stored twice."],
+    ["sources","feeds","Read the company career feeds","Greenhouse, Lever and Ashby over plain HTTP: no browser, cannot be blocked."],
+    ["feeds","sources","Every open job, with its date","15 companies in your config."],
+    ["sources","pipeline","Jobs handed back","Each one is a JobPosting. A source is skipped once a spending limit is reached."],
+    ["pipeline","db","Store every job once","upsert_job(): the same job on two boards is matched and stored as one row."],
     ["pipeline","filters","Check the free rules","reject_reason(): location, title, bank, older than 7 days."],
     ["filters","pipeline","Keep or drop","Dropped jobs cost no AI call."],
-    ["pipeline","ai","Score the jobs that are left","score_job(), four at a time, against your resume."],
+    ["pipeline","ai","Score the jobs that are left","score_job(), four at a time, until done or the token limit. Your profile is sent as a cached prefix."],
     ["ai","pipeline","Score 0 to 100","With matched skills, gaps and red flags."],
     ["pipeline","db","Save scores and shortlist","save_match(); scores of 75 or more are shortlisted."],
     ["pipeline","cli","Run summary","Counts, tokens used, any site that failed."],
@@ -163,9 +171,46 @@ const FLOWS = {
     ["cli","db","Save the draft","save_outreach(), before anything is sent."],
     ["cli","report","Build the preview","emails_html() writes digests/emails-date.html."],
     ["report","user","Preview to read","Every draft, with copy buttons."],
-    ["cli","mail","Send the ready emails","build_message() attaches your CV; send_messages() sends it."],
+    ["cli","db","Check today's sending count","sends_today(): sending stops at 10 emails a day."],
+    ["cli","mail","Send the ready emails","resume_for() picks the CV, build_message() attaches it, with a pause between emails."],
     ["mail","user","Email sent to the recruiter","Only if the posting had an address, is open, and has no blank."],
-    ["cli","db","Mark the job applied","So it is never emailed twice."],
+    ["cli","db","Mark the job applied","And record the time sent, so a follow-up becomes due in 6 days."],
+  ]},
+  followups: { title: "jsa followups --send: chase emails with no reply", steps: [
+    ["user","cli","You type jsa followups --send","cmd_followups() loads config.yaml."],
+    ["cli","db","Which follow-ups are due?","followups_due(): emailed 6 or more days ago, no follow-up yet, still 'applied'."],
+    ["db","cli","The due follow-ups","Each with the address and the follow-up text drafted earlier."],
+    ["cli","user","List shown","Without --send it stops here."],
+    ["cli","db","Check today's sending count","The same daily cap as jsa email --send."],
+    ["cli","mail","Send each follow-up","send_messages(), with a pause between emails."],
+    ["mail","user","Follow-up sent to the recruiter","One per job."],
+    ["cli","db","Mark it followed up","mark_follow_up_sent(): it is never sent twice."],
+  ]},
+  daily: { title: "jsa daily: the scheduled morning run", steps: [
+    ["sched","cli","macOS starts jsa daily","At the time you set with jsa schedule install."],
+    ["cli","pipeline","Start a run","The same run_agent() as jsa run."],
+    ["pipeline","sources","Collect from every source","Job boards through the browser, company feeds over HTTP."],
+    ["sources","pipeline","Jobs handed back","Within the spending limits."],
+    ["pipeline","db","Store and de-duplicate","upsert_job()."],
+    ["pipeline","filters","Check the free rules","reject_reason()."],
+    ["pipeline","ai","Score what is left","score_job()."],
+    ["pipeline","db","Save scores and shortlist","save_match(), shortlist_many()."],
+    ["pipeline","cli","Run summary","Counts, tokens, any site that failed."],
+    ["cli","db","What is new, what is due?","top_matches() for this run and followups_due()."],
+    ["cli","report","Write the digest","digest_markdown() to digests/date.md."],
+    ["cli","mail","Email one summary","To your own address, if Gmail is set up."],
+    ["mail","user","Summary in your inbox","New matches, follow-ups due, and what to do next."],
+  ]},
+  web: { title: "jsa web: the shortlist in your browser", steps: [
+    ["user","cli","You type jsa web","cmd_web() checks the database, then starts the page."],
+    ["cli","webpage","Start the page","web.serve() on 127.0.0.1:8765, reachable from this Mac only."],
+    ["user","webpage","You open the page","Your browser asks for it."],
+    ["webpage","db","Read your tracked jobs","dashboard_rows(): scores, status, drafts, send times."],
+    ["db","webpage","The rows","Newest postings first."],
+    ["webpage","user","The page","Shortlisted, in progress and set aside, with a 'follow up today' badge."],
+    ["user","webpage","You press Mark applied","The form carries a one-time token from this page."],
+    ["webpage","db","Update the status","set_application_status()."],
+    ["webpage","user","The page, refreshed","The job moves to 'Applied and in progress'."],
   ]},
   apply: { title: "jsa apply: apply on the job site", steps: [
     ["user","cli","You type jsa apply","cmd_apply() starts."],

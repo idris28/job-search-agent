@@ -36,25 +36,32 @@
   <div class="card">
     <pre class="mermaid">
 flowchart TD
-    U(["You type a jsa command"]) --> M["main()<br/>cli.py"]
+    U(["You type a jsa command<br/>or launchd starts jsa daily"]) --> M["main()<br/>cli.py"]
     M --> ENV["load_dotenv()<br/>Settings.from_env()<br/>read keys from .env"]
-    ENV --> P{"build_parser()<br/>which command?"}
+    ENV --> MIG{"Database up to date?<br/>pending_migrations()"}
+    MIG -->|"no"| X0(["Stops: Run jsa migrate"])
+    MIG -->|"yes"| P{"build_parser()<br/>which command?"}
 
     %% ---------- jsa run ----------
     P -->|"jsa run"| R1["cmd_run()<br/>load config.yaml, create AI and browser"]
     R1 --> R2["run_agent()<br/>pipeline.py"]
     R2 --> DB1[("PostgreSQL<br/>active_profile, start_run")]
-    DB1 --> R3["For each job board:<br/>build_source().fetch()"]
-    R3 --> W1[["Browserbase browser<br/>fetch search page"]]
+    DB1 --> B1{"For each source:<br/>spending limit reached?"}
+    B1 -->|"yes"| X3(["Source skipped, run marked partial"])
+    B1 -->|"no"| K1{"Job board or<br/>company feed?"}
+    K1 -->|"job board"| W1[["Browserbase browser<br/>fetch search page"]]
     W1 --> A1[["AI model<br/>extract_listings: jobs, links, posted age"]]
-    A1 --> R4["Drop links not on the page<br/>sort newest first"]
-    R4 --> W2[["Browserbase browser<br/>fetch up to 15 job pages"]]
-    W2 --> DB2[("PostgreSQL<br/>upsert_job, stored once by fingerprint")]
+    A1 --> W2[["Browserbase browser<br/>fetch up to 15 job pages, newest first"]]
+    K1 -->|"company feed"| FD[["Greenhouse, Lever, Ashby<br/>HTTP feed, no browser"]]
+    W2 --> DB2[("PostgreSQL<br/>upsert_job: once per job,<br/>also across boards")]
+    FD --> DB2
     DB2 --> F{"reject_reason()<br/>location, title, bank, older than 7 days?"}
     F -->|"rejected"| X1(["Dropped, no AI cost"])
-    F -->|"kept"| H{"Already scored<br/>with the same text?"}
+    F -->|"kept"| H{"Already scored, or a second<br/>listing of a scored job?"}
     H -->|"yes"| X2(["Skipped"])
-    H -->|"no"| A2[["AI model<br/>score_job: 0 to 100, skills, gaps"]]
+    H -->|"no"| B2{"Token limit reached?"}
+    B2 -->|"yes"| X4(["Left for the next run"])
+    B2 -->|"no"| A2[["AI model<br/>score_job: 0 to 100, skills, gaps<br/>profile sent as cached prefix"]]
     A2 --> DB3[("PostgreSQL<br/>save_match")]
     DB3 --> S{"Score 75 or more?"}
     S -->|"yes"| DB4[("PostgreSQL<br/>shortlist_many")]
@@ -82,13 +89,24 @@ flowchart TD
     G -->|"neither"| O3(["Preview only, nothing sent"])
     G -->|"yes"| E4{"Ready?<br/>address, open, no blank, not applied"}
     E4 -->|"no"| O4(["Listed with its apply link"])
-    E4 -->|"yes"| E5["build_message()<br/>attach CV"]
+    E4 -->|"yes"| E5["resume_for(): pick the CV<br/>build_message(): attach it"]
     E5 --> K{"Which flag?"}
     K -->|"--gmail-drafts"| GM1[["Gmail<br/>save_drafts"]]
-    K -->|"--send"| GM2[["Gmail<br/>send_messages"]]
+    K -->|"--send"| CAP{"Under the daily cap?<br/>sends_today()"}
+    CAP -->|"no"| O10(["Not sent today, listed"])
+    CAP -->|"yes"| GM2[["Gmail<br/>send_messages, pause between emails"]]
     GM1 --> O5(["Drafts in Gmail for you to send"])
-    GM2 --> DB10[("PostgreSQL<br/>status = applied")]
+    GM2 --> DB10[("PostgreSQL<br/>status = applied,<br/>mark_outreach_sent")]
     DB10 --> O6(["Email sent to the recruiter"])
+
+    %% ---------- jsa followups ----------
+    P -->|"jsa followups"| FU1["cmd_followups()"]
+    FU1 --> DB13[("PostgreSQL<br/>followups_due: sent 6+ days ago,<br/>no follow-up yet")]
+    DB13 --> FU2{"--send?"}
+    FU2 -->|"no"| O11(["Follow-ups due listed"])
+    FU2 -->|"yes"| GM3[["Gmail<br/>send the stored follow-up<br/>within the daily cap"]]
+    GM3 --> DB14[("PostgreSQL<br/>mark_follow_up_sent")]
+    DB14 --> O12(["Follow-up sent once"])
 
     %% ---------- jsa apply ----------
     P -->|"jsa apply"| L1["cmd_apply()"]
@@ -99,6 +117,22 @@ flowchart TD
     L3 -->|"n or q"| O7(["Left as shortlisted"])
     DB12 --> O8(["Status recorded"])
 
+    %% ---------- jsa daily ----------
+    P -->|"jsa daily"| DY1["cmd_daily()<br/>run_agent(): the jsa run branch"]
+    DY1 --> DB15[("PostgreSQL<br/>top_matches of this run,<br/>followups_due")]
+    DB15 --> DY2["digest_markdown()<br/>write digests/date.md"]
+    DY2 --> GM4[["Gmail<br/>one summary to your own address"]]
+    GM4 --> O13(["Summary email and digest file"])
+
+    %% ---------- jsa web ----------
+    P -->|"jsa web"| WB1["web.serve()<br/>page on 127.0.0.1:8765"]
+    WB1 --> DB16[("PostgreSQL<br/>dashboard_rows")]
+    DB16 --> WB2["dashboard_html()<br/>shortlist, scores, drafts, status"]
+    WB2 --> WB3{"Button pressed?"}
+    WB3 -->|"yes"| DB17[("PostgreSQL<br/>set_application_status")]
+    DB17 --> WB2
+    WB3 -->|"no"| O14(["Page shown in your browser"])
+
     %% ---------- read-only commands ----------
     P -->|"jobs, show, applications,<br/>digest, runs"| Q1[("PostgreSQL<br/>read only")]
     Q1 --> O9(["Table or summary printed"])
@@ -108,18 +142,18 @@ flowchart TD
     classDef db fill:#e8f5ec,stroke:#5aa775,color:#1d2430;
     classDef ext fill:#f3eafa,stroke:#a57fd0,color:#1d2430;
     classDef io fill:#f1f3f6,stroke:#9aa6b6,color:#1d2430;
-    class M,ENV,R1,R2,R3,R4,D1,E1,E2,E3,E5,L1,L2 step;
-    class P,F,H,S,G,E4,K,L3 decision;
-    class DB1,DB2,DB3,DB4,DB5,DB6,DB7,DB8,DB9,DB10,DB11,DB12,Q1 db;
-    class W1,W2,W3,A1,A2,A3,A4,A5,GM1,GM2 ext;
-    class U,X1,X2,O1,O2,O3,O4,O5,O6,O7,O8,O9 io;
+    class M,ENV,R1,R2,D1,E1,E2,E3,E5,L1,L2,FU1,DY1,DY2,WB1,WB2 step;
+    class MIG,P,B1,K1,F,H,B2,S,G,E4,K,CAP,FU2,L3,WB3 decision;
+    class DB1,DB2,DB3,DB4,DB5,DB6,DB7,DB8,DB9,DB10,DB11,DB12,DB13,DB14,DB15,DB16,DB17,Q1 db;
+    class W1,W2,W3,A1,A2,A3,A4,A5,FD,GM1,GM2,GM3,GM4 ext;
+    class U,X0,X1,X2,X3,X4,O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14 io;
     </pre>
     <div id="error"></div>
     <div class="legend">
       <span style="--c:#eef3fb;--b:#8aa4d6">Step in the agent's code</span>
       <span style="--c:#fff6e0;--b:#d9a441">Decision</span>
       <span style="--c:#e8f5ec;--b:#5aa775">PostgreSQL database</span>
-      <span style="--c:#f3eafa;--b:#a57fd0">Outside service: AI model, Browserbase, Gmail</span>
+      <span style="--c:#f3eafa;--b:#a57fd0">Outside service: AI model, Browserbase, company feeds, Gmail</span>
       <span style="--c:#f1f3f6;--b:#9aa6b6">Start or result</span>
     </div>
   </div>
@@ -130,6 +164,9 @@ flowchart TD
     <tr><td><code>jsa add</code></td><td><code>cmd_add()</code></td><td>One pasted post stored, scored and shortlisted</td></tr>
     <tr><td><code>jsa email</code></td><td><code>cmd_email()</code> then <code>_deliver()</code></td><td>A draft per job, an HTML preview, and optionally Gmail drafts or sent emails</td></tr>
     <tr><td><code>jsa apply</code></td><td><code>cmd_apply()</code></td><td>Each posting opened in your browser, your answer recorded</td></tr>
+    <tr><td><code>jsa followups</code></td><td><code>cmd_followups()</code></td><td>Follow-ups due listed, or sent once each with <code>--send</code></td></tr>
+    <tr><td><code>jsa daily</code></td><td><code>cmd_daily()</code>, started by <code>jsa schedule install</code></td><td>A run, a digest file and one summary email to you</td></tr>
+    <tr><td><code>jsa web</code></td><td><code>cmd_web()</code> then <code>web.serve()</code></td><td>A local page of the shortlist with buttons that update status</td></tr>
     <tr><td>Read-only commands</td><td><code>cmd_jobs()</code>, <code>cmd_show()</code> and others</td><td>Tables read straight from the database</td></tr>
   </table>
 </main>
