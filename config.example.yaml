@@ -59,6 +59,7 @@ search:
 matching:
   shortlist_min_score: 75   # auto-shortlist jobs at or above this score
   max_jobs_to_score: 100    # cost cap per run
+  notify_min_score: 85      # message you about new jobs scoring this or more (0 = off)
   max_tokens_per_run: 600000        # stop a run after this many AI tokens (0 = no limit)
   max_browser_minutes_per_run: 30   # stop collecting after this much Browserbase time (0 = no limit)
   concurrency: 4
@@ -128,6 +129,30 @@ sources:
     # To retry, paste the URL of a GulfTalent search from your own browser above.
     enabled: false
 
+  # --- More job sites (added 12 Nov 2026) ---
+  # These pages responded when checked, but have not yet been read through Browserbase. Run one
+  # with `jsa run --source "<name>" --no-score` and set `enabled: false` on any that return nothing.
+  - kind: generic
+    name: Hirist - Java
+    urls: [https://www.hirist.tech/k/java-jobs]
+    max_detail_pages: 10
+  - kind: generic
+    name: Instahyre - Java
+    urls: [https://www.instahyre.com/java-jobs/]
+    max_detail_pages: 10
+  - kind: generic
+    name: Foundit Gulf - Java
+    urls: ["https://www.founditgulf.com/srp/results?query=java%20developer"]
+    max_detail_pages: 10
+  - kind: generic
+    name: Cutshort - Java
+    urls: [https://cutshort.io/jobs/java-jobs]
+    max_detail_pages: 10
+  - kind: generic
+    name: Wellfound - Java India
+    urls: [https://wellfound.com/role/l/java-developer/india]
+    max_detail_pages: 10
+
   # --- Company boards (no browser needed, cannot be blocked) ---
   # Each of these listed matching roles in India or the Gulf when checked on 12 Nov 2026.
   # Delete the ones you would not work for, and add your own. Find the token in the careers URL:
@@ -147,6 +172,19 @@ sources:
   - {kind: ashby, name: Atlan, board: atlan}
   - {kind: lever, name: Paytm, board: paytm}
   - {kind: lever, name: Meesho, board: meesho}
+  - {kind: greenhouse, name: Pure Storage, board: purestorage}
+  - {kind: greenhouse, name: Netskope, board: netskope}
+  - {kind: greenhouse, name: Toast, board: toast}
+  - {kind: greenhouse, name: Sumo Logic, board: sumologic}
+  - {kind: greenhouse, name: Turing, board: turing}
+  - {kind: greenhouse, name: New Relic, board: newrelic}
+  - {kind: greenhouse, name: Deliveroo, board: deliveroo}
+  - {kind: greenhouse, name: Agoda, board: agoda}
+  - {kind: greenhouse, name: Samsara, board: samsara}
+  - {kind: greenhouse, name: Celonis, board: celonis}
+  - {kind: ashby, name: Plane, board: plane}
+  - {kind: lever, name: Hevo Data, board: hevodata}
+  - {kind: lever, name: FamPay, board: fampay}
   # - kind: lever
   #   name: Example Lever Company
   #   board: examplecompany

@@ -147,9 +147,16 @@ sequenceDiagram
     end
 ```
 
-`jsa web` is not in the diagram because it is a separate, long-running page: `web.py` serves
-`http://127.0.0.1:8765`, reads `dashboard_rows()` from the database for each view, and a button
-press posts back to `set_application_status()`.
+Not in the diagram:
+
+- `jsa web` is a separate, long-running page: `web.py` serves `http://127.0.0.1:8765`, reads
+  `dashboard_rows()` for each view, and its forms post back to change status, save a note or an
+  edited draft, send a stored draft, or add a pasted post.
+- `jsa contacts` runs between parts 1 and 3: the AI web-searches for a published application
+  address, `contacts.py` verifies it on the company's page, and `save_contact()` stores it for
+  `jsa email` to use.
+- `jsa gaps`, `jsa progress` and `jsa dedupe` only read (or tidy) the database.
+- After `jsa run` and `jsa daily`, `notifier.py` sends jobs scoring 85 or more to Telegram or email.
 
 ## Reading the diagram
 
@@ -175,7 +182,10 @@ press posts back to `set_application_status()`.
 | Database | `src/jobagent/db.py`, `migrations/` | PostgreSQL: jobs, scores, applications, send times, runs |
 | Preview | `src/jobagent/report.py` | Terminal tables, the Markdown digest, the HTML email preview |
 | Gmail | `src/jobagent/mailer.py` | Builds the message; saves it to Drafts or sends it |
-| Web page | `src/jobagent/web.py` | A local page of the shortlist, drafts and status, with buttons |
+| Web page | `src/jobagent/web.py` | A local page of the shortlist: edit and send drafts, add pasted posts, notes, status |
+| Shared actions | `src/jobagent/actions.py` | Add a pasted job and send a stored draft, used by both the commands and the web page |
+| Contact check | `src/jobagent/contacts.py` | Confirms a found application address is printed on the company's own page |
+| Notifications | `src/jobagent/notifier.py` | Sends strong new matches to Telegram, or to your own email |
 | Schedule | `src/jobagent/scheduler.py` | The macOS launchd job that runs `jsa daily` each morning |
 | Data shapes | `src/jobagent/models.py` | `JobPosting`, the keys for matching a job across boards, and the AI's structured answers |
 | Settings | `src/jobagent/config.py` | `.env` secrets and `config.yaml`, including limits and CV variants |
@@ -194,6 +204,8 @@ press posts back to `set_application_status()`.
   the token limit; what is left waits for the next run.
 - **Nothing reaches a recruiter by accident.** A draft is saved before delivery is attempted,
   delivery happens only with `--gmail-drafts` or `--send`, and sending stops at the daily cap.
+- **Addresses are found, never guessed.** `jsa contacts` asks the AI to search, but an address is
+  stored only after `contacts.py` fetches the page itself and finds the address printed there.
 - **The database must be current.** Every command checks for pending updates first and says
   "Run: jsa migrate" instead of failing halfway.
 - **The agent never logs in to job sites.** They block automated browsers, so applying on a site

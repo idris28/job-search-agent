@@ -75,7 +75,7 @@ def test_email_shortlisted(conn, monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)  # away from the repo's email_template.txt: built-in format
     out = tmp_path / "emails"
     args = SimpleNamespace(job_ids=[], limit=10, no_browse=False, no_research=False, no_review=False,
-                           gmail_drafts=False, send=False, config=str(tmp_path / "missing.yaml"), out=str(out))
+                           gmail_drafts=False, send=False, general=False, config=str(tmp_path / "missing.yaml"), out=str(out))
     cli.cmd_email(args, Settings(database_url=TEST_DB))
 
     md = (tmp_path / "emails.md").read_text()
@@ -145,7 +145,7 @@ def test_email_fills_the_users_template(conn, monkeypatch, tmp_path):
     llm = TemplateLLM()
     monkeypatch.setattr(cli, "_llm", lambda s: llm)
     args = SimpleNamespace(job_ids=[], limit=10, no_browse=True, no_research=False, no_review=False,
-                           gmail_drafts=False, send=False,
+                           gmail_drafts=False, send=False, general=False,
                            config=str(tmp_path / "missing.yaml"), out=str(tmp_path / "emails"))
     cli.cmd_email(args, Settings(database_url=TEST_DB))
 
@@ -210,7 +210,7 @@ def test_send_emails_only_ready_drafts_and_never_twice(conn, monkeypatch, tmp_pa
                         lambda addr, pw, msgs: sent.extend(m["To"] for m in msgs) or len(msgs))
     settings = Settings(database_url=TEST_DB, gmail_address="me@gmail.com", gmail_app_password="p")
     args = SimpleNamespace(job_ids=[], limit=10, no_browse=False, no_research=False, no_review=False,
-                           gmail_drafts=False, send=True, config=str(tmp_path / "config.yaml"),
+                           gmail_drafts=False, send=True, general=False, config=str(tmp_path / "config.yaml"),
                            out=str(tmp_path / "emails"))
     cli.cmd_email(args, settings)
     assert sent == ["jobs@acme.ae"]  # the open job only

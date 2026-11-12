@@ -48,8 +48,8 @@ def digest_markdown(matches: list[dict], *, title: str = "Job matches") -> str:
         out.append(f"## {m['score']} · {m['title']} at {m['company']}")
         out.append(f"{m.get('location') or 'Location n/a'} · {m.get('remote_type')} · "
                    f"[posting]({m['url']}) · job id {m['job_id']}")
-        if m.get("salary_text"):
-            out.append(f"Salary: {m['salary_text']}")
+        if m.get("salary_text") or m.get("salary_estimate"):
+            out.append(f"Pay: {m.get('salary_text') or m['salary_estimate']}")
         out.append("")
         out.append(m["summary"])
         if m.get("matched_skills"):

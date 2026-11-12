@@ -48,6 +48,8 @@ class Settings(BaseModel):
     browserbase_api_key: str | None = None
     gmail_address: str | None = None
     gmail_app_password: str | None = None
+    telegram_bot_token: str | None = None
+    telegram_chat_id: str | None = None
     browserbase_project_id: str | None = None
     browser: Literal["browserbase", "local"] = "browserbase"
 
@@ -64,6 +66,8 @@ class Settings(BaseModel):
             browserbase_api_key=_env("BROWSERBASE_API_KEY"),
             gmail_address=_env("GMAIL_ADDRESS"),
             gmail_app_password=_env("GMAIL_APP_PASSWORD"),
+            telegram_bot_token=_env("TELEGRAM_BOT_TOKEN"),
+            telegram_chat_id=_env("TELEGRAM_CHAT_ID"),
             browserbase_project_id=_env("BROWSERBASE_PROJECT_ID"),
             browser=os.getenv("JOBAGENT_BROWSER", "browserbase"),  # type: ignore[arg-type]
         )
@@ -152,6 +156,7 @@ class OutreachPrefs(BaseModel):
 class MatchingPrefs(BaseModel):
     shortlist_min_score: int = 75
     max_jobs_to_score: int = 100
+    notify_min_score: int = 85             # message you about new jobs at or above this (0 = off)
     max_tokens_per_run: int = 0            # stop a run after this many AI tokens (0 = no limit)
     max_browser_minutes_per_run: float = 0  # stop collecting after this much browser time
     concurrency: int = 4

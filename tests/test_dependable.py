@@ -107,7 +107,7 @@ def send_setup(conn, monkeypatch, tmp_path, jobs=2, extra=""):
                         lambda addr, pw, msgs: sent.extend((m["To"], m["Subject"]) for m in msgs) or len(msgs))
     settings = Settings(database_url=TEST_DB, gmail_address="me@gmail.com", gmail_app_password="p")
     args = SimpleNamespace(job_ids=[], limit=10, no_browse=False, no_research=False, no_review=False,
-                           gmail_drafts=False, send=True, config=str(tmp_path / "config.yaml"),
+                           gmail_drafts=False, send=True, general=False, config=str(tmp_path / "config.yaml"),
                            out=str(tmp_path / "emails"))
     return pid, sent, settings, args
 
@@ -180,7 +180,7 @@ def test_web_page_shows_jobs_and_updates_status(conn):
     db.set_application_status(conn, pid, jid, "shortlisted")
     db.save_outreach(conn, pid, jid, subject="Java Dev | 6 yrs", body="Dear Team,\n\nHello.",
                      recruiter_name=None, contact_email="hr@acme.ae", still_open=True)
-    server = web.serve(TEST_DB, 0)
+    server = web.serve(Settings(database_url=TEST_DB), AgentConfig(), lambda: None, 0)
     import threading
     threading.Thread(target=server.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{server.server_address[1]}"
@@ -207,7 +207,7 @@ def test_web_page_shows_jobs_and_updates_status(conn):
 
 def test_commands_refuse_an_out_of_date_database(conn):
     assert db.pending_migrations(conn) == []
-    conn.execute("DELETE FROM schema_migrations WHERE name = '005_dependable.sql'")
-    assert db.pending_migrations(conn) == ["005_dependable.sql"]
+    conn.execute("DELETE FROM schema_migrations WHERE name = '006_contacts_salary.sql'")
+    assert db.pending_migrations(conn) == ["006_contacts_salary.sql"]
     with pytest.raises(ConfigError, match="jsa migrate"):
         cli._conn(Settings(database_url=TEST_DB))

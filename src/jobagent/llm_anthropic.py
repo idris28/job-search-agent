@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .llm import CONTENT_RESEARCH_INSTRUCTIONS, BaseLLM, T
+from .llm import CONTACT_INSTRUCTIONS, CONTENT_RESEARCH_INSTRUCTIONS, BaseLLM, T
 
 # Server-side refusal fallback: if Claude declines a request on policy grounds, the API
 # re-runs it on a suitable fallback model inside the same call.
@@ -79,7 +79,25 @@ class ClaudeLLM(BaseLLM):
         """Claude's server-side web search for recruiter guidance; notes with source URLs."""
         user = (f"Roles: {roles}\nCountry: {country}\n"
                 "Research what email content attracts recruiters for these roles here.")
-        common = self._common(CONTENT_RESEARCH_INSTRUCTIONS, user)
+        return self._searched(CONTENT_RESEARCH_INSTRUCTIONS, user, max_searches)
+
+    def find_contact(self, company: str, location: str | None) -> dict | None:
+        """Web-search the company's own site for a published application address."""
+        import json
+        import re
+
+        text = self._searched(CONTACT_INSTRUCTIONS, f"Company: {company}\nJob location: {location or 'not given'}", 3)
+        for blob in reversed(re.findall(r"\{[^{}]*\}", text or "")):
+            try:
+                found = json.loads(blob)
+            except ValueError:
+                continue
+            if isinstance(found, dict) and "email" in found:
+                return found if found.get("email") else None
+        return None
+
+    def _searched(self, instructions: str, user: str, max_searches: int) -> str | None:
+        common = self._common(instructions, user)
         tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": max_searches}]
         messages = common.pop("messages")
         resp = None

@@ -109,6 +109,9 @@ class MatchResult(BaseModel):
     red_flags: list[str] = Field(
         description="Dealbreakers vs preferences: location, seniority mismatch, visa, etc."
     )
+    salary_estimate: str | None = Field(default=None, description=(
+        "Pay the posting states, or else your estimate of the likely yearly range for this role, "
+        "company and city in local currency, e.g. '18-26 LPA (estimate)'. Null if you cannot judge."))
 
 
 class ExtractedListing(BaseModel):

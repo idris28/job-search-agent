@@ -91,6 +91,10 @@ Each job has a **number** (for example 343). Use it wherever a command takes a j
 | `jsa digest --out digests/today.md` | Writes a readable summary of the top matches to a file. Without `--out` it prints to the screen. |
 | `jsa digest --run-id 3` | Only jobs first seen in run number 3. |
 | `jsa runs` | Shows past runs: when, how many jobs found and scored, tokens used, and errors. |
+| `jsa gaps` | Lists the skills job postings ask for most often that your resume doesn't show. `--days`, `--min-score` and `--limit` adjust it. |
+| `jsa progress` | A summary of the last 7 days: shortlisted, applied, emails and follow-ups sent, interviews, your reply rate, and results per site. `--days 30` widens it. |
+| `jsa dedupe` | Shows jobs that are stored more than once. Changes nothing. |
+| `jsa dedupe --apply` | Merges those duplicates, keeping the score and status. |
 
 ### Emailing recruiters
 
@@ -102,6 +106,9 @@ Each job has a **number** (for example 343). Use it wherever a command takes a j
 | `jsa email --send` | Sends each ready email from your Gmail with your CV attached, then marks the job as applied so it is never emailed again. |
 | `jsa email --no-browse` | Skips the live check of the posting (no Browserbase use). |
 | `jsa email --limit 5` | Changes how many shortlisted jobs are drafted. |
+| `jsa contacts` | For shortlisted jobs with no address, searches each company's own website for a published application address. Uses AI web search. An address is kept only if it is really printed on that page. |
+| `jsa contacts 343` | The same for specific jobs. |
+| `jsa email --general` | Also uses a general inbox (such as `info@`) found by `jsa contacts`. Without it, general inboxes are never emailed. |
 | `jsa cover-letter 343` | Writes a cover letter for one job and saves it with the application. |
 | `jsa followups` | Lists emails sent 6 or more days ago that have had no follow-up. |
 | `jsa followups --send` | Sends the stored follow-up email for each one that is due. |
@@ -124,7 +131,7 @@ in `.env` (an app password from myaccount.google.com/apppasswords), and `outreac
 | `jsa apply --dry-run` | Lists the jobs and links without opening anything. |
 | `jsa status 343 applied --note "via referral"` | Sets a job's status yourself, with an optional note. |
 | `jsa applications` | Lists every job you are tracking and its status. |
-| `jsa web` | Opens a web page on this Mac with your shortlist, scores, email drafts and status, and buttons to mark a job applied or skipped. Press Ctrl-C in the terminal to stop it. |
+| `jsa web` | Opens a web page on this Mac with your shortlist, scores, estimated pay and a weekly summary. On it you can edit and send an email draft, add a job from a pasted post, keep notes, and mark a job applied or skipped. Press Ctrl-C in the terminal to stop it. |
 
 The statuses are: `shortlisted`, `applied`, `interviewing`, `offer`, `rejected`, `withdrawn`,
 `skipped`.
@@ -142,6 +149,7 @@ The statuses are: `shortlisted`, `applied`, `interviewing`, `offer`, `rejected`,
 
 | Command | What it does |
 |---|---|
+| `jsa notify-test` | Sends you a test notification, to check Telegram or email is set up. |
 | `jsa -h` | Lists all commands. |
 | `jsa email -h` | Shows the options for one command. |
 | `jsa -v run` | Runs a command with detailed log output, useful when something goes wrong. |
@@ -187,11 +195,25 @@ All in `config.yaml`:
 | `outreach.follow_up_days` | Days after an email before a follow-up is due (6). |
 | `outreach.max_sends_per_day`, `send_pause_seconds` | Sending limits: emails per day (10) and the wait between them (20 seconds). |
 | `matching.max_tokens_per_run`, `max_browser_minutes_per_run` | Spending limits for one run. |
+| `matching.notify_min_score` | You get a message when a new job scores this or more (85). |
 | `sources` | Job boards and company career pages to search. |
+
+## Notifications
+
+After each run, new jobs scoring 85 or more are sent to you in one message. It goes to Telegram if
+`TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are in `.env`; otherwise to your own Gmail address if
+Gmail is set up; otherwise nothing is sent. To use Telegram, create a bot with @BotFather, send it
+a message, and put its token and your chat id in `.env`. Check it with `jsa notify-test`.
+
+## Estimated pay
+
+Most postings don't state a salary, so the AI adds one line per job: the stated pay if there is
+one, or its own estimate marked "(estimate)". It appears in `jsa show`, the digest and the web
+page. Treat an estimate as a rough guide, not a fact; it never lowers a score on its own.
 
 ## What costs money
 
-- **AI model calls** (Claude): `jsa daily`, `jsa run` (reading pages and scoring), `jsa email`, `jsa add`,
+- **AI model calls** (Claude): `jsa contacts`, the "add a job" form on the web page, `jsa daily`, `jsa run` (reading pages and scoring), `jsa email`, `jsa add`,
   `jsa cover-letter` and `jsa profile import`.
 - **Browserbase time**: `jsa daily`, `jsa run`, and the live posting check in `jsa email`.
 

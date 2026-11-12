@@ -108,6 +108,19 @@ jsa runs                         # run history, tokens used, errors
 Output: `digests/emails-<date>.html` (open in a browser; "Copy email" pastes into Gmail with
 formatting; each card shows the recruiter review) and a Markdown copy. Nothing is ever sent.
 
+**Finding an address.** `jsa contacts` web-searches each shortlisted company's own site for a
+published application address (Claude only). `contacts.py` then fetches the page and keeps the
+address only if it is printed there and the page looks like that company's site; contact-database
+sites are refused. General inboxes are stored but not emailed without `--general`.
+
+**Pay.** The matcher returns `salary_estimate`: stated pay, or its own estimate marked as one.
+
+**Reports.** `jsa gaps` counts the skills most often missing across scored jobs. `jsa progress`
+summarises the week and shows which sources deliver. `jsa dedupe [--apply]` merges jobs stored twice.
+
+**Notifications.** New jobs at or above `matching.notify_min_score` are sent to Telegram
+(`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) or, failing that, emailed to you.
+
 **Follow-ups.** When `--send` sends an email, the time is recorded. `jsa followups` lists the emails
 that are `outreach.follow_up_days` (6) old with no follow-up yet; `jsa followups --send` sends the
 stored follow-up text, and `--done <id>` records one you sent by hand.
@@ -131,7 +144,8 @@ when Gmail is configured, emails you one summary. `jsa schedule install --time 0
 run it daily; `jsa schedule status` and `jsa schedule remove` manage it.
 
 **Web page.** `jsa web` opens a page on this Mac only (http://127.0.0.1:8765) with your shortlist,
-scores, email drafts and status, and buttons to mark a job applied or skipped.
+scores, estimated pay and a weekly summary. You can edit and send a draft, add a pasted post, keep
+notes, and mark a job applied or skipped.
 
 **New jobs first.** The agent reads how long ago each job was posted ("2 days ago") from the
 job boards. `search.max_age_days` (7 in the example) drops older postings, and lists, emails and
@@ -200,6 +214,9 @@ src/jobagent/
   pipeline.py   one run: collect → store → filter → score → shortlist
   sources/      greenhouse, lever, ashby (ats.py) and generic (Browserbase + LLM)
   mailer.py     Gmail: save drafts or send
+  actions.py    add a pasted job, send a stored draft (shared by the CLI and the web page)
+  contacts.py   check a found application address against the company's own page
+  notifier.py   Telegram or email message about strong new matches
   web.py        local web page of the shortlist
   scheduler.py  macOS launchd job for `jsa daily`
   browser.py    Browserbase session (or local Chromium) behind one fetch() interface

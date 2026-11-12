@@ -38,6 +38,24 @@ def _profile_id(conn) -> int:
     return p["id"]
 
 
+def _notify_strong(settings, cfg, rows) -> None:
+    """Message the user about new jobs scoring at or above matching.notify_min_score."""
+    from . import notifier
+
+    floor = cfg.matching.notify_min_score
+    strong = [r for r in rows if floor and r["score"] >= floor]
+    if not strong:
+        return
+    try:
+        how = notifier.notify(settings, f"{len(strong)} strong new job match(es)",
+                              notifier.strong_match_lines(strong))
+    except Exception as e:  # noqa: BLE001 - a failed message must not fail the run
+        print(f"  ! Could not send the notification: {str(e).splitlines()[0]}")
+        return
+    if how:
+        print(f"Notified you by {how} about {len(strong)} job(s) scoring {floor} or more.")
+
+
 def _matches_table(rows) -> str:
     return table([{**r, "posted": age(r.get("posted_at"))} for r in rows], MATCH_COLS)
 
@@ -98,6 +116,7 @@ def cmd_run(args, settings):
                                   min_score=cfg.matching.shortlist_min_score, limit=15)
             if rows:
                 print("\nTop new matches (newest first):\n" + _matches_table(rows))
+            _notify_strong(settings, cfg, rows)
     finally:
         browser.close()
 
@@ -122,6 +141,8 @@ def cmd_show(args, settings):
         print(f"\nScore {m['score']} ({m['verdict']}): {m['summary']}")
         print(f"Matches: {', '.join(m['matched_skills'])}")
         print(f"Gaps: {', '.join(m['missing_skills'])}")
+        if m["salary_estimate"]:
+            print(f"Pay: {m['salary_estimate']}")
         if m["red_flags"]:
             print(f"Red flags: {', '.join(m['red_flags'])}")
     if args.full and job["description"]:
@@ -239,6 +260,10 @@ def cmd_email(args, settings):
                             break
                         e = llm.recruiter_email(p["resume_text"], job_text, live, notes, outreach,
                                                 previous=e, review=review)
+                known = db.get_application(conn, p["id"], jid)
+                kind = "recruiter"
+                if not e.contact_email and known and known["contact_email"]:
+                    e.contact_email, kind = known["contact_email"], known["contact_kind"] or "recruiter"
                 body = e.plain_text()
                 unfilled = unfilled_placeholders(f"{e.subject}\n{body}\n{e.follow_up_body}")
                 if unfilled:
@@ -252,7 +277,7 @@ def cmd_email(args, settings):
                                  review_notes=review.model_dump_json() if review else None)
                 status = "unchecked" if live is None else ("open" if e.still_open else "closed")
                 items.append({"job": job, "email": e, "status": status, "research": notes,
-                              "review": review, "unfilled": unfilled})
+                              "review": review, "unfilled": unfilled, "contact_kind": kind})
                 label = {"open": "still open", "closed": "LOOKS CLOSED - check before sending",
                          "unchecked": "live page not checked"}[status]
                 md += [f"## #{jid} {job['title']} at {job['company']}",
@@ -269,7 +294,7 @@ def cmd_email(args, settings):
         if browser:
             browser.close()
     if args.gmail_drafts or args.send:
-        _deliver(items, settings, outreach, send=args.send)
+        _deliver(items, settings, outreach, send=args.send, general=args.general)
     stem = Path(args.out or f"digests/emails-{date.today():%Y-%m-%d}").with_suffix("")
     stem.parent.mkdir(parents=True, exist_ok=True)
     stem.with_suffix(".md").write_text("\n".join(md))
@@ -280,13 +305,12 @@ def cmd_email(args, settings):
 
 
 def _send_slots(conn, pid, outreach) -> int:
-    """How many more emails may be sent today under outreach.max_sends_per_day."""
-    if not outreach.max_sends_per_day:
-        return 10**9
-    return max(0, outreach.max_sends_per_day - db.sends_today(conn, pid))
+    from .actions import send_slots
+
+    return send_slots(conn, pid, outreach)
 
 
-def _deliver(items, settings, outreach, *, send: bool) -> None:
+def _deliver(items, settings, outreach, *, send: bool, general: bool = False) -> None:
     """Send each ready draft from the user's Gmail, or save it to Gmail Drafts.
 
     A draft is ready only with a recipient on the posting, an open posting and no unfilled
@@ -317,6 +341,8 @@ def _deliver(items, settings, outreach, *, send: bool) -> None:
             why = ("no email address on the posting" if not it["email"].contact_email else
                    "posting looks closed" if it["status"] == "closed" else
                    "unfilled placeholders" if it["unfilled"] else
+                   "only a general inbox was found; add --general to use it"
+                   if it.get("contact_kind") == "general" and not general else
                    "already applied or set aside" if send and jid in done else
                    f"daily limit of {outreach.max_sends_per_day} emails reached" if len(ready) >= slots
                    else None)
@@ -416,6 +442,7 @@ def cmd_daily(args, settings):
             waiting = len(db.shortlisted_job_ids(conn, pid, 1000))
     finally:
         browser.close()
+    _notify_strong(settings, cfg, new)
     Path("digests").mkdir(exist_ok=True)
     digest = Path(f"digests/{date.today():%Y-%m-%d}.md")
     digest.write_text(digest_markdown(new, title=f"New matches {date.today():%d %b %Y}"), encoding="utf-8")
@@ -468,8 +495,7 @@ def cmd_web(args, settings):
     cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
     with _conn(settings):
         pass  # fail early with a clear message if the database is missing or behind
-    server = web.serve(settings.database_url, args.port)
-    server.handler.follow_up_days = cfg.outreach.follow_up_days
+    server = web.serve(settings, cfg, lambda: _llm(settings), args.port)
     url = f"http://127.0.0.1:{args.port}/"
     print(f"Job search page: {url}   (Ctrl-C to stop)")
     if not args.no_open:
@@ -519,10 +545,7 @@ def cmd_apply(args, settings, *, open_url=None, ask=input):
 
 def cmd_add(args, settings, *, read=None):
     """Add a job from pasted text (for example a LinkedIn post that says to email a CV)."""
-    import hashlib
-    from datetime import datetime, timezone
-
-    from .models import JobPosting
+    from .actions import ActionError, add_pasted_job
 
     text = (Path(args.file).read_text(encoding="utf-8") if args.file
             else (read or sys.stdin.read)()).strip()
@@ -530,20 +553,11 @@ def cmd_add(args, settings, *, read=None):
         sys.exit("Nothing to add: paste the post text, then press Ctrl-D (or pass a file).")
     cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
     llm = _llm(settings)
-    found = llm.read_pasted_job(text)
-    url = args.url or "pasted:" + hashlib.sha256(text.encode()).hexdigest()[:16]
-    description = found.description + (f"\n\nSend applications to: {found.contact_email}"
-                                       if found.contact_email else "")
-    posting = JobPosting(title=found.title, company=found.company, url=url, location=found.location,
-                         description=description, posted_at=datetime.now(timezone.utc))
     with _conn(settings) as conn:
-        p = db.active_profile(conn)
-        if not p:
-            sys.exit("No profile yet. Run: jsa profile import <resume.pdf>")
-        job_id, is_new = db.upsert_job(conn, posting, None, None)
-        m = llm.score_job(p["profile"], cfg.search, posting)
-        db.save_match(conn, p["id"], job_id, None, m, llm.model, posting.content_hash)
-        db.set_application_status_if_missing(conn, p["id"], job_id, "added from pasted text")
+        try:
+            job_id, is_new, found, m = add_pasted_job(conn, llm, cfg, text, args.url)
+        except ActionError as e:
+            sys.exit(str(e))
     print(f"{'Added' if is_new else 'Updated'} job #{job_id}: {found.title} at {found.company}"
           f" ({found.location or 'location not given'})")
     print(f"Match score {m.score} ({m.verdict}): {m.summary}")
@@ -552,6 +566,120 @@ def cmd_add(args, settings, *, read=None):
               f"   (or --send)")
     else:
         print(f"No email address found in the text. Next: jsa email {job_id}")
+
+
+def cmd_contacts(args, settings):
+    """Look on each company's own website for a published application address."""
+    import httpx
+
+    from .contacts import verify_contact
+    from .models import company_key
+
+    llm = _llm(settings)
+    http = httpx.Client(headers={"User-Agent": "jobagent/0.1 (personal job search)"})
+    seen: dict[str, tuple[dict | None, str]] = {}
+    try:
+        with _conn(settings) as conn:
+            pid = _profile_id(conn)
+            if args.job_ids:
+                jobs = [{"job_id": j["id"], **{k: j[k] for k in ("title", "company", "location")}}
+                        for j in (db.get_job(conn, i) for i in args.job_ids) if j]
+            else:
+                jobs = db.jobs_needing_contact(conn, pid, args.limit)
+            if not jobs:
+                print("Every shortlisted job already has an address, or nothing is shortlisted.")
+                return
+            found_n = 0
+            for j in jobs:
+                key = company_key(j["company"])
+                if key not in seen:  # one search per company, however many of its jobs you have
+                    try:
+                        seen[key] = verify_contact(llm.find_contact(j["company"], j["location"]),
+                                                   j["company"], http)
+                    except Exception as e:  # noqa: BLE001
+                        seen[key] = (None, f"the search failed: {str(e).splitlines()[0]}")
+                contact, why = seen[key]
+                if contact:
+                    db.save_contact(conn, pid, j["job_id"], contact["email"], contact["source_url"],
+                                    contact["kind"])
+                    found_n += 1
+                    note = "  (general inbox: not used unless you add --general)" if contact["kind"] == "general" else ""
+                    print(f"#{j['job_id']} {j['company']}: {contact['email']} [{contact['kind']}]{note}\n"
+                          f"    from {contact['source_url']}")
+                else:
+                    print(f"#{j['job_id']} {j['company']}: none ({why})")
+            print(f"\nFound an address for {found_n} of {len(jobs)} job(s). Next: jsa email --gmail-drafts")
+    finally:
+        http.close()
+
+
+def cmd_gaps(args, settings):
+    """The skills job postings ask for most often that your resume does not show."""
+    with _conn(settings) as conn:
+        total, rows = db.skill_gaps(conn, _profile_id(conn), args.days, args.min_score, args.limit)
+    if not rows:
+        print(f"No scored jobs at {args.min_score} or more in the last {args.days} days.")
+        return
+    print(f"Skills missing most often, across {total} jobs scoring {args.min_score}+ "
+          f"in the last {args.days} days:\n")
+    for r in rows:
+        share = round(100 * r["jobs"] / total) if total else 0
+        print(f"  {r['skill'][:34]:<34} {r['jobs']:>4} jobs  {share:>3}%  {'#' * max(1, share // 3)}")
+    print("\nLearning the top few, or adding ones you already know to your resume and re-importing it, "
+          "raises your scores.")
+
+
+def cmd_progress(args, settings):
+    """A summary of the last week: what you applied to, what was sent, and which sites deliver."""
+    with _conn(settings) as conn:
+        pid = _profile_id(conn)
+        p = db.progress(conn, pid, args.days)
+        waiting = len(db.shortlisted_job_ids(conn, pid, 100000))
+    m, mail = p["moves"], p["mail"]
+    print(f"Last {args.days} days\n")
+    print(f"  Shortlisted   {m.get('shortlisted', 0):>4}      Emails sent      {mail['sent']:>4}")
+    print(f"  Applied       {m.get('applied', 0):>4}      Follow-ups sent  {mail['followed_up']:>4}")
+    print(f"  Interviewing  {m.get('interviewing', 0):>4}      Offers           {m.get('offer', 0):>4}")
+    print(f"  Rejected      {m.get('rejected', 0):>4}      Skipped          {m.get('skipped', 0):>4}")
+    if mail["emailed_ever"]:
+        rate = round(100 * mail["answered_ever"] / mail["emailed_ever"])
+        print(f"\n  Reply rate: {mail['answered_ever']} of {mail['emailed_ever']} emailed jobs moved on "
+              f"to an interview, offer or rejection ({rate}%).")
+    print(f"  Still on your shortlist: {waiting}")
+    if p["sources"]:
+        print("\n" + table(p["sources"], [("source", "Source", 26), ("found", "Found", 6),
+                                          ("shortlisted", "Shortlisted", 11), ("applied", "Applied", 7)]))
+
+
+def cmd_dedupe(args, settings):
+    """Show jobs stored more than once, and merge them with --apply."""
+    with _conn(settings) as conn:
+        groups = db.duplicate_groups(conn)
+        if not groups:
+            print("No duplicate jobs.")
+            return
+        extra = sum(len(g["drop"]) for g in groups)
+        for g in groups:
+            k = g["keep"]
+            print(f"keep #{k['id']} {k['title']} at {k['company']} ({k['location'] or 'n/a'})")
+            for d in g["drop"]:
+                print(f"   merge #{d['id']} {d['title']} at {d['company']} ({d['location'] or 'n/a'})")
+        if not args.apply:
+            print(f"\n{extra} duplicate row(s) in {len(groups)} group(s). Nothing was changed. "
+                  "Merge them with: jsa dedupe --apply")
+            return
+        removed = db.merge_duplicates(conn)
+        print(f"\nMerged {removed} duplicate row(s). Scores and application status were kept on the copy "
+              "shown as 'keep'.")
+
+
+def cmd_notify_test(args, settings):
+    """Send yourself a test notification."""
+    from . import notifier
+
+    how = notifier.notify(settings, "Job search agent: test message", ["Notifications are working."])
+    print(f"Sent by {how}." if how else
+          "Nothing is set up. Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to .env, or the Gmail settings.")
 
 
 def cmd_digest(args, settings):
@@ -630,6 +758,8 @@ def build_parser() -> argparse.ArgumentParser:
     em.add_argument("--no-review", action="store_true", help="skip the recruiter-style review")
     em.add_argument("--gmail-drafts", action="store_true",
                     help="also save drafts that have a recipient to your Gmail Drafts (never sends)")
+    em.add_argument("--general", action="store_true",
+                    help="also use a general inbox (info@...) found by `jsa contacts`")
     em.add_argument("--send", action="store_true",
                     help="send the emails that have a recipient from your Gmail, CV attached")
     em.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
@@ -668,6 +798,27 @@ def build_parser() -> argparse.ArgumentParser:
     wb.add_argument("--no-open", action="store_true", help="do not open the browser")
     wb.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
     wb.set_defaults(fn=cmd_web)
+
+    ct = sub.add_parser("contacts", help="look for a published application address for shortlisted jobs")
+    ct.add_argument("job_ids", type=int, nargs="*", help="jobs to look up (default: shortlisted without one)")
+    ct.add_argument("--limit", type=int, default=10)
+    ct.set_defaults(fn=cmd_contacts)
+
+    gp = sub.add_parser("gaps", help="skills you are most often missing")
+    gp.add_argument("--days", type=int, default=30)
+    gp.add_argument("--min-score", type=int, default=50, help="only count jobs scoring at least this")
+    gp.add_argument("--limit", type=int, default=15)
+    gp.set_defaults(fn=cmd_gaps)
+
+    pg = sub.add_parser("progress", help="summary of the last week")
+    pg.add_argument("--days", type=int, default=7)
+    pg.set_defaults(fn=cmd_progress)
+
+    dd = sub.add_parser("dedupe", help="show jobs stored twice; --apply merges them")
+    dd.add_argument("--apply", action="store_true", help="merge the duplicates")
+    dd.set_defaults(fn=cmd_dedupe)
+
+    sub.add_parser("notify-test", help="send yourself a test notification").set_defaults(fn=cmd_notify_test)
 
     d = sub.add_parser("digest", help="write a Markdown digest of top matches")
     d.add_argument("--min-score", type=int, default=75)

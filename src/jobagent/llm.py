@@ -31,6 +31,10 @@ excluded industries, list that as a red flag, set verdict "poor", and cap the sc
 If the candidate gives a minimum salary and the posting states pay clearly below it (convert other
 currencies roughly), list that as a red flag and cap the score at 40. A posting that does not state
 pay is not penalised.
+salary_estimate: give the stated pay if the posting has it; otherwise estimate the likely yearly
+range from the role, seniority, company and city, and end it with "(estimate)". An estimate alone
+never lowers the score; if its top is clearly below the candidate's minimum, add the red flag
+"estimated pay may be below your minimum".
 Only list skills that actually appear in the job text as missing_skills. Be concise and specific."""
 
 EXTRACT_INSTRUCTIONS = """You are given the visible text and links of a careers/job search page.
@@ -157,6 +161,15 @@ by a recruiter or employee announcing a vacancy. Extract the one job it describe
 the text says: do not guess a company, location or email address. Copy the email address exactly.
 If the post lists several roles, take the first and mention the others in the description."""
 
+CONTACT_INSTRUCTIONS = """Find an email address a job candidate can send an application to at the
+given company. Use web search. Accept an address only if it is printed on the company's own website
+(its careers, jobs, contact or about page). Prefer a named recruiter or an address for careers, jobs,
+HR or talent; a general address such as info@ is a last resort. Never construct, guess or infer an
+address from a pattern, and never take one from a contact-database or people-search site.
+Reply with one line of JSON and nothing else:
+{"email": "<address>", "source_url": "<page it is printed on>", "kind": "recruiter|careers|general"}
+or {"email": null} when no such address is published."""
+
 
 class BaseLLM:
     """Task methods shared by every provider. Subclasses implement _parse and _text."""
@@ -213,6 +226,10 @@ class BaseLLM:
         links_txt = "\n".join(f"- {l['text']} -> {l['href']}" for l in links[:400])
         payload = (f"PAGE URL: {page_url}\n\nPAGE TEXT:\n{page_text[:15000]}\n\nLINKS:\n{links_txt}")
         return self._parse(EXTRACT_INSTRUCTIONS, payload, ExtractedListings)
+
+    def find_contact(self, company: str, location: str | None) -> dict | None:
+        """A published application address for a company; providers without web search return None."""
+        return None
 
     def read_pasted_job(self, text: str) -> PastedJob:
         return self._parse(PASTED_JOB_INSTRUCTIONS, f"PASTED TEXT:\n{text[:15000]}", PastedJob)

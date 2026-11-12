@@ -195,16 +195,19 @@ def save_match(conn, profile_id: int, job_id: int, run_id: int | None, m: MatchR
                model: str, content_hash: str) -> None:
     conn.execute(
         """INSERT INTO job_matches (profile_id, job_id, run_id, score, verdict, summary,
-                                    matched_skills, missing_skills, red_flags, model, content_hash)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                    matched_skills, missing_skills, red_flags, model, content_hash,
+                                    salary_estimate)
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
            ON CONFLICT (profile_id, job_id) DO UPDATE SET
                run_id = EXCLUDED.run_id, score = EXCLUDED.score, verdict = EXCLUDED.verdict,
                summary = EXCLUDED.summary, matched_skills = EXCLUDED.matched_skills,
                missing_skills = EXCLUDED.missing_skills, red_flags = EXCLUDED.red_flags,
-               model = EXCLUDED.model, content_hash = EXCLUDED.content_hash, created_at = now()""",
+               model = EXCLUDED.model, content_hash = EXCLUDED.content_hash,
+               salary_estimate = EXCLUDED.salary_estimate, created_at = now()""",
         (
             profile_id, job_id, run_id, max(0, min(100, m.score)), m.verdict, m.summary,
             m.matched_skills, m.missing_skills, m.red_flags, model, content_hash,
+            m.salary_estimate,
         ),
     )
 
@@ -214,7 +217,7 @@ def top_matches(conn, profile_id: int, *, min_score: int = 0, limit: int = 25,
     sql = """
         SELECT j.id AS job_id, j.title, j.company, j.location, j.remote_type, j.url,
                j.salary_text, j.first_seen_at, j.posted_at, m.score, m.verdict, m.summary,
-               m.matched_skills, m.missing_skills, m.red_flags,
+               m.matched_skills, m.missing_skills, m.red_flags, m.salary_estimate,
                a.status AS application_status
         FROM job_matches m
         JOIN jobs j ON j.id = m.job_id
@@ -312,7 +315,7 @@ def save_outreach(conn, profile_id: int, job_id: int, *, subject: str, body: str
     set_application_status_if_missing(conn, profile_id, job_id)
     conn.execute(
         """UPDATE applications SET outreach_subject = %s, outreach_body = %s, recruiter_name = %s,
-               contact_email = %s, posting_open = %s, posting_checked_at = now(),
+               contact_email = COALESCE(%s, contact_email), posting_open = %s, posting_checked_at = now(),
                company_research = %s, follow_up_subject = %s, follow_up_body = %s,
                review_score = %s, review_notes = %s, updated_at = now()
            WHERE profile_id = %s AND job_id = %s""",
@@ -388,9 +391,126 @@ def dashboard_rows(conn, profile_id: int) -> list[dict]:
     return conn.execute(
         """SELECT j.id AS job_id, j.title, j.company, j.location, j.url, j.posted_at,
                   a.status, a.outreach_subject, a.outreach_body, a.contact_email,
-                  a.outreach_sent_at, a.follow_up_sent_at, m.score, m.summary
+                  a.outreach_sent_at, a.follow_up_sent_at, a.notes, a.contact_kind,
+                  a.contact_source, m.score, m.summary, m.salary_estimate
            FROM applications a JOIN jobs j ON j.id = a.job_id
            LEFT JOIN job_matches m ON m.job_id = a.job_id AND m.profile_id = a.profile_id
            WHERE a.profile_id = %s
            ORDER BY (a.status = 'shortlisted') DESC, j.posted_at DESC NULLS LAST, m.score DESC NULLS LAST""",
         (profile_id,)).fetchall()
+
+
+def get_application(conn, profile_id: int, job_id: int) -> dict | None:
+    return conn.execute("SELECT * FROM applications WHERE profile_id = %s AND job_id = %s",
+                        (profile_id, job_id)).fetchone()
+
+
+def save_contact(conn, profile_id: int, job_id: int, email: str, source: str | None, kind: str) -> None:
+    """Store an application address found away from the posting, with the page it came from."""
+    set_application_status_if_missing(conn, profile_id, job_id)
+    conn.execute(
+        """UPDATE applications SET contact_email = %s, contact_source = %s, contact_kind = %s,
+               updated_at = now() WHERE profile_id = %s AND job_id = %s""",
+        (email, source, kind, profile_id, job_id))
+
+
+def set_note(conn, profile_id: int, job_id: int, note: str) -> None:
+    conn.execute("UPDATE applications SET notes = %s, updated_at = now() WHERE profile_id = %s AND job_id = %s",
+                 (note.strip() or None, profile_id, job_id))
+
+
+def save_draft_text(conn, profile_id: int, job_id: int, subject: str, body: str) -> None:
+    conn.execute(
+        """UPDATE applications SET outreach_subject = %s, outreach_body = %s, updated_at = now()
+           WHERE profile_id = %s AND job_id = %s""", (subject.strip(), body.strip(), profile_id, job_id))
+
+
+def jobs_needing_contact(conn, profile_id: int, limit: int) -> list[dict]:
+    return conn.execute(
+        """SELECT j.id AS job_id, j.title, j.company, j.location FROM applications a
+           JOIN jobs j ON j.id = a.job_id
+           WHERE a.profile_id = %s AND a.status = 'shortlisted' AND a.contact_email IS NULL
+           ORDER BY j.posted_at DESC NULLS LAST, j.id LIMIT %s""", (profile_id, limit)).fetchall()
+
+
+# --- reports ------------------------------------------------------------------
+
+
+def skill_gaps(conn, profile_id: int, days: int, min_score: int, limit: int) -> tuple[int, list[dict]]:
+    """(jobs counted, skills most often missing) across recently scored jobs."""
+    where = "m.profile_id = %s AND m.score >= %s AND m.created_at >= now() - make_interval(days => %s)"
+    total = conn.execute(f"SELECT count(*) AS n FROM job_matches m WHERE {where}",
+                         (profile_id, min_score, days)).fetchone()["n"]
+    rows = conn.execute(
+        f"""SELECT min(skill) AS skill, count(DISTINCT m.job_id) AS jobs
+            FROM job_matches m, unnest(m.missing_skills) AS skill
+            WHERE {where} GROUP BY lower(trim(skill)) ORDER BY jobs DESC, 1 LIMIT %s""",
+        (profile_id, min_score, days, limit)).fetchall()
+    return total, rows
+
+
+def progress(conn, profile_id: int, days: int) -> dict:
+    """What happened in the last `days`: status changes, emails, replies, and jobs per source."""
+    moves = {r["to_status"]: r["n"] for r in conn.execute(
+        """SELECT e.to_status, count(DISTINCT e.application_id) AS n FROM application_events e
+           JOIN applications a ON a.id = e.application_id
+           WHERE a.profile_id = %s AND e.created_at >= now() - make_interval(days => %s)
+           GROUP BY 1""", (profile_id, days))}
+    mail = conn.execute(
+        """SELECT count(*) FILTER (WHERE outreach_sent_at >= now() - make_interval(days => %s)) AS sent,
+                  count(*) FILTER (WHERE follow_up_sent_at >= now() - make_interval(days => %s)) AS followed_up,
+                  count(*) FILTER (WHERE outreach_sent_at IS NOT NULL) AS emailed_ever,
+                  count(*) FILTER (WHERE outreach_sent_at IS NOT NULL
+                                   AND status IN ('interviewing', 'offer', 'rejected')) AS answered_ever
+           FROM applications WHERE profile_id = %s""", (days, days, profile_id)).fetchone()
+    sources = conn.execute(
+        """SELECT coalesce(s.name, 'added by hand') AS source, count(j.id) AS found,
+                  count(a.id) FILTER (WHERE a.status = 'shortlisted') AS shortlisted,
+                  count(a.id) FILTER (WHERE a.status IN ('applied', 'interviewing', 'offer')) AS applied
+           FROM jobs j LEFT JOIN sources s ON s.id = j.source_id
+           LEFT JOIN applications a ON a.job_id = j.id AND a.profile_id = %s
+           WHERE j.first_seen_at >= now() - make_interval(days => %s)
+           GROUP BY 1 ORDER BY found DESC""", (profile_id, days)).fetchall()
+    return {"moves": moves, "mail": mail, "sources": sources}
+
+
+# --- duplicates already stored ---------------------------------------------------
+
+
+def duplicate_groups(conn) -> list[dict]:
+    """Jobs that share a match_key: each group is one job stored more than once."""
+    groups = []
+    for g in conn.execute(
+            """SELECT array_agg(id ORDER BY id) AS ids FROM jobs WHERE match_key IS NOT NULL
+               GROUP BY match_key HAVING count(*) > 1 ORDER BY min(id)""").fetchall():
+        rows = conn.execute(
+            """SELECT j.id, j.title, j.company, j.location,
+                      (SELECT max(CASE a.status WHEN 'shortlisted' THEN 1 WHEN 'skipped' THEN 1 ELSE 2 END)
+                       FROM applications a WHERE a.job_id = j.id) AS acted,
+                      EXISTS (SELECT 1 FROM job_matches m WHERE m.job_id = j.id) AS scored
+               FROM jobs j WHERE j.id = ANY(%s)""", (g["ids"],)).fetchall()
+        # Keep the copy you have acted on most, then a scored one, then the oldest.
+        keep = sorted(rows, key=lambda r: (-(r["acted"] or 0), not r["scored"], r["id"]))[0]
+        groups.append({"keep": keep, "drop": [r for r in rows if r["id"] != keep["id"]]})
+    return groups
+
+
+def merge_duplicates(conn) -> int:
+    """Fold each duplicate into the copy that is kept. Returns how many rows were removed."""
+    removed = 0
+    for g in duplicate_groups(conn):
+        keep = g["keep"]["id"]
+        with conn.transaction():
+            for dup in (r["id"] for r in g["drop"]):
+                for table in ("job_matches", "applications"):  # move what the kept copy lacks
+                    conn.execute(
+                        f"""UPDATE {table} t SET job_id = %s WHERE t.job_id = %s AND NOT EXISTS (
+                                SELECT 1 FROM {table} k WHERE k.job_id = %s AND k.profile_id = t.profile_id)""",
+                        (keep, dup, keep))
+                conn.execute(
+                    """UPDATE jobs k SET description = COALESCE(k.description, d.description),
+                           posted_at = COALESCE(k.posted_at, d.posted_at)
+                       FROM jobs d WHERE k.id = %s AND d.id = %s""", (keep, dup))
+                conn.execute("DELETE FROM jobs WHERE id = %s", (dup,))
+                removed += 1
+    return removed
