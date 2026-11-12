@@ -63,6 +63,8 @@ Everything lives in `config.yaml` (see `config.example.yaml`):
   cities). Jobs with another location are dropped before scoring. Remote jobs and jobs with no
   location go through, and the matcher decides from the description.
 - `search.include_title_keywords` and `exclude_title_keywords` are whole-word filters on the title.
+- `search.min_salary_lpa` drops rupee jobs that state a salary below it (lakhs a year). Jobs with
+  no stated salary are kept, and the matcher flags pay stated in another currency.
 - `search.notes` is free text the matcher reads (relocation, visa, preferences).
 - `matching.shortlist_min_score` auto-shortlists jobs at or above this score (default 75).
 - `matching.max_jobs_to_score` caps LLM scoring calls per run.

@@ -17,6 +17,16 @@ def _contains_any(text: str, words: list[str]) -> str | None:
     return None
 
 
+_LPA_RE = re.compile(r"(?:(\d+(?:\.\d+)?)\s*(?:-|to)\s*)?(\d+(?:\.\d+)?)\s*(?:lacs?|lakhs?|lpa)\b", re.I)
+
+
+def stated_salary_lpa(text: str) -> float | None:
+    """The top of a salary range written in lakhs, e.g. "15-25 Lacs PA" gives 25. None when the
+    text states no such figure ("Not Disclosed")."""
+    m = _LPA_RE.search(text)
+    return float(m.group(2)) if m else None
+
+
 def reject_reason(job: JobPosting, prefs: SearchPrefs, now: datetime | None = None) -> str | None:
     """Return why a job is filtered out, or None if it should be scored."""
     if prefs.exclude_title_keywords:
@@ -40,6 +50,11 @@ def reject_reason(job: JobPosting, prefs: SearchPrefs, now: datetime | None = No
         # Unknown location: let the LLM judge rather than silently dropping it.
         if job.location and not (loc_ok or remote_ok):
             return f"location '{job.location}' not in preferred locations"
+
+    if prefs.min_salary_lpa:
+        top = stated_salary_lpa(f"{job.salary_text or ''} {(job.description or '')[:1200]}")
+        if top is not None and top < prefs.min_salary_lpa:
+            return f"salary up to {top:g} LPA is below the minimum {prefs.min_salary_lpa:g} LPA"
 
     if prefs.max_age_days and job.posted_at:
         now = now or datetime.now(timezone.utc)

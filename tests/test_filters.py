@@ -68,3 +68,17 @@ def test_country_of():
     assert country_of("Doha") == "Qatar"
     assert country_of("Hybrid - Pune") == "India"
     assert country_of(None) == "Remote"
+
+
+def test_minimum_salary_drops_only_jobs_that_state_less():
+    from jobagent.filters import stated_salary_lpa
+
+    assert stated_salary_lpa("3 - 7 years | 15-25 Lacs PA | Pune") == 25
+    assert stated_salary_lpa("Salary: 18 LPA") == 18 and stated_salary_lpa("12 to 16 lakhs") == 16
+    assert stated_salary_lpa("3 - 7 years | Not Disclosed | Bengaluru") is None
+    prefs = SearchPrefs(min_salary_lpa=20)
+    job = lambda desc: JobPosting(title="Java Dev", company="A", url="u", description=desc)
+    assert "below the minimum 20 LPA" in reject_reason(job("5 years | 10-15 Lacs PA"), prefs)
+    assert reject_reason(job("5 years | 18-28 Lacs PA"), prefs) is None       # range reaches 20
+    assert reject_reason(job("5 years | Not Disclosed"), prefs) is None       # unknown pay is kept
+    assert reject_reason(job("x" * 1300 + " similar job 5-8 Lacs PA"), prefs) is None  # other jobs' pay ignored

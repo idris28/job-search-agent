@@ -18,7 +18,6 @@ search:
     - Pune
     - Hyderabad
     - Mumbai
-    - Chennai
     - Gurugram
     - Gurgaon
     - Noida
@@ -50,6 +49,7 @@ search:
   # employers whose name doesn't say "bank" and consultancies placing people at banks.
   exclude_industries: [banking, retail banking, investment banking]
   max_age_days: 7          # only jobs posted in the last week; newest are listed first
+  min_salary_lpa: 20       # rupee jobs stating less than 20 lakhs a year are dropped; unstated pay is kept
   notes: >
     Based in Ahmedabad, India. Open to relocating to the UAE, Saudi Arabia, or Qatar (would need
     employer visa sponsorship there; this is normal for Gulf roles and is not a red flag). Remote

@@ -176,6 +176,7 @@ All in `config.yaml`:
 |---|---|
 | `search.roles`, `search.locations` | What you are looking for and where. |
 | `search.max_age_days` | Only jobs posted within this many days (7). |
+| `search.min_salary_lpa` | Lowest salary you accept, in lakhs a year (20). Jobs stating less are dropped; jobs that don't state pay are kept. |
 | `search.exclude_company_keywords`, `exclude_industries` | Companies and industries to leave out (banking). |
 | `matching.shortlist_min_score` | Score at which a job is shortlisted (75). |
 | `outreach.notice_period` | When you can join; shown in emails. |

@@ -100,6 +100,9 @@ class SearchPrefs(BaseModel):
     # Industries the matcher should treat as a dealbreaker (e.g. "banking").
     exclude_industries: list[str] = Field(default_factory=list)
     max_age_days: int | None = 30
+    # Lowest acceptable salary in lakhs per year (LPA), for jobs paid in rupees. A job that states
+    # a lower range is dropped; a job that does not state its salary is kept.
+    min_salary_lpa: float | None = None
     notes: str = ""  # free-text preferences passed to the matcher
 
 
