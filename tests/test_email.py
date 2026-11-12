@@ -75,7 +75,7 @@ def test_email_shortlisted(conn, monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)  # away from the repo's email_template.txt: built-in format
     out = tmp_path / "emails"
     args = SimpleNamespace(job_ids=[], limit=10, no_browse=False, no_research=False, no_review=False,
-                           gmail_drafts=False, config=str(tmp_path / "missing.yaml"), out=str(out))
+                           gmail_drafts=False, send=False, config=str(tmp_path / "missing.yaml"), out=str(out))
     cli.cmd_email(args, Settings(database_url=TEST_DB))
 
     md = (tmp_path / "emails.md").read_text()
@@ -145,7 +145,7 @@ def test_email_fills_the_users_template(conn, monkeypatch, tmp_path):
     llm = TemplateLLM()
     monkeypatch.setattr(cli, "_llm", lambda s: llm)
     args = SimpleNamespace(job_ids=[], limit=10, no_browse=True, no_research=False, no_review=False,
-                           gmail_drafts=False,
+                           gmail_drafts=False, send=False,
                            config=str(tmp_path / "missing.yaml"), out=str(tmp_path / "emails"))
     cli.cmd_email(args, Settings(database_url=TEST_DB))
 
@@ -188,3 +188,32 @@ def test_template_file_setting(tmp_path, monkeypatch):
     assert OutreachPrefs().template() == "Dear [Company Name],"
     assert OutreachPrefs(template_file="").template() is None  # switched off in config.yaml
     assert OutreachPrefs(template_file="other.txt").template() is None
+
+
+def test_send_emails_only_ready_drafts_and_never_twice(conn, monkeypatch, tmp_path):
+    pid = db.save_profile(conn, "Alex", "resume text", {})
+    for i in (1, 2):  # job 2's live page says it is closed
+        jid, _ = db.upsert_job(conn, JobPosting(title=f"Java Engineer {i}", company="Acme",
+                                                url=f"https://x/{i}", location="Dubai"), None, None)
+        db.set_application_status(conn, pid, jid, "shortlisted")
+    cv = tmp_path / "cv.pdf"
+    cv.write_bytes(b"%PDF fake")
+    (tmp_path / "config.yaml").write_text(f"outreach: {{research: false, review: false, resume_path: {cv}}}")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli, "_llm", lambda s: EmailLLM())
+    monkeypatch.setattr("jobagent.browser.LazyBrowser", FakeLazy)
+    sent = []
+    monkeypatch.setattr("jobagent.mailer.send_messages",
+                        lambda addr, pw, msgs: sent.extend(m["To"] for m in msgs) or len(msgs))
+    settings = Settings(database_url=TEST_DB, gmail_address="me@gmail.com", gmail_app_password="p")
+    args = SimpleNamespace(job_ids=[], limit=10, no_browse=False, no_research=False, no_review=False,
+                           gmail_drafts=False, send=True, config=str(tmp_path / "config.yaml"),
+                           out=str(tmp_path / "emails"))
+    cli.cmd_email(args, settings)
+    assert sent == ["jobs@acme.ae"]  # the open job only
+    statuses = [r["status"] for r in conn.execute("SELECT status FROM applications ORDER BY job_id")]
+    assert statuses == ["applied", "shortlisted"]
+
+    args.job_ids = [1, 2]
+    cli.cmd_email(args, settings)  # a second run must not email job 1 again
+    assert sent == ["jobs@acme.ae"]

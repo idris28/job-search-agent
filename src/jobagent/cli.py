@@ -253,8 +253,8 @@ def cmd_email(args, settings):
     finally:
         if browser:
             browser.close()
-    if args.gmail_drafts:
-        _save_gmail_drafts(items, settings, outreach)
+    if args.gmail_drafts or args.send:
+        _deliver(items, settings, outreach, send=args.send)
     stem = Path(args.out or f"digests/emails-{date.today():%Y-%m-%d}").with_suffix("")
     stem.parent.mkdir(parents=True, exist_ok=True)
     stem.with_suffix(".md").write_text("\n".join(md))
@@ -264,72 +264,86 @@ def cmd_email(args, settings):
           f"and {stem.with_suffix('.md')}")
 
 
-def _save_gmail_drafts(items, settings, outreach) -> None:
-    """Put each draft that has a recipient into Gmail Drafts. The user reviews and sends."""
-    from .mailer import build_message, save_drafts
+def _deliver(items, settings, outreach, *, send: bool) -> None:
+    """Send each ready draft from the user's Gmail, or save it to Gmail Drafts.
+
+    A draft is ready only with a recipient on the posting, an open posting and no unfilled
+    placeholder. A job already marked applied is never emailed again.
+    """
+    from .mailer import build_message, save_drafts, send_messages
     from .report import email_body_html
 
     settings.require("gmail_address", "gmail_app_password")
     cv = Path(outreach.resume_path).expanduser() if outreach.resume_path else None
     if cv is not None and not cv.is_file():
         raise ConfigError(f"outreach.resume_path not found: {cv}")
-    ready = [it for it in items
-             if it["email"].contact_email and it["status"] != "closed" and not it["unfilled"]]
-    for it in items:
-        if it not in ready:
+    if send and cv is None:
+        raise ConfigError("Set outreach.resume_path before sending: the emails say the CV is attached.")
+    with _conn(settings) as conn:
+        pid = _profile_id(conn)
+        done = {a["job_id"] for a in db.list_applications(conn, pid) if a["status"] != "shortlisted"}
+        ready = []
+        for it in items:
+            jid = it["job"]["id"]
             why = ("no email address on the posting" if not it["email"].contact_email else
-                   "posting looks closed" if it["status"] == "closed" else "unfilled placeholders")
-            print(f"  no Gmail draft for #{it['job']['id']} ({why}): {it['job']['url']}")
-    messages = [build_message(settings.gmail_address, it["email"].contact_email,
-                              it["email"].subject, it["email"].plain_text(),
-                              email_body_html(it["email"]), cv) for it in ready]
-    if messages:
-        n = save_drafts(settings.gmail_address, settings.gmail_app_password, messages)
-        print(f"Saved {n} draft(s) to Gmail Drafts" + ("" if cv else " (no CV attached: set "
-              "outreach.resume_path)") + ". Review and send them from Gmail.")
+                   "posting looks closed" if it["status"] == "closed" else
+                   "unfilled placeholders" if it["unfilled"] else
+                   "already applied or set aside" if send and jid in done else None)
+            if why:
+                print(f"  not emailed: #{jid} ({why}): {it['job']['url']}")
+            else:
+                ready.append(it)
+        messages = [build_message(settings.gmail_address, it["email"].contact_email,
+                                  it["email"].subject, it["email"].plain_text(),
+                                  email_body_html(it["email"]), cv) for it in ready]
+        if not messages:
+            print("No emails to " + ("send." if send else "save as drafts."))
+        elif send:
+            for it, msg in zip(ready, messages):
+                send_messages(settings.gmail_address, settings.gmail_app_password, [msg])
+                db.set_application_status(conn, pid, it["job"]["id"], "applied",
+                                          f"emailed {it['email'].contact_email}")
+                print(f"  sent: #{it['job']['id']} to {it['email'].contact_email}")
+            print(f"Sent {len(messages)} email(s) from {settings.gmail_address}.")
+        else:
+            n = save_drafts(settings.gmail_address, settings.gmail_app_password, messages)
+            print(f"Saved {n} draft(s) to Gmail Drafts" + ("" if cv else " (no CV attached: set "
+                  "outreach.resume_path)") + ". Review and send them from Gmail.")
 
 
-def cmd_apply_login(args, settings):
-    """Open the agent's own browser so the user can sign in to Bayt themselves."""
-    from .applier import BAYT_LOGIN_URL, PROFILE_DIR, user_browser
+def cmd_apply(args, settings, *, open_url=None, ask=input):
+    """Open each shortlisted job's page in the user's own browser and record what they did.
 
-    with user_browser() as page:
-        page.goto(BAYT_LOGIN_URL)
-        input("A browser window is open. Sign in to Bayt there, then press Enter here... ")
-    print(f"Saved. The sign-in is kept in {PROFILE_DIR} for `jsa apply`.")
+    Job sites block automated browsers, so the click is the user's: they are already signed in
+    there, and no bot check gets in the way.
+    """
+    import webbrowser
 
-
-def cmd_apply(args, settings):
-    """Click Bayt's Easy Apply for shortlisted jobs; hand back anything that needs a person."""
-    from .applier import apply_on_bayt, is_bayt, user_browser
-
+    open_url = open_url or webbrowser.open
     with _conn(settings) as conn:
         pid = _profile_id(conn)
         ids = args.job_ids or db.shortlisted_job_ids(conn, pid, args.limit)
         jobs = [j for j in (db.get_job(conn, i) for i in ids) if j]
-        todo = [j for j in jobs if is_bayt(j["url"])]
-        for j in jobs:
-            if j not in todo:
-                print(f"#{j['id']} {j['title']} at {j['company']}: not a Bayt job, apply by hand: {j['url']}")
-        if not todo:
-            print("No Bayt jobs to apply to.")
+        if not jobs:
+            print("Nothing to apply to: no job ids given and nothing is shortlisted.")
             return
-        needs_person = []
-        with user_browser() as page:
-            for j in todo:
-                r = apply_on_bayt(page, j["url"], dry_run=args.dry_run)
-                print(f"#{j['id']} {j['title']} at {j['company']}: {r.status}"
-                      + (f" ({r.detail})" if r.detail else ""))
-                if r.status in ("applied", "already_applied"):
-                    db.set_application_status(conn, pid, j["id"], "applied", "via Bayt Easy Apply")
-                elif r.status in ("blocked", "login_needed"):
-                    print("Stopping here: the site needs you. Nothing further was attempted.")
-                    break
-                elif r.status == "needs_you":
-                    needs_person.append(j)
-                    input("  Finish this application in the browser window, then press Enter... ")
-        if needs_person:
-            print(f"{len(needs_person)} job(s) needed your input; mark them with: jsa status <id> applied")
+        applied = 0
+        for n, j in enumerate(jobs, 1):
+            print(f"[{n}/{len(jobs)}] #{j['id']} {j['title']} at {j['company']} ({j['location'] or 'n/a'})")
+            if args.dry_run:
+                print(f"    {j['url']}")
+                continue
+            open_url(j["url"])
+            answer = ask("    Opened in your browser. Applied? [y = yes, n = not now, s = skip this job, q = quit] ").strip().lower()
+            if answer == "q":
+                break
+            if answer == "y":
+                db.set_application_status(conn, pid, j["id"], "applied", "applied on the job site")
+                applied += 1
+            elif answer == "s":
+                db.set_application_status(conn, pid, j["id"], "skipped")
+        if not args.dry_run:
+            print(f"Marked {applied} job(s) as applied.")
 
 
 def cmd_digest(args, settings):
@@ -408,17 +422,16 @@ def build_parser() -> argparse.ArgumentParser:
     em.add_argument("--no-review", action="store_true", help="skip the recruiter-style review")
     em.add_argument("--gmail-drafts", action="store_true",
                     help="also save drafts that have a recipient to your Gmail Drafts (never sends)")
+    em.add_argument("--send", action="store_true",
+                    help="send the emails that have a recipient from your Gmail, CV attached")
     em.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
     em.add_argument("--out", help="output path without extension (default: digests/emails-<date>)")
     em.set_defaults(fn=cmd_email)
 
-    al = sub.add_parser("apply-login", help="sign in to Bayt yourself in the agent's browser")
-    al.set_defaults(fn=cmd_apply_login)
-
-    apl = sub.add_parser("apply", help="click Easy Apply on Bayt for shortlisted jobs")
-    apl.add_argument("job_ids", type=int, nargs="*", help="jobs to apply to (default: shortlisted)")
+    apl = sub.add_parser("apply", help="open shortlisted jobs in your browser to apply, and record it")
+    apl.add_argument("job_ids", type=int, nargs="*", help="jobs to open (default: shortlisted)")
     apl.add_argument("--limit", type=int, default=10, help="max shortlisted jobs when no ids given")
-    apl.add_argument("--dry-run", action="store_true", help="check each posting but click nothing")
+    apl.add_argument("--dry-run", action="store_true", help="list the jobs without opening them")
     apl.set_defaults(fn=cmd_apply)
 
     d = sub.add_parser("digest", help="write a Markdown digest of top matches")

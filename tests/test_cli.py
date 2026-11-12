@@ -7,8 +7,8 @@ def test_parser_has_all_commands():
     p = build_parser()
     for argv in (["migrate"], ["profile", "import", "r.pdf"], ["run"], ["jobs"], ["show", "1"],
                  ["status", "1", "applied"], ["applications"], ["cover-letter", "1"],
-                 ["digest"], ["runs"], ["email"], ["email", "94", "96"], ["apply-login"],
-                 ["apply"], ["apply", "94", "--dry-run"]):
+                 ["digest"], ["runs"], ["email"], ["email", "94", "96"], ["apply"],
+                 ["apply", "94", "--dry-run"], ["email", "--send"]):
         assert p.parse_args(argv).fn
 
 

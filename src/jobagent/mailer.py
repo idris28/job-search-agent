@@ -1,8 +1,9 @@
-"""Put drafted emails into the user's Gmail Drafts folder. Nothing here sends mail."""
+"""Deliver drafted emails through the user's Gmail: save to Drafts, or send."""
 
 from __future__ import annotations
 
 import imaplib
+import smtplib
 import mimetypes
 import re
 import time
@@ -55,3 +56,13 @@ def save_drafts(address: str, app_password: str, messages: list[EmailMessage], *
             imap.logout()
         except Exception:  # noqa: BLE001 - already disconnected
             pass
+
+
+def send_messages(address: str, app_password: str, messages: list[EmailMessage], *,
+                  smtp_factory=smtplib.SMTP_SSL) -> int:
+    """Send each message from the user's Gmail account. Returns how many were sent."""
+    with smtp_factory("smtp.gmail.com", 465) as smtp:
+        smtp.login(address, app_password)
+        for msg in messages:
+            smtp.send_message(msg)
+    return len(messages)

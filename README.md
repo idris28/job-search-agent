@@ -106,19 +106,17 @@ jsa runs                         # run history, tokens used, errors
 Output: `digests/emails-<date>.html` (open in a browser; "Copy email" pastes into Gmail with
 formatting; each card shows the recruiter review) and a Markdown copy. Nothing is ever sent.
 
-**Gmail drafts.** `jsa email --gmail-drafts` also saves each draft that has a recipient address
-into your Gmail Drafts folder, with the CV from `outreach.resume_path` attached. It needs
-`GMAIL_ADDRESS` and `GMAIL_APP_PASSWORD` (a Google app password) in `.env`. It never sends: you
-review and press Send in Gmail. Jobs with no address on the posting, a closed posting or an
-unfilled placeholder are listed with their apply link instead.
+**Sending.** `jsa email --send` sends each ready email from your Gmail with the CV from
+`outreach.resume_path` attached, then marks the job applied so it is never emailed twice.
+`jsa email --gmail-drafts` saves them to Gmail Drafts instead, for you to review and send. Both need
+`GMAIL_ADDRESS` and `GMAIL_APP_PASSWORD` (a Google app password) in `.env`. An email is ready only
+when the posting shows a recipient address, is still open, and no placeholder is unfilled; other
+jobs are listed with their apply link.
 
-**Applying on Bayt.** `jsa apply-login` opens the agent's own browser window so you can sign in to
-Bayt yourself (the agent never types your password). After that, `jsa apply` clicks Bayt's
-**Easy Apply** for your shortlisted Bayt jobs and marks them applied only when the site confirms.
-It hands a job back to you when the button leads to another company's site, the site asks
-questions, or you are signed out, and it stops altogether at a CAPTCHA or bot check.
-`--dry-run` checks each posting without clicking. Bayt's terms may not allow automated
-applications; use it at your own risk.
+**Applying.** `jsa apply` opens each shortlisted job's page in your own browser, where you are
+already signed in, and asks whether you applied; it records your answer. The click is yours
+because job sites block automated browsers (Bayt and Google both refused one in testing).
+`--dry-run` lists the jobs without opening them.
 
 **Your own wording.** When `email_template.txt` is in the folder you run `jsa` from, step 3
 fills in that template instead of using the format above. Text in `[square brackets]` is replaced

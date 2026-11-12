@@ -1,4 +1,4 @@
-from jobagent.mailer import build_message, save_drafts
+from jobagent.mailer import build_message, save_drafts, send_messages
 
 
 class FakeIMAP:
@@ -43,3 +43,27 @@ def test_gmail_draft_has_link_attachment_and_is_only_saved(tmp_path):
     imap = made[0]
     assert imap.host == "imap.gmail.com" and imap.logged_out
     assert [(f, fl) for f, fl, _ in imap.appended] == [('"[Gmail]/Drafts"', "\\Draft")]
+
+
+def test_send_goes_through_gmail_smtp():
+    sent = []
+
+    class FakeSMTP:
+        def __init__(self, host, port):
+            self.where = (host, port)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
+        def login(self, user, password):
+            self.user = user
+
+        def send_message(self, msg):
+            sent.append((self.where, self.user, msg["To"]))
+
+    msg = build_message("me@gmail.com", "jobs@acme.ae", "s", "body", "<p>body</p>")
+    assert send_messages("me@gmail.com", "app-pass", [msg], smtp_factory=FakeSMTP) == 1
+    assert sent == [(("smtp.gmail.com", 465), "me@gmail.com", "jobs@acme.ae")]
