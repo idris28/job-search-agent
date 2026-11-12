@@ -187,7 +187,9 @@ post) runs as a task.
 - Only one task runs at a time. Starting a second one shows a message asking you to wait.
 - The strip under the numbers shows the latest line of progress. **Show output** opens the full
   report on the Activity screen.
-- **Stop** ends the task. Everything it had already saved is kept.
+- **Stop** ends the task. Everything it had already saved is kept. A stopped search is listed under
+  Past searches as **Partly finished**, with the reason in the Problem column, and the jobs it had
+  already scored well enough are on your shortlist.
 - When it finishes, a message appears at the bottom right and the lists refresh by themselves.
 - You can keep reading and editing jobs while a task runs.
 

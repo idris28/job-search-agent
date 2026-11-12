@@ -806,6 +806,7 @@ def cmd_digest(args, settings):
 
 def cmd_runs(args, settings):
     with _conn(settings) as conn:
+        db.close_dead_runs(conn)
         rows = db.list_runs(conn, args.limit)
     cols = [("id", "Run", 5), ("status", "Status", 10), ("started_at", "Started", 19),
             ("jobs_found", "Found", 6), ("jobs_new", "New", 5), ("jobs_scored", "Scored", 6),
@@ -963,10 +964,31 @@ def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    _unwind_on_terminate()
     try:
         args.fn(args, Settings.from_env())
     except ConfigError as e:
         sys.exit(f"Config error: {e}")
+    except KeyboardInterrupt:
+        sys.exit("Stopped before it finished.")
+
+
+def _unwind_on_terminate() -> None:
+    """Treat a terminate signal like Ctrl-C.
+
+    The page's Stop button and a shutdown end the program with SIGTERM, which by default stops it
+    dead. Raising KeyboardInterrupt instead lets a search record where it ended and lets the
+    browser session close.
+    """
+    import signal
+
+    def stop(signum, frame):
+        raise KeyboardInterrupt
+
+    try:
+        signal.signal(signal.SIGTERM, stop)
+    except ValueError:  # not the main thread: nothing to install
+        pass
 
 
 if __name__ == "__main__":

@@ -223,6 +223,31 @@ def test_tasks_run_one_at_a_time_show_output_and_can_be_stopped(conn, page):
     stopped = page.wait()
     assert stopped["stopped"] and stopped["exit_code"] != 0
 
+    # Stop always stops: a task that ignores the request is ended after a short wait.
+    stubborn = "import signal, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\nprint('up', flush=True)\ntime.sleep(30)"
+    runner.command, runner.grace_seconds = lambda argv: [sys.executable, "-c", stubborn], 0.2
+    page.call("/api/task", {"action": "run"})
+    for _ in range(100):
+        if page.call("/api/task?since=0")[1]["task"]["lines"]:
+            break
+        time.sleep(0.05)
+    assert page.call("/api/task/stop", {})[1] == {"stopped": True}
+    assert page.wait()["exit_code"] == -9
+
+
+def test_activity_does_not_list_a_cut_off_search_as_running(conn, page):
+    pid = db.save_profile(conn, "Alex", "resume", {})
+    program = db.connect(TEST_DB)  # the program running a search
+    run_id = db.start_run(program, pid, {})
+    runs = lambda: page.call("/api/insights?days=30")[1]["runs"]  # noqa: E731
+    assert [(r["id"], r["status"]) for r in runs()] == [(run_id, "running")]
+    program.close()  # cut off before it could record an end
+    for _ in range(100):
+        if runs()[0]["status"] != "running":
+            break
+        time.sleep(0.05)
+    assert (runs()[0]["status"], runs()[0]["error"]) == ("partial", db.CLOSED_EARLY)
+
 
 def test_settings_schedule_and_template(conn, page, monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)

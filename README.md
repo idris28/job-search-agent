@@ -193,7 +193,10 @@ placeholder that was left unfilled. Edit the file to change the wording; delete 
 
 Re-running is cheap: jobs are deduplicated by company, title, and location, and a job is only
 re-scored when its text changes. One failing source marks the run `partial` and the rest
-continue. Details are in the `run_events` table.
+continue. A run that is stopped (Ctrl-C, or **Stop** on the page) is also marked `partial`: it
+shortlists what it had already scored and records where it ended. A run whose program was closed
+before it could do that is given its end the next time runs are listed or a new run starts.
+Details are in the `run_events` table.
 
 To run it daily, schedule `jsa run && jsa digest --out digests/$(date +%F).md` with cron or a
 CI scheduler.

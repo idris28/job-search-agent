@@ -103,11 +103,41 @@ def upsert_source(conn, kind: str, name: str, url: str, config: dict) -> int:
 # --- runs -------------------------------------------------------------------
 
 
+# A search holds the advisory lock (_RUN_LOCK, run id) on its connection for as long as it runs.
+# PostgreSQL drops the lock when that connection ends, however the program ended, so a row still
+# marked 'running' with no lock is a search whose program has gone.
+_RUN_LOCK = 7_526_114
+STOPPED_EARLY = "Stopped before it finished"
+CLOSED_EARLY = "The program closed before this search finished"
+
+
 def start_run(conn, profile_id: int | None, config_snapshot: dict) -> int:
-    return conn.execute(
-        "INSERT INTO runs (profile_id, config_snapshot) VALUES (%s, %s) RETURNING id",
-        (profile_id, Jsonb(config_snapshot)),
-    ).fetchone()["id"]
+    close_dead_runs(conn)
+    run_id = conn.execute("SELECT nextval(pg_get_serial_sequence('runs', 'id')) AS id").fetchone()["id"]
+    conn.execute("SELECT pg_advisory_lock(%s, %s)", (_RUN_LOCK, run_id))  # before the row exists
+    conn.execute("INSERT INTO runs (id, profile_id, config_snapshot) VALUES (%s, %s, %s)",
+                 (run_id, profile_id, Jsonb(config_snapshot)))
+    return run_id
+
+
+def close_dead_runs(conn) -> list[int]:
+    """Give an end to searches still marked running whose program is gone. Returns their ids.
+
+    What such a search saved is kept, so it is recorded as partial, with the jobs it added and
+    scored counted from the rows that point back to it. How many it found in all was never
+    written down; the number it added is the least that can be.
+    """
+    rows = conn.execute(
+        """UPDATE runs r SET status = 'partial', finished_at = now(), error = %s,
+               jobs_found = GREATEST(r.jobs_found, (SELECT count(*) FROM jobs j WHERE j.first_run_id = r.id)),
+               jobs_new = (SELECT count(*) FROM jobs j WHERE j.first_run_id = r.id),
+               jobs_scored = (SELECT count(*) FROM job_matches m WHERE m.run_id = r.id)
+           WHERE r.status = 'running' AND NOT EXISTS (
+               SELECT 1 FROM pg_locks l JOIN pg_database d ON d.oid = l.database
+               WHERE l.locktype = 'advisory' AND l.granted AND d.datname = current_database()
+                 AND l.classid = %s AND l.objid::bigint = r.id AND l.objsubid = 2)
+           RETURNING r.id""", (CLOSED_EARLY, _RUN_LOCK)).fetchall()
+    return sorted(r["id"] for r in rows)
 
 
 def finish_run(conn, run_id: int, *, status: str, stats: dict, error: str | None = None) -> None:
@@ -125,6 +155,7 @@ def finish_run(conn, run_id: int, *, status: str, stats: dict, error: str | None
             run_id,
         ),
     )
+    conn.execute("SELECT pg_advisory_unlock(%s, %s)", (_RUN_LOCK, run_id))
 
 
 def log_event(conn, run_id: int, message: str, *, level: str = "info",

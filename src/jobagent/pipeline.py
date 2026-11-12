@@ -59,6 +59,7 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Clie
             return f"browser time limit reached ({minutes:.1f} of {m.max_browser_minutes_per_run:g} minutes)"
         return ""
 
+    strong: list[int] = []  # jobs scored high enough to shortlist
     try:
         # 1. Collect -----------------------------------------------------------
         candidates: list[tuple[int, JobPosting]] = []
@@ -113,9 +114,9 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Clie
                       level="warning")
                 to_score = to_score[:cap]
 
-            strong: list[int] = []
             workers = max(1, cfg.matching.concurrency)
-            with ThreadPoolExecutor(max_workers=workers) as pool:
+            pool = ThreadPoolExecutor(max_workers=workers)
+            try:
                 # Scored a few at a time so a spending limit is checked between batches; jobs
                 # left over stay unscored and are picked up by the next run.
                 for start in range(0, len(to_score), workers):
@@ -139,12 +140,27 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Clie
                         summary.scored += 1
                         if m.score >= cfg.matching.shortlist_min_score:
                             strong.append(job_id)
+            finally:
+                # Never wait here for calls still in flight: when the search is stopped its end
+                # must be recorded at once, and a job left unscored is picked up next time.
+                pool.shutdown(wait=False, cancel_futures=True)
             summary.shortlisted = db.shortlist_many(conn, profile["id"], strong)
 
         summary.tokens = getattr(llm, "tokens_used", 0)
         summary.status = "partial" if summary.source_errors or summary.stopped else "succeeded"
         db.finish_run(conn, run_id, status=summary.status, stats=summary.__dict__)
         return summary
+    except KeyboardInterrupt:
+        # Ctrl-C, the page's Stop button, or the program being closed. What was saved is kept:
+        # shortlist the jobs already scored high enough, then record where the search ended.
+        summary.status, summary.stopped = "partial", "stopped before it finished"
+        summary.tokens = getattr(llm, "tokens_used", 0)
+        try:
+            summary.shortlisted = db.shortlist_many(conn, profile["id"], strong)
+            db.finish_run(conn, run_id, status="partial", stats=summary.__dict__, error=db.STOPPED_EARLY)
+        except Exception as e:  # noqa: BLE001 - the stop can land mid-query; close_dead_runs ends it later
+            log.warning("could not record that run %s was stopped: %s", run_id, e)
+        raise
     except Exception as e:
         summary.status = "failed"
         db.finish_run(conn, run_id, status="failed", stats=summary.__dict__, error=str(e))

@@ -123,7 +123,7 @@ task is really running. Nothing lifts or scales on hover.
 - **A confirm button repeats the action,** with the count when there is one: "Send 2 emails",
   "Merge duplicates", "Stop Job Search". Never "OK", "Yes" or "Send them".
 - **Sentence case everywhere,** including status names: Shortlisted, Applied, Interviewing, Offer,
-  Rejected, Skipped, Withdrawn. A search is Finished, Finished with problems, Failed or Running.
+  Rejected, Skipped, Withdrawn. A search is Finished, Partly finished, Failed or Running.
 - **A one-sentence message has no full stop:** labels, captions, sub-lines, empty states, short
   confirmations. Text of two or more sentences keeps its full stops. The page applies this to every
   message it shows, including ones the program sends.

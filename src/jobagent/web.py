@@ -41,6 +41,7 @@ class TaskRunner:
         self.task: dict | None = None
         self.env = env or {}
         self.command = lambda argv: [sys.executable, "-u", "-m", "jobagent.cli", *argv]
+        self.grace_seconds = 15.0  # how long a stopped task may take to tidy up
 
     def start(self, action: str, label: str, argv: list[str], cleanup=None) -> dict:
         with self._lock:
@@ -73,7 +74,13 @@ class TaskRunner:
             if self._proc is None or self._proc.poll() is not None:
                 return False
             self.task["stopped"] = True
-            self._proc.terminate()
+            proc = self._proc
+            proc.terminate()  # the task unwinds: a search records where it ended
+            # Stop must always stop. If the task is still tidying up after a while, end it; a
+            # search cut off this way is given its end by db.close_dead_runs.
+            timer = threading.Timer(self.grace_seconds, lambda: proc.poll() is None and proc.kill())
+            timer.daemon = True
+            timer.start()
             return True
 
     def snapshot(self, since: int | None = None) -> dict | None:
@@ -202,6 +209,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         with connect() as conn:
             pid = profile_id(conn)
             total, gaps = db.skill_gaps(conn, pid, days, 50, 12)
+            db.close_dead_runs(conn)  # so a search that was cut off is not listed as still running
             return {"days": days, "gap_jobs": total, "gaps": gaps, "progress": db.progress(conn, pid, 7),
                     "waiting": len(db.shortlisted_job_ids(conn, pid, 100000)), "runs": db.list_runs(conn, 15)}
 
