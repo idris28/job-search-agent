@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Search Agent: Application Flow</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#ffffff; --ink:#1d2430; --muted:#5d6b7e; --line:#e3e7ed; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12151b; --card:#1b2029; --ink:#e7ebf1; --muted:#9aa6b6; --line:#2c3442; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width:1200px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  p.sub { color:var(--muted); margin:0 0 20px; max-width:75ch; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+          padding:20px; overflow-x:auto; }
+  .legend { display:flex; flex-wrap:wrap; gap:8px 18px; margin:16px 0 0; color:var(--muted); font-size:13px; }
+  .legend span::before { content:""; display:inline-block; width:12px; height:12px; border-radius:3px;
+                         margin-right:6px; vertical-align:-1px; background:var(--c); border:1px solid var(--b); }
+  table { border-collapse:collapse; margin-top:24px; width:100%; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  code { font:13px ui-monospace, Menlo, monospace; }
+  #error { color:#b3261e; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Job Search Agent: Application Flow</h1>
+  <p class="sub">From the <code>jsa</code> command you type, through each step of the logic, to the
+  responses from the AI model, the browser, Gmail and the PostgreSQL database. Read it top to bottom.</p>
+
+  <div class="card">
+    <pre class="mermaid">
+flowchart TD
+    U(["You type a jsa command"]) --> M["main()<br/>cli.py"]
+    M --> ENV["load_dotenv()<br/>Settings.from_env()<br/>read keys from .env"]
+    ENV --> P{"build_parser()<br/>which command?"}
+
+    %% ---------- jsa run ----------
+    P -->|"jsa run"| R1["cmd_run()<br/>load config.yaml, create AI and browser"]
+    R1 --> R2["run_agent()<br/>pipeline.py"]
+    R2 --> DB1[("PostgreSQL<br/>active_profile, start_run")]
+    DB1 --> R3["For each job board:<br/>build_source().fetch()"]
+    R3 --> W1[["Browserbase browser<br/>fetch search page"]]
+    W1 --> A1[["AI model<br/>extract_listings: jobs, links, posted age"]]
+    A1 --> R4["Drop links not on the page<br/>sort newest first"]
+    R4 --> W2[["Browserbase browser<br/>fetch up to 15 job pages"]]
+    W2 --> DB2[("PostgreSQL<br/>upsert_job, stored once by fingerprint")]
+    DB2 --> F{"reject_reason()<br/>location, title, bank, older than 7 days?"}
+    F -->|"rejected"| X1(["Dropped, no AI cost"])
+    F -->|"kept"| H{"Already scored<br/>with the same text?"}
+    H -->|"yes"| X2(["Skipped"])
+    H -->|"no"| A2[["AI model<br/>score_job: 0 to 100, skills, gaps"]]
+    A2 --> DB3[("PostgreSQL<br/>save_match")]
+    DB3 --> S{"Score 75 or more?"}
+    S -->|"yes"| DB4[("PostgreSQL<br/>shortlist_many")]
+    S -->|"no"| DB5[("PostgreSQL<br/>finish_run")]
+    DB4 --> DB5
+    DB5 --> O1(["Top new matches printed, newest first"])
+
+    %% ---------- jsa add ----------
+    P -->|"jsa add"| D1["cmd_add()<br/>read pasted post"]
+    D1 --> A3[["AI model<br/>read_pasted_job: role, company, email"]]
+    A3 --> DB6[("PostgreSQL<br/>upsert_job")]
+    DB6 --> A4[["AI model<br/>score_job"]]
+    A4 --> DB7[("PostgreSQL<br/>save_match, shortlist")]
+    DB7 --> O2(["Job number and score printed"])
+
+    %% ---------- jsa email ----------
+    P -->|"jsa email"| E1["cmd_email()<br/>load config and email_template.txt"]
+    E1 --> DB8[("PostgreSQL<br/>shortlisted_job_ids, get_job")]
+    DB8 --> W3[["Browserbase browser<br/>fetch live posting: still open?"]]
+    W3 --> A5[["AI model<br/>recruiter_email: fill the template"]]
+    A5 --> E2["unfilled_placeholders()<br/>flag any blank left"]
+    E2 --> DB9[("PostgreSQL<br/>save_outreach")]
+    DB9 --> E3["emails_html()<br/>write preview to digests/"]
+    E3 --> G{"--gmail-drafts or --send?"}
+    G -->|"neither"| O3(["Preview only, nothing sent"])
+    G -->|"yes"| E4{"Ready?<br/>address, open, no blank, not applied"}
+    E4 -->|"no"| O4(["Listed with its apply link"])
+    E4 -->|"yes"| E5["build_message()<br/>attach CV"]
+    E5 --> K{"Which flag?"}
+    K -->|"--gmail-drafts"| GM1[["Gmail<br/>save_drafts"]]
+    K -->|"--send"| GM2[["Gmail<br/>send_messages"]]
+    GM1 --> O5(["Drafts in Gmail for you to send"])
+    GM2 --> DB10[("PostgreSQL<br/>status = applied")]
+    DB10 --> O6(["Email sent to the recruiter"])
+
+    %% ---------- jsa apply ----------
+    P -->|"jsa apply"| L1["cmd_apply()"]
+    L1 --> DB11[("PostgreSQL<br/>shortlisted_job_ids")]
+    DB11 --> L2["Open the posting<br/>in your own browser"]
+    L2 --> L3{"Applied?<br/>y / n / s / q"}
+    L3 -->|"y or s"| DB12[("PostgreSQL<br/>status = applied or skipped")]
+    L3 -->|"n or q"| O7(["Left as shortlisted"])
+    DB12 --> O8(["Status recorded"])
+
+    %% ---------- read-only commands ----------
+    P -->|"jobs, show, applications,<br/>digest, runs"| Q1[("PostgreSQL<br/>read only")]
+    Q1 --> O9(["Table or summary printed"])
+
+    classDef step fill:#eef3fb,stroke:#8aa4d6,color:#1d2430;
+    classDef decision fill:#fff6e0,stroke:#d9a441,color:#1d2430;
+    classDef db fill:#e8f5ec,stroke:#5aa775,color:#1d2430;
+    classDef ext fill:#f3eafa,stroke:#a57fd0,color:#1d2430;
+    classDef io fill:#f1f3f6,stroke:#9aa6b6,color:#1d2430;
+    class M,ENV,R1,R2,R3,R4,D1,E1,E2,E3,E5,L1,L2 step;
+    class P,F,H,S,G,E4,K,L3 decision;
+    class DB1,DB2,DB3,DB4,DB5,DB6,DB7,DB8,DB9,DB10,DB11,DB12,Q1 db;
+    class W1,W2,W3,A1,A2,A3,A4,A5,GM1,GM2 ext;
+    class U,X1,X2,O1,O2,O3,O4,O5,O6,O7,O8,O9 io;
+    </pre>
+    <div id="error"></div>
+    <div class="legend">
+      <span style="--c:#eef3fb;--b:#8aa4d6">Step in the agent's code</span>
+      <span style="--c:#fff6e0;--b:#d9a441">Decision</span>
+      <span style="--c:#e8f5ec;--b:#5aa775">PostgreSQL database</span>
+      <span style="--c:#f3eafa;--b:#a57fd0">Outside service: AI model, Browserbase, Gmail</span>
+      <span style="--c:#f1f3f6;--b:#9aa6b6">Start or result</span>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>Branch</th><th>Entry function</th><th>What comes back</th></tr>
+    <tr><td><code>jsa run</code></td><td><code>cmd_run()</code> then <code>run_agent()</code> in <code>pipeline.py</code></td><td>Jobs and scores stored, strong matches shortlisted, a summary printed</td></tr>
+    <tr><td><code>jsa add</code></td><td><code>cmd_add()</code></td><td>One pasted post stored, scored and shortlisted</td></tr>
+    <tr><td><code>jsa email</code></td><td><code>cmd_email()</code> then <code>_deliver()</code></td><td>A draft per job, an HTML preview, and optionally Gmail drafts or sent emails</td></tr>
+    <tr><td><code>jsa apply</code></td><td><code>cmd_apply()</code></td><td>Each posting opened in your browser, your answer recorded</td></tr>
+    <tr><td>Read-only commands</td><td><code>cmd_jobs()</code>, <code>cmd_show()</code> and others</td><td>Tables read straight from the database</td></tr>
+  </table>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: "neutral", flowchart: { useMaxWidth: false, htmlLabels: true } });
+  mermaid.run().catch(function (e) {
+    document.getElementById("error").textContent = "Diagram failed to render: " + (e && e.message ? e.message : e);
+  });
+</script>
+</body>
+</html>
