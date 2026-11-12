@@ -104,7 +104,6 @@ class SearchPrefs(BaseModel):
 
 class OutreachPrefs(BaseModel):
     notice_period: str = ""      # e.g. "60 days, negotiable"; omitted from emails when empty
-    resume_link: str = ""        # e.g. a Google Drive link; otherwise the email says "attached"
     resume_filename: str = ""    # e.g. "Alex_Morgan_Java_Engineer.pdf"
     email: str = ""              # contact email for the sign-off; the resume's when empty
     linkedin_url: str = ""       # shown in emails as a clickable "LinkedIn" link

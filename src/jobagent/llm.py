@@ -67,8 +67,8 @@ CONTENT RECRUITERS LOOK FOR (put it where a 6-second skim finds it)
    (numbers, scale, outcome, your own ownership). Under 25 words each. Never vague ("worked on
    backend services").
 4. Logistics recruiters must know: current location, relocation to this job's country, visa
-   ("employer-sponsored work visa" for UAE/Saudi/Qatar), notice period if given, resume attached
-   or linked. Never mention salary.
+   ("employer-sponsored work visa" for UAE/Saudi/Qatar), notice period if given, resume attached.
+   Never mention salary.
 5. Easy next step: one specific, low-pressure ask (e.g. a 15-minute call this week).
 Follow the RECRUITER GUIDANCE notes where they add market-specific points.
 
@@ -223,7 +223,7 @@ class BaseLLM:
         prefs = {}
         if outreach is not None:
             prefs = {k: v for k, v in outreach.model_dump().items()
-                     if k in ("notice_period", "resume_link", "resume_filename", "email",
+                     if k in ("notice_period", "resume_filename", "email",
                               "linkedin_url") and v}
         payload = (f"RESUME:\n{resume_text}\n\nSTORED JOB POSTING:\n{job_text}"
                    f"\n\nLIVE POSTING PAGE TEXT:\n{live}")
