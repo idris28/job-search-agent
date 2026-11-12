@@ -507,7 +507,7 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
       <button data-act="gmail-all"><svg class="ic" aria-hidden="true"><use href="#i-inbox"/></svg>Save drafts to Gmail</button>
       <button data-act="send-all"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg>Send ready emails</button>
       <button data-act="followups"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>Send follow-ups</button>
-      <button data-act="daily"><svg class="ic" aria-hidden="true"><use href="#i-sunrise"/></svg>Morning routine</button>
+      <button data-act="daily"><svg class="ic" aria-hidden="true"><use href="#i-sunrise"/></svg>Run the morning routine</button>
       <button data-act="digest"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Download digest</button>
     </div>
     <div class="side-foot">
@@ -600,7 +600,7 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
   <textarea class="field short" id="addtext" style="min-height:168px" aria-label="Post text" placeholder="Paste the post here"></textarea>
   <input class="field" id="addurl" aria-label="Link to the post" placeholder="Link to the post (optional)">
   <p style="margin:8px 0 0">Only have HR email addresses, with no job post? <button class="link strong" data-act="hr">Add HR addresses</button></p>
-  <div class="foot"><button class="btn" data-act="close-add">Cancel</button><button class="btn primary" data-act="add-go">Read and score it</button></div>
+  <div class="foot"><button class="btn" data-act="close-add">Cancel</button><button class="btn primary" data-act="add-go">Add the job</button></div>
 </dialog>
 <dialog id="hrdlg">
   <h2>Add HR addresses</h2>
@@ -611,7 +611,7 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
   <div id="hrresult" role="status"></div>
   <div class="foot"><button class="btn" data-act="close-hr">Close</button><button class="btn primary" data-act="hr-go">Add to shortlist</button></div>
 </dialog>
-<dialog id="palette" aria-label="All actions"><input id="pq" placeholder="What do you want to do?" aria-label="Search actions" autocomplete="off"><ul id="plist"></ul></dialog>
+<dialog id="palette" aria-label="All actions"><input id="pq" placeholder="Search actions" aria-label="Search actions" autocomplete="off"><ul id="plist"></ul></dialog>
 <input type="file" id="resumefile" accept=".pdf,.txt,.md" hidden>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
@@ -630,12 +630,12 @@ const S = { state: null, inited: false, view: "shortlist", sel: null, detail: nu
             lines: [], taskId: 0, wasRunning: false, polling: false, dirty: false, dealt: false, tpl: "tpl", preview: false, dismissed: 0, settings: null, insights: null };
 const VIEWS = {
   shortlist: ["Shortlist", "Jobs that scored well against your resume. Draft the email, find the address, send."],
-  progress: ["In progress", "Applications under way, and the jobs you set aside."],
-  followups: ["Follow-ups", "Emails that have had no reply for a few days."],
-  matches: ["All matches", "Every job scored against your resume, newest first."],
-  insights: ["Insights", "Your week, the skills you are missing, and which sites deliver."],
-  activity: ["Activity", "What the program is doing now, and past searches."],
-  settings: ["Settings", "Setup, the daily run, your templates and limits."],
+  progress: ["In progress", "Applications under way, and the jobs you set aside"],
+  followups: ["Follow-ups", "Emails that have had no reply"],
+  matches: ["All matches", "Every job scored against your resume, newest first"],
+  insights: ["Insights", "Your week, the skills you are missing, and which sites deliver"],
+  activity: ["Activity", "What the program is doing now, and past searches"],
+  settings: ["Settings", "Setup, the morning routine, your templates and limits"],
 };
 const HOT = { run: ["found", "scored"], daily: ["found", "scored", "shortlisted"], add: ["found", "scored", "shortlisted"], contacts: ["shortlisted"], email: ["shortlisted"],
               send: ["shortlisted", "emailed", "applied"], "gmail-drafts": ["shortlisted"], "cover-letter": ["shortlisted"], followups: ["due"] };
@@ -653,18 +653,18 @@ async function api(path, body, raw) {
   try { res = await fetch(path, opt); }
   catch { throw new Error("The page lost contact with the job search program. Open Job Search again to restart it."); }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "That did not work.");
+  if (!res.ok) throw new Error(data.error || (res.status === 403 ? "This page is older than the running program. Reload it" : "The program could not do that. Reload the page and try again"));
   return data;
 }
 function toast(msg, bad) {
   const t = document.createElement("div");
-  t.className = "toast" + (bad ? " bad" : ""); t.innerHTML = ic(bad ? "alert" : "check") + "<span></span>"; t.lastChild.textContent = msg;
+  t.className = "toast" + (bad ? " bad" : ""); t.innerHTML = ic(bad ? "alert" : "check") + "<span></span>"; t.lastChild.textContent = tidy(msg);
   $("#toasts").append(t); setTimeout(() => t.remove(), bad ? 9000 : 4500);
 }
 const fail = e => toast(e.message, true);
 function ask(title, text, ok, no = "Cancel") {
   const d = $("#ask");
-  $("h2", d).textContent = title; $("p", d).textContent = text; $(".primary", d).textContent = ok; $("[value=no]", d).textContent = no;
+  $("h2", d).textContent = title; $("p", d).textContent = tidy(text); $(".primary", d).textContent = ok; $("[value=no]", d).textContent = no;
   d.showModal();
   return new Promise(res => {
     const done = v => { d.close(); d.onclick = null; d.oncancel = null; res(v); };
@@ -683,6 +683,12 @@ const tier = s => s == null ? "s0" : s >= 85 ? "s4" : s >= 75 ? "s3" : s >= 60 ?
 const statusOf = r => r.status || r.application_status || "";
 const http = u => /^https?:\/\//.test(u || "");
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const tidy = s => { s = String(s ?? "").trim(); return /[.!?]\s/.test(s) ? s : s.replace(/\.$/, ""); };  // a one-sentence message carries no full stop
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : "";
+const STATUS_L = { shortlisted: "Shortlisted", applied: "Applied", interviewing: "Interviewing", offer: "Offer", rejected: "Rejected", skipped: "Skipped", withdrawn: "Withdrawn" };
+const RUN_L = { succeeded: "Finished", partial: "Finished with problems", failed: "Failed", running: "Running" };
+// Mirrors company_named() in models.py: a posting that gives no real company name.
+const named = c => !/^(unknown|undisclosed|anonymous|hidden|none|company|employer|n\/?a|-*|not (disclosed|specified|mentioned|given|available|named))$|confidential|stealth|\(name not given\)$/i.test((c || "").trim());
 const initials = n => (n || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
 function postmark(iso) {  // the one signature: a dated mark on anything that has been sent
   const d = new Date(iso), mon = d.toLocaleDateString(undefined, { month: "short" });
@@ -702,8 +708,8 @@ function renderChrome() {
   const st = S.state, c = st.counts || {}, p = st.setup.profile, t = st.task, [title, sub] = VIEWS[S.view];
   $("#me").textContent = p ? initials(p.name) : "?"; $("#mename").textContent = p ? p.name : "Settings";
   $$("#tabs [data-view]").forEach(b => b.dataset.view === S.view ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
-  $$("#tabs [data-c]").forEach(e => { const n = c[e.dataset.c] || 0; e.textContent = n; e.hidden = !n; });
-  $("#vtitle").textContent = title; $("#vsub").textContent = sub;
+  $$("#tabs [data-c]").forEach(e => { const n = c[e.dataset.c] || 0; e.textContent = n.toLocaleString(); e.hidden = !n; });
+  $("#vtitle").textContent = title; $("#vsub").textContent = S.view === "followups" ? `Emails with no reply after ${st.follow_up_days} days` : sub;
   const se = st.search || {};
   const chips = [["Sites", st.sources.length], ["Posted", se.max_age_days ? `last ${se.max_age_days} days` : "any time"], ["Pay", se.min_salary_lpa ? `${se.min_salary_lpa} LPA or more` : "any"]]
     .map(([l, v]) => `<button class="chip" data-view="settings"><span>${l}</span><b>${esc(v)}</b></button>`).join("");
@@ -731,10 +737,10 @@ function renderLive() {
   const t = S.state.task, live = $("#live");
   if (!t || (!t.running && S.dismissed === t.id)) { live.hidden = true; live.dataset.k = ""; return; }
   const key = `${t.id}:${t.running}`;
-  if (live.dataset.k === key) { $(".line", live).textContent = t.last || (t.running ? "starting" : ""); return; }
+  if (live.dataset.k === key) { $(".line", live).textContent = t.last || (t.running ? "Starting" : ""); return; }
   live.dataset.k = key; live.hidden = false; live.classList.toggle("running", t.running);
   if (t.running) {
-    live.innerHTML = `<span class="spin"></span><b>${esc(t.label)}</b><span class="line">${esc(t.last || "starting")}</span>
+    live.innerHTML = `<span class="spin"></span><b>${esc(t.label)}</b><span class="line">${esc(t.last || "Starting")}</span>
       <button class="btn sm" data-view="activity">Show output</button><button class="btn sm danger" data-act="stop">${ic("square")}Stop</button>`;
   } else {
     const ok = t.exit_code === 0 && !t.stopped;
@@ -776,7 +782,7 @@ async function pollTask() {
       if (task.id !== S.taskId) { S.taskId = task.id; S.lines = []; continue; }
       S.lines.push(...task.lines); delete task.lines;
       S.state.task = task; renderLive();
-      const out = $("#taskout"); if (out) { out.textContent = S.lines.join("\n") || "No output yet."; out.scrollTop = out.scrollHeight; }
+      const out = $("#taskout"); if (out) { out.textContent = S.lines.join("\n") || "No output yet"; out.scrollTop = out.scrollHeight; }
       if (!task.running) { finished(task); break; }
       await new Promise(r => setTimeout(r, 900));
     }
@@ -846,15 +852,15 @@ function tagFor(r, due) {
     return `<span class="tag c-violet">${ic("edit")}No draft yet</span>`;
   }
   if (!s) return `<span class="tag c-slate">Not listed yet</span>`;
-  return `<span class="tag ${STATUS_C[s] || "c-slate"}">${esc(s)}</span>`;
+  return `<span class="tag ${STATUS_C[s] || "c-slate"}">${esc(STATUS_L[s] || cap(s))}</span>`;
 }
 function emptyText(total) {
-  if (!S.state.setup.profile) return "<h3>Nothing here yet</h3>Finish the setup step at the top first.";
-  if (total) return `<h3>No job matches these filters</h3>Change a filter or the search text.<br><button class="btn sm" data-act="clear">Clear the filters</button>`;
-  if (S.view === "shortlist") return `<h3>Your shortlist is empty</h3>Jobs scoring ${S.state.shortlist_min_score} or more land here after a search.<br><button class="btn primary" data-act="run">${ic("zap")}Find new jobs</button>`;
-  if (S.view === "progress") return "<h3>No applications yet</h3>A job moves here when you email the recruiter or mark it applied.";
-  if (S.view === "followups") return "<h3>No follow-ups due</h3>They appear here when an email has had no reply for a few days.";
-  return `<h3>No scored jobs yet</h3>Run a search to collect and score jobs.<br><button class="btn primary" data-act="run">${ic("zap")}Find new jobs</button>`;
+  if (!S.state.setup.profile) return "<h3>Nothing here yet</h3>Finish the setup step at the top first";
+  if (total) return `<h3>No job matches these filters</h3>Change a filter or the search text<br><button class="btn sm" data-act="clear">Clear the filters</button>`;
+  if (S.view === "shortlist") return `<h3>Your shortlist is empty</h3>Jobs scoring ${S.state.shortlist_min_score} or more land here after a search<br><button class="btn primary" data-act="run">${ic("zap")}Find new jobs</button>`;
+  if (S.view === "progress") return "<h3>No applications yet</h3>A job moves here when you email the recruiter or mark it applied";
+  if (S.view === "followups") return `<h3>No follow-ups due</h3>They appear here when an email has had no reply for ${S.state.follow_up_days} days`;
+  return `<h3>No scored jobs yet</h3>Run a search to collect and score jobs<br><button class="btn primary" data-act="run">${ic("zap")}Find new jobs</button>`;
 }
 function renderList(force) {
   const st = S.state, all = rowsFor(S.view), rows = shown(), due = new Set(st.due);
@@ -872,10 +878,10 @@ function renderList(force) {
   let tb = "", hint = "";
   if (S.view === "shortlist") {
     tb = `<button class="btn sm" data-act="draft-all">${ic("edit")}Draft emails (${nd})</button><button class="btn sm" data-act="contacts-all">${ic("at")}Look for addresses (${na})</button>
-      <button class="btn sm" data-act="gmail-all">${ic("inbox")}Save to Gmail</button><button class="btn sm primary" data-act="send-all">${ic("send")}Send ready (${n})</button>`;
+      <button class="btn sm" data-act="gmail-all">${ic("inbox")}Save drafts to Gmail</button><button class="btn sm primary" data-act="send-all">${ic("send")}Send ready emails (${n})</button>`;
     hint = `${n} of ${all.length} can be emailed now${st.sends && st.sends.cap ? `, ${st.sends.today} of ${st.sends.cap} sent today` : ""}`;
   } else if (S.view === "followups") {
-    tb = `<button class="btn sm primary" data-act="followups">${ic("send")}Send all follow-ups (${all.length})</button>`;
+    tb = `<button class="btn sm primary" data-act="followups">${ic("send")}Send follow-ups (${all.length})</button>`;
     hint = `Due ${st.follow_up_days} days after an email with no reply`;
   } else if (S.view === "matches") {
     tb = `<button class="btn sm" data-act="digest">${ic("download")}Download digest</button>`;
@@ -888,8 +894,8 @@ function renderList(force) {
   else body.innerHTML = slice.map(r => `<tr class="row" data-job="${r.job_id}" tabindex="0" aria-selected="${r.job_id === S.sel}">
       <td><span class="jt"><b>${esc(r.title)}</b><small>${esc(r.company)}</small></span></td>
       <td class="loc">${esc(r.location || "Not given")}</td>
-      <td>${r.score == null ? '<span class="faint">none</span>' : `<span class="sc ${tier(r.score)}"><b>${r.score}</b><span class="bar"><u style="width:${r.score}%"></u></span></span>`}</td>
-      <td class="nw">${esc(ago(r.posted_at)) || '<span class="faint">not shown</span>'}</td>
+      <td>${r.score == null ? '<span class="faint">No score</span>' : `<span class="sc ${tier(r.score)}"><b>${r.score}</b><span class="bar"><u style="width:${r.score}%"></u></span></span>`}</td>
+      <td class="nw">${esc(ago(r.posted_at)) || '<span class="faint">Not shown</span>'}</td>
       <td><div class="stc">${tagFor(r, due)}${r.outreach_sent_at ? postmark(r.outreach_sent_at) : ""}</div></td></tr>`).join("") || `<tr><td colspan="5"><div class="empty">${emptyText(all.length)}</div></td></tr>`;
   const from = rows.length ? S.page * PAGE + 1 : 0, to = Math.min(rows.length, (S.page + 1) * PAGE);
   let pg = "";
@@ -915,16 +921,16 @@ async function loadMatches() {
 /* ---------- side widgets ---------- */
 function nextSteps() {
   const st = S.state, sl = rowsFor("shortlist"), t = st.task, out = [];
-  if (!st.setup.profile) return [["amber", "upload", "Import your resume", "Jobs are scored against it.", "Choose a file", "resume"]];
+  if (!st.setup.profile) return [["amber", "upload", "Import your resume", "Jobs are scored against it", "Choose your resume", "resume"]];
   const n = sl.filter(ready).length, nd = sl.filter(r => !r.has_draft).length, na = sl.filter(r => !r.contact_email).length, due = st.due.length;
-  if (t && t.running) out.push(["blue", "refresh", `${t.label} is running`, "Its progress shows under the cards above.", "Show output", "v:activity"]);
-  if (due) out.push(["amber", "clock", `${plural(due, "follow-up is", "follow-ups are")} due`, "No reply yet to an email you sent.", "Open follow-ups", "v:followups"]);
-  if (n) out.push(["green", "send", `${plural(n, "email is", "emails are")} ready to send`, "Draft and address are both in place.", "Send", "send-all"]);
-  if (sl.length) out.push(["blue", "link", `${plural(sl.length, "shortlisted job", "shortlisted jobs")} to apply for`, "Open each posting, apply on its site, then say so.", "Start applying", "apply-first"]);
-  if (nd) out.push(["violet", "edit", `${plural(nd, "shortlisted job has", "shortlisted jobs have")} no email draft`, "Written from your template and resume.", "Draft emails", "draft-all"]);
-  if (na) out.push(["cyan", "at", `${plural(na, "job has", "jobs have")} no recruiter address`, "Looked up on each company's own site.", "Look for addresses", "contacts-all"]);
-  if (!sl.length) out.push(["blue", "zap", "Your shortlist is empty", "Search the job sites for new postings.", "Find new jobs", "run"]);
-  if (out.length < 5) out.push(["slate", "trending", "See which skills to learn next", "What postings ask for that your resume lacks.", "Open insights", "v:insights"]);
+  if (t && t.running) out.push(["blue", "refresh", `${t.label} is running`, "Its progress shows under the numbers above", "Show output", "v:activity"]);
+  if (due) out.push(["amber", "clock", `${plural(due, "follow-up is", "follow-ups are")} due`, "No reply yet to an email you sent", "Open follow-ups", "v:followups"]);
+  if (n) out.push(["green", "send", `${plural(n, "email is", "emails are")} ready to send`, "Draft and address are both in place", "Send ready emails", "send-all"]);
+  if (sl.length) out.push(["blue", "link", `${plural(sl.length, "shortlisted job", "shortlisted jobs")} to apply for`, "Open each posting, apply on its site, then say so", "Start applying", "apply-first"]);
+  if (nd) out.push(["violet", "edit", `${plural(nd, "shortlisted job has", "shortlisted jobs have")} no email draft`, "Written from your template and resume", "Draft emails", "draft-all"]);
+  if (na) out.push(["cyan", "at", `${plural(na, "job has", "jobs have")} no recruiter address`, "Looked up on each company's own site", "Look for addresses", "contacts-all"]);
+  if (!sl.length) out.push(["blue", "zap", "Your shortlist is empty", "Search the job sites for new postings", "Find new jobs", "run"]);
+  if (out.length < 5) out.push(["slate", "trending", "See which skills to learn next", "What postings ask for that your resume lacks", "Open insights", "v:insights"]);
   return out.slice(0, 5);
 }
 function renderWidgets() {
@@ -943,19 +949,19 @@ function renderWidgets() {
   $("#donut").innerHTML = `<div class="chead"><h2>Pipeline</h2><span class="count">${total.toLocaleString()} tracked</span><span class="grow"></span><button class="link" data-view="progress">In progress${ic("right")}</button></div>
     ${total ? `<div class="tray${S.dealt ? "" : " deal"}" role="img" aria-label="Tracked jobs by stage: ${esc(said)}">${marks}</div>
     <div class="legend">${groups.map(g => `<div><i class="${g.c}"></i><span>${g.name}</span><b>${g.rows.length.toLocaleString()}</b><small>${Math.round(100 * g.rows.length / total)}%</small></div>`).join("")}</div>
-    ${unit > 1 ? `<p class="faint">One mark is ${unit} jobs</p>` : ""}` : '<div class="empty">No tracked jobs yet.</div>'}`;
+    ${unit > 1 ? `<p class="faint">One mark is ${unit} jobs</p>` : ""}` : '<div class="empty">No tracked jobs yet</div>'}`;
   if (total) S.dealt = true;
 
   const top = jobs.filter(r => r.score != null).sort((a, b) => b.score - a.score).slice(0, 9);
   $("#tops").innerHTML = `<div class="chead"><h2>Top matches</h2><span class="grow"></span><button class="link" data-view="matches">View all${ic("right")}</button></div>
-    <div class="panel tlist">${top.map(r => `<button class="tm" data-job="${r.job_id}"><span class="n">${esc(r.title)}<small>${esc(r.company)}</small></span><span class="v">${r.score}</span><span class="bar"><u data-w="${r.score}"></u></span></button>`).join("") || '<div class="empty">No scored jobs on your lists yet.</div>'}</div>`;
+    <div class="panel tlist">${top.map(r => `<button class="tm" data-job="${r.job_id}"><span class="n">${esc(r.title)}<small>${esc(r.company)}</small></span><span class="v">${r.score}</span><span class="bar"><u data-w="${r.score}"></u></span></button>`).join("") || '<div class="empty">No scored jobs on your lists yet</div>'}</div>`;
 
   const tally = {};
   jobs.forEach(r => { const c = countryOf(r.location); tally[c] = (tally[c] || 0) + 1; });
   const cs = (st.countries && st.countries.length ? st.countries : Object.entries(tally).map(([country, n]) => ({ country, jobs: n })).sort((a, b) => b.jobs - a.jobs)).slice(0, 5);
   const ct = cs.reduce((a, c) => a + c.jobs, 0), cmax = Math.max(1, ...cs.map(c => c.jobs));
   $("#geo").innerHTML = `<div class="chead"><h2>Where the jobs are</h2><span class="grow"></span><span class="faint nw">${plural(ct, "scored job", "scored jobs")}</span></div>
-    <div class="geo">${cs.map(c => { const w = Math.max(3, 92 * c.jobs / cmax); return `<div class="gr"><span class="gl">${esc(countryName(c.country))}</span><span class="gb" style="--w:${w}%"><b>${Math.round(100 * c.jobs / ct)}%</b><span class="bar"><u data-w="${w}"></u></span></span></div>`; }).join("") || '<div class="empty">Nothing scored yet.</div>'}</div>`;
+    <div class="geo">${cs.map(c => { const w = Math.max(3, 92 * c.jobs / cmax); return `<div class="gr"><span class="gl">${esc(countryName(c.country))}</span><span class="gb" style="--w:${w}%"><b>${Math.round(100 * c.jobs / ct)}%</b><span class="bar"><u data-w="${w}"></u></span></span></div>`; }).join("") || '<div class="empty">Nothing scored yet</div>'}</div>`;
 
   $("#next").innerHTML = `<div class="chead"><h2>Next steps</h2></div>
     <div class="steps">${nextSteps().map(([c, i, title, sub, label, go]) => `<div class="step"><span class="dot c-${c}">${ic(i)}</span><div><b>${esc(title)}</b><small>${esc(sub)}</small></div><button class="btn sm" data-go="${go}">${label}</button></div>`).join("")}</div>`;
@@ -1001,7 +1007,7 @@ function renderDetail(keep) {
   let mail = "", hasDraft = !!(a && a.outreach_subject);
   const sentAt = a && a.outreach_sent_at;
   const info = !a ? "" : a.contact_email
-    ? `${a.contact_kind ? `<span class="tag ${a.contact_kind === "general" ? "c-amber" : "c-slate"}">${esc(a.contact_kind)} address</span>` : ""}${http(a.contact_source) ? `<a href="${esc(a.contact_source)}" target="_blank" rel="noopener noreferrer">where it was found</a>` : ""}${sentAt ? `<span>sent ${esc(when(sentAt))}</span>` : ""}`
+    ? `${a.contact_kind ? `<span class="tag ${a.contact_kind === "general" ? "c-amber" : "c-slate"}">${esc(cap(a.contact_kind))} address</span>` : ""}${http(a.contact_source) ? `<a href="${esc(a.contact_source)}" target="_blank" rel="noopener noreferrer">Where it was found</a>` : ""}${sentAt ? `<span>Sent ${esc(when(sentAt))}</span>` : ""}`
     : "No address yet. Type one you found yourself, or let the agent look on the company's site.";
   const toLine = !a ? "" : `<div class="ln"><label for="addr">To</label><input class="field" id="addr" type="email" autocomplete="off" spellcheck="false" placeholder="recruiter@company.com" value="${esc(a.contact_email)}">
       <button class="btn sm" data-act="save-addr">Save address</button>${a.contact_email ? "" : `<button class="btn sm" data-act="contacts-one">${ic("at")}Look for one</button>`}
@@ -1016,9 +1022,9 @@ function renderDetail(keep) {
         <textarea class="body" id="body" aria-label="Email text">${esc(a.outreach_body)}</textarea>
         <div class="rendered">${a.body_html}</div>
       </div></div>
-      <p class="faint" id="stale" hidden>The preview shows the last saved text. Save your changes to update it.</p>
+      <p class="faint" id="stale" hidden>The preview shows the last saved draft. Save the draft to update it.</p>
       <div class="acts">
-        <button class="btn" data-act="save-draft">Save changes</button>
+        <button class="btn" data-act="save-draft">Save draft</button>
         ${canSend ? `<button class="btn primary" data-act="send-one">${ic("send")}Send email</button>` : ""}
         <button class="btn ghost" data-act="draft-one">Write it again</button>
       </div>
@@ -1028,12 +1034,12 @@ function renderDetail(keep) {
   } else if (s === "shortlisted") {
     mail = `<div class="desk"><div class="sheet"><div class="lines">${toLine}</div>
       <div class="blank"><span>Nothing written yet</span><button class="btn primary" data-act="draft-one">${ic("edit")}Draft the email</button></div></div></div>`;
-  } else mail = `<p>Shortlist this job to write to its recruiter.</p>`;
+  } else mail = `<p>Shortlist this job to write to its recruiter</p>`;
   const seg = hasDraft ? `<span class="seg" role="group" aria-label="Show the email"><button data-act="sheet" data-to="edit" aria-pressed="${!S.preview}">Edit</button><button data-act="sheet" data-to="preview" aria-pressed="${!!S.preview}">Preview</button></span>` : "";
 
   el.innerHTML = `<div class="d-bar">
       <button class="round sm" data-act="back" aria-label="Close">${ic("x")}</button>
-      <span class="tag ${STATUS_C[s] || "c-slate"}">${esc(s || "not on a list yet")}</span><span class="faint">#${j.id}</span><span class="grow"></span>
+      <span class="tag ${STATUS_C[s] || "c-slate"}">${esc(STATUS_L[s] || "Not listed yet")}</span><span class="faint">#${j.id}</span><span class="grow"></span>
       <button class="round sm" data-act="prev" aria-label="Previous job"${at > 0 ? "" : " disabled"}>${ic("left")}</button>
       <button class="round sm" data-act="next" aria-label="Next job"${at >= 0 && at < rows.length - 1 ? "" : " disabled"}>${ic("right")}</button>
     </div>
@@ -1042,19 +1048,19 @@ function renderDetail(keep) {
       ${sc == null ? "" : `<div class="d-score ${tier(sc)}" role="img" aria-label="Match score ${sc} out of 100"><b>${sc}</b><span class="bar"><u style="width:${sc}%"></u></span><span>score out of 100</span></div>`}
     </div>
     <div class="acts">
-      ${http(j.url) ? `<a class="btn ${canApply ? "primary" : ""}" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer"${canApply ? " data-apply" : ""}>${ic("link")}${canApply ? "Apply on the job site" : "Open the posting"}</a>` : `<span class="tag c-slate">${isGeneral(j) ? "general application" : "from a pasted post"}: apply by email below</span>`}
+      ${http(j.url) ? `<a class="btn ${canApply ? "primary" : ""}" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer"${canApply ? " data-apply" : ""}>${ic("link")}${canApply ? "Apply on the job site" : "Open the posting"}</a>` : `<span class="tag c-slate">${isGeneral(j) ? "General application" : "From a pasted post"}: apply by email below</span>`}
       ${moves}
-      <select id="setstatus" aria-label="Set another status"><option value="">Other status</option>${["shortlisted", "applied", "interviewing", "offer", "rejected", "withdrawn", "skipped"].filter(x => x !== s).map(x => `<option>${x}</option>`).join("")}</select>
+      <select id="setstatus" aria-label="Set another status"><option value="">Other status</option>${["shortlisted", "applied", "interviewing", "offer", "rejected", "withdrawn", "skipped"].filter(x => x !== s).map(x => `<option value="${x}">${STATUS_L[x]}</option>`).join("")}</select>
     </div>
     ${m ? `<div class="block"><h3>Why it matches</h3><p>${esc(m.summary)}</p>${chips(m.matched_skills, "c-green")}
       ${m.missing_skills.length ? `<p class="lbl">Asked for, not on your resume</p>${chips(m.missing_skills, "c-slate")}` : ""}
       ${m.red_flags.length ? `<p class="lbl">Check before applying</p>${chips(m.red_flags, "c-red")}` : ""}</div>` : ""}
     <div class="block"><h3>Email to the recruiter${seg}</h3>${mail}</div>
     <div class="block"><h3>Cover letter</h3>${a && a.cover_letter ? `<div class="mail desc">${esc(a.cover_letter)}</div><div class="acts"><button class="btn sm" data-act="copy-cover">${ic("copy")}Copy</button><button class="btn sm ghost" data-act="cover">Write it again</button></div>`
-      : `<p>For sites that ask for one.</p><button class="btn" data-act="cover">Write a cover letter</button>`}</div>
+      : `<p>For sites that ask for one</p><button class="btn" data-act="cover">Write a cover letter</button>`}</div>
     <div class="block"><h3>Notes</h3><textarea class="field short" id="note" aria-label="Notes" placeholder="Recruiter name, what was said, next step">${esc(a ? a.notes : "")}</textarea>
       <button class="btn" data-act="save-note">Save note</button></div>
-    ${d.events.length ? `<div class="block"><h3>History</h3><ul class="history">${d.events.map(e => `<li>${esc(when(e.created_at))}: <b>${esc(e.to_status)}</b>${e.note ? ", " + esc(e.note) : ""}</li>`).join("")}</ul></div>` : ""}
+    ${d.events.length ? `<div class="block"><h3>History</h3><ul class="history">${d.events.map(e => `<li>${esc(when(e.created_at))}: <b>${esc(STATUS_L[e.to_status] || cap(e.to_status))}</b>${e.note ? ", " + esc(e.note) : ""}</li>`).join("")}</ul></div>` : ""}
     ${j.description ? `<div class="block"><details><summary>Full job description</summary><div class="desc">${esc(j.description)}</div></details></div>` : ""}`;
   fit();
   if (!keep) { el.scrollTop = 0; $("[data-act=back]", el).focus({ preventScroll: true }); }
@@ -1101,7 +1107,7 @@ async function loadPage() {
   try {
     if (v === "insights" || v === "activity") S.insights = await api("/api/insights?days=30");
     if (v === "settings") S.settings = await api("/api/settings");
-  } catch (e) { $("#page").innerHTML = `<div class="card pad"><div class="empty"><h3>Not available yet</h3>${esc(e.message)}</div></div>`; return; }
+  } catch (e) { $("#page").innerHTML = `<div class="card pad"><div class="empty"><h3>Not available yet</h3>${esc(tidy(e.message))}</div></div>`; return; }
   if (S.view === v) renderPage();
 }
 const cardHead = (title, extra = "") => `<div class="chead"><h2>${title}</h2>${extra}</div>`;
@@ -1110,8 +1116,8 @@ function renderPage() {
   if (S.view === "activity") {
     const t = S.state && S.state.task, runs = S.insights ? S.insights.runs : null;
     el.innerHTML = `<div class="pgrid"><section class="card pad span2">${cardHead(t ? esc(t.label) : "Nothing has run yet")}
-        <p class="sub">${t ? (t.running ? "Running now. " : `Finished ${esc(when(t.ended_at))}. `) + "This is what the program reported." : "When you start a search or draft emails, its progress shows here."}</p>
-        ${t ? `<pre class="out" id="taskout">${esc(S.lines.join("\n") || "No output yet.")}</pre>` : ""}</section>
+        <p class="sub">${t ? (t.running ? "Running now. " : `Finished ${esc(when(t.ended_at))}. `) + "This is what the program reported." : "When you start a search or draft emails, its progress shows here"}</p>
+        ${t ? `<pre class="out" id="taskout">${esc(S.lines.join("\n") || "No output yet")}</pre>` : ""}</section>
       <section class="card pad span2">${cardHead("Past searches")}${runs === null ? '<p class="sub">Loading</p>' : runsTable(runs)}</section></div>`;
     const out = $("#taskout"); if (out) out.scrollTop = out.scrollHeight;
     if (t && !S.polling && S.lines.length < t.total) api("/api/task?since=0").then(r => { if (r.task && r.task.id === S.taskId && !S.polling) { S.lines = r.task.lines; const o = $("#taskout"); if (o) { o.textContent = S.lines.join("\n"); o.scrollTop = o.scrollHeight; } } }).catch(() => {});
@@ -1130,11 +1136,11 @@ function renderPage() {
     el.innerHTML = `<div class="pgrid lead">
       <section class="card pad span2">${cardHead("Your last 7 days")}<p class="sub">${esc(rate)} ${i.waiting} still on your shortlist.</p>
         <div class="week">${week.map(([l, n]) => `<div><b>${(n || 0).toLocaleString()}</b><span>${l}</span></div>`).join("")}</div></section>
-      <section class="card pad">${cardHead("Skills you are missing most")}<p class="sub">${i.gaps.length ? `The share of the ${i.gap_jobs.toLocaleString()} jobs scored 50 or more in the last ${i.days} days that ask for each skill. Learning the top few, or adding ones you already know to your resume, raises your scores.` : "Nothing to show until some jobs are scored."}</p>
+      <section class="card pad">${cardHead("Skills you are missing most")}<p class="sub">${i.gaps.length ? `The share of the ${i.gap_jobs.toLocaleString()} jobs scored 50 or more in the last ${i.days} days that ask for each skill. Learning the top few, or adding ones you already know to your resume, raises your scores.` : "Nothing to show until some jobs are scored"}</p>
         ${i.gaps.length ? `<div class="gaps" style="--n:${ticks.length - 1}" role="img" aria-label="Skills asked for that are not on your resume, by share of jobs">${i.gaps.map(gap).join("")}
           <div class="gp axis"><span></span><span class="gticks">${ticks.map(t => `<i>${t}%</i>`).join("")}</span><span></span></div></div>` : ""}</section>
-      <section class="card pad">${cardHead("Which sites deliver")}<p class="sub">Jobs first seen in the last 7 days, by where they came from.</p>
-        ${src.slice(0, 10).map(site).join("") || '<p class="sub" style="margin:0">No jobs found this week.</p>'}
+      <section class="card pad">${cardHead("Which sites deliver")}<p class="sub">Jobs first seen in the last 7 days, by where they came from. Kept means shortlisted or applied.</p>
+        ${src.slice(0, 10).map(site).join("") || '<p class="sub" style="margin:0">No jobs found this week</p>'}
         ${src.length > 10 ? `<details><summary>${plural(src.length - 10, "more site", "more sites")}</summary>${src.slice(10).map(site).join("")}</details>` : ""}</section>
     </div>`;
     grow(el);
@@ -1145,20 +1151,20 @@ function renderPage() {
   const p = S.state.setup.profile, L = g.limits, sch = g.schedule;
   const row = (ok, name, text, extra = "") => `<div class="check"><i class="sdot ${ok === true ? "c-green" : ok === null ? "c-aside" : "c-red"}"></i><b>${name}</b><span>${text} ${extra}</span></div>`;
   const dupes = g.duplicates.reduce((n, x) => n + x.drop.length, 0);
-  const tpls = [["tpl", "save-tpl", "Email", g.template, "Used for every recruiter email. Text in [square brackets] is filled in for each job; everything else is sent as you wrote it.", "Switched off in config.yaml, so the built-in format is used."],
-    ["ctpl", "save-ctpl", "Cover letter", g.cover_template, "Used by \"Write a cover letter\" in a job's panel. Text in [square brackets] is filled in for each job; everything else is kept as you wrote it.", "Switched off in config.yaml, so a short built-in cover letter is written."],
-    ["gtpl", "save-gtpl", "General email", g.general_template, "Used for HR addresses you add without a job posting. Text in [square brackets] is filled in from your resume.", "Switched off in config.yaml."]];
+  const tpls = [["tpl", "save-tpl", "Email", g.template, "Used for every recruiter email. Text in [square brackets] is filled in for each job; everything else is sent as you wrote it.", "Switched off in config.yaml, so the built-in format is used"],
+    ["ctpl", "save-ctpl", "Cover letter", g.cover_template, "Used by \"Write a cover letter\" in a job's panel. Text in [square brackets] is filled in for each job; everything else is kept as you wrote it.", "Switched off in config.yaml, so a short built-in cover letter is written"],
+    ["gtpl", "save-gtpl", "General email", g.general_template, "Used for HR addresses you add without a job posting. Text in [square brackets] is filled in from your resume.", "Switched off in config.yaml"]];
   el.innerHTML = `<div class="pgrid">
     <section class="card pad span2">${cardHead("Setup")}<p class="sub">Keys and passwords live in the <b>.env</b> file in ${esc(g.folder)}. This page never shows or changes them.</p>
-      ${row(S.state.setup.database === "ok", "Database", S.state.setup.database === "ok" ? "Up to date." : "Needs attention, see the top of the page.")}
-      ${row(!!p, "Resume", p ? `${esc(p.name)}, imported ${esc(day(p.imported))}.` : "Not imported yet.", `<button class="btn sm" data-act="resume">${ic("upload")}${p ? "Import a newer one" : "Choose your resume"}</button>`)}
-      ${row(g.ai.ready, "AI model", g.ai.ready ? `${esc(g.ai.model || "default model")} (${esc(g.ai.provider)}).` : "No API key in .env.")}
-      ${row(g.browser.ready, "Browser for job sites", g.browser.ready ? esc(g.browser.kind) + "." : "BROWSERBASE_API_KEY is missing in .env.")}
-      ${row(g.gmail.ready, "Gmail", g.gmail.ready ? `Sends from ${esc(g.gmail.address)}.` : "Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to .env to send from this page.")}
-      ${row(g.cv.found, "CV to attach", g.cv.found ? esc(g.cv.path) : g.cv.path ? `Not found: ${esc(g.cv.path)}` : "Set outreach.resume_path in config.yaml.")}
-      ${row(g.telegram ? true : null, "Phone notifications", g.telegram ? "Telegram is set up." : g.gmail.ready ? "Strong matches are emailed to you. Add Telegram keys to .env for phone alerts." : "Not set up.", `<button class="btn sm" data-act="notify-test">${ic("bell")}Send a test</button>`)}
+      ${row(S.state.setup.database === "ok", "Database", S.state.setup.database === "ok" ? "Up to date" : "Needs attention, see the top of the page")}
+      ${row(!!p, "Resume", p ? `${esc(p.name)}, imported ${esc(day(p.imported))}` : "Not imported yet", `<button class="btn sm" data-act="resume">${ic("upload")}${p ? "Import a newer one" : "Choose your resume"}</button>`)}
+      ${row(g.ai.ready, "AI model", g.ai.ready ? `${esc(g.ai.model || "Default model")} (${esc(g.ai.provider)})` : "No API key in .env")}
+      ${row(g.browser.ready, "Browser for job sites", g.browser.ready ? esc(cap(g.browser.kind)) : "BROWSERBASE_API_KEY is missing in .env")}
+      ${row(g.gmail.ready, "Gmail", g.gmail.ready ? `Sends from ${esc(g.gmail.address)}` : "Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to .env to send from this page")}
+      ${row(g.cv.found, "CV to attach", g.cv.found ? esc(g.cv.path) : g.cv.path ? `Not found: ${esc(g.cv.path)}` : "Set outreach.resume_path in config.yaml")}
+      ${row(g.telegram ? true : null, "Phone notifications", g.telegram ? "Telegram is set up" : g.gmail.ready ? "Strong matches are emailed to you. Add Telegram keys to .env for phone alerts." : "Not set up", `<button class="btn sm" data-act="notify-test">${ic("bell")}Send a test</button>`)}
     </section>
-    <section class="card pad">${cardHead("Every morning")}<p class="sub">${sch.installed ? `The morning routine runs daily at <b>${esc(sch.time)}</b> while this Mac is awake${sch.loaded ? "" : " (it is installed but not loaded; set it again)"}.` : "Let the search run by itself each morning: it searches, writes a digest and emails you one summary."}</p>
+    <section class="card pad">${cardHead("Every morning")}<p class="sub">${sch.installed ? `The morning routine runs daily at <b>${esc(sch.time)}</b> while this Mac is awake${sch.loaded ? "" : " (it is installed but not loaded; set it again)"}` : "Let the search run by itself each morning: it searches, writes a digest and emails you one summary"}</p>
       <div class="inline"><input type="time" id="schedtime" value="${esc(sch.time || "08:00")}" aria-label="Time of day">
         <button class="btn primary" data-act="sched-on">${sch.installed ? "Change the time" : "Run every morning"}</button>
         ${sch.installed ? `<button class="btn" data-act="sched-off">Switch it off</button>` : ""}
@@ -1169,25 +1175,25 @@ function renderPage() {
     <section class="card pad span2">${cardHead("Your templates", `<span class="seg" role="group" aria-label="Which template">${tpls.map(([id, , label]) => `<button data-act="tpl-show" data-to="${id}" aria-pressed="${S.tpl === id}">${label}</button>`).join("")}</span>`)}
       ${tpls.map(([id, act, label, t, on, off]) => `<div data-pane="${id}"${S.tpl === id ? "" : " hidden"}><p class="sub" style="margin-top:0">${t && t.file ? `${on} Saved to ${esc(t.file)}.` : off}</p>
         ${t && t.file ? `<textarea class="field tplbox" id="${id}" aria-label="${label} template" spellcheck="false">${esc(t.text)}</textarea><button class="btn" data-act="${act}">Save template</button>` : ""}</div>`).join("")}</section>
-    <section class="card pad">${cardHead("Limits in force")}<p class="sub">Change these in <b>config.yaml</b>; this page picks them up straight away.</p>
+    <section class="card pad">${cardHead("Limits in force")}<p class="sub">Change these in <b>config.yaml</b>; this page picks them up straight away</p>
       <dl class="kv" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin:0">
-        <dt>Emails a day</dt><dd>${L.sends_per_day || "no limit"}, ${L.pause_seconds}s apart</dd>
+        <dt>Emails a day</dt><dd>${L.sends_per_day || "No limit"}, ${L.pause_seconds}s apart</dd>
         <dt>Follow up after</dt><dd>${L.follow_up_days} days</dd>
-        <dt>AI budget per search</dt><dd>${L.tokens_per_run ? L.tokens_per_run.toLocaleString() + " tokens" : "no limit"}</dd>
-        <dt>Browser time per search</dt><dd>${L.browser_minutes ? L.browser_minutes + " minutes" : "no limit"}</dd>
-        <dt>Lowest salary</dt><dd>${L.min_salary_lpa ? L.min_salary_lpa + " LPA" : "not set"}</dd>
-        <dt>Oldest posting</dt><dd>${L.max_age_days ? L.max_age_days + " days" : "any age"}</dd>
-        <dt>Notify me from score</dt><dd>${L.notify_min_score || "off"}</dd>
+        <dt>AI budget per search</dt><dd>${L.tokens_per_run ? L.tokens_per_run.toLocaleString() + " tokens" : "No limit"}</dd>
+        <dt>Browser time per search</dt><dd>${L.browser_minutes ? L.browser_minutes + " minutes" : "No limit"}</dd>
+        <dt>Lowest salary</dt><dd>${L.min_salary_lpa ? L.min_salary_lpa + " LPA" : "Not set"}</dd>
+        <dt>Oldest posting</dt><dd>${L.max_age_days ? L.max_age_days + " days" : "Any age"}</dd>
+        <dt>Notify me from score</dt><dd>${L.notify_min_score || "Off"}</dd>
         <dt>Searching</dt><dd>${g.sources} sites, in ${esc(g.locations.join(", ") || "any location")}</dd></dl></section>
     <section class="card pad">${cardHead("Close the program")}<p class="sub">The page keeps working in the background after you close this tab. Stop it here; open Job Search again to bring it back.</p>
       <button class="btn danger" data-act="quit">${ic("power")}Stop Job Search</button></section>
   </div>`;
 }
 function runsTable(runs) {
-  if (!runs.length) return `<p class="sub" style="margin:0">None yet.</p>`;
+  if (!runs.length) return `<p class="sub" style="margin:0">None yet</p>`;
   const num = v => `<td class="num">${v == null ? "" : Number(v).toLocaleString()}</td>`;
-  return `<div class="scroll-x"><table><tr><th>Run</th><th>Started</th><th>Result</th><th class="num">Found</th><th class="num">New</th><th class="num">Scored</th><th class="num">AI tokens</th><th>Problem</th></tr>
-    ${runs.map(r => `<tr><td class="nw">#${r.id}</td><td class="nw">${esc(when(r.started_at))}</td><td><span class="tag ${r.status === "succeeded" ? "c-green" : r.status === "running" ? "c-blue" : "c-amber"}">${esc(r.status)}</span></td>${num(r.jobs_found)}${num(r.jobs_new)}${num(r.jobs_scored)}${num(r.tokens_used || 0)}<td>${esc((r.error || "").slice(0, 120))}</td></tr>`).join("")}</table></div>`;
+  return `<div class="scroll-x"><table><tr><th>Search</th><th>Started</th><th>Result</th><th class="num">Found</th><th class="num">New</th><th class="num">Scored</th><th class="num">AI tokens</th><th>Problem</th></tr>
+    ${runs.map(r => `<tr><td class="nw">#${r.id}</td><td class="nw">${esc(when(r.started_at))}</td><td><span class="tag ${r.status === "succeeded" ? "c-green" : r.status === "running" ? "c-blue" : r.status === "failed" ? "c-red" : "c-amber"}">${esc(RUN_L[r.status] || cap(r.status))}</span></td>${num(r.jobs_found)}${num(r.jobs_new)}${num(r.jobs_scored)}${num(r.tokens_used || 0)}<td>${esc((r.error || "").slice(0, 120))}</td></tr>`).join("")}</table></div>`;
 }
 
 /* ---------- actions ---------- */
@@ -1203,36 +1209,36 @@ const A = {
   "run-noscore": () => startTask({ action: "run", no_score: true }),
   daily: () => startTask({ action: "daily" }),
   migrate: () => startTask({ action: "migrate" }),
-  stop: async () => { if (await ask("Stop this task?", "What it has already saved is kept. You can start it again later.", "Stop it")) api("/api/task/stop", {}).catch(fail); },
+  stop: async () => { if (await ask("Stop this task?", "What it has already saved is kept. You can start it again later.", "Stop the task")) api("/api/task/stop", {}).catch(fail); },
   dismiss: () => { S.dismissed = S.state.task ? S.state.task.id : 0; renderLive(); },
-  reload: async () => { await refresh(); await staleMatches(); toast("Up to date."); },
+  reload: async () => { await refresh(); await staleMatches(); toast("Up to date"); },
   clear: () => { S.q = ""; $("#tq").value = ""; S.f = { country: "", score: 0, posted: 0, extra: "" }; S.page = 0; renderFilters(); renderList(); },
   "run-menu": () => { $("#runmenu").hidden = !$("#runmenu").hidden; },
   menu: () => document.body.classList.toggle("menu-open"),
   palette: () => openPalette(),
   add: () => { $("#adddlg").showModal(); $("#addtext").focus(); },
   "close-add": () => $("#adddlg").close(),
-  "add-go": () => { const text = $("#addtext").value.trim(); if (!text) return toast("Paste the post text first.", true);
+  "add-go": () => { const text = $("#addtext").value.trim(); if (!text) return toast("Paste the post text first", true);
     $("#adddlg").close(); startTask({ action: "add", text, url: $("#addurl").value.trim() }); $("#addtext").value = ""; $("#addurl").value = ""; },
   resume: () => $("#resumefile").click(),
-  "draft-all": () => { const l = ids(r => !r.has_draft && !isGeneral(r)).slice(0, 10).concat(ids(r => !r.has_draft && isGeneral(r))); l.length ? startTask({ action: "email", job_ids: l }) : toast("Every shortlisted job already has a draft."); },
-  "contacts-all": () => { const l = ids(r => !r.contact_email).slice(0, 10); l.length ? startTask({ action: "contacts", job_ids: l }) : toast("Every shortlisted job already has an address."); },
+  "draft-all": () => { const l = ids(r => !r.has_draft && !isGeneral(r)).slice(0, 10).concat(ids(r => !r.has_draft && isGeneral(r))); l.length ? startTask({ action: "email", job_ids: l }) : toast("Every shortlisted job already has a draft"); },
+  "contacts-all": () => { const l = ids(r => !r.contact_email).slice(0, 10); l.length ? startTask({ action: "contacts", job_ids: l }) : toast("Every shortlisted job already has an address"); },
   "gmail-all": () => { const l = ids(ready); l.length ? startTask({ action: "gmail-drafts", job_ids: l }) : toast(NOT_READY); },
   "send-all": async () => { const l = ids(ready), cap = S.state && S.state.sends;
     if (!l.length) return toast(NOT_READY);
-    if (await ask(`Send ${plural(l.length, "email", "emails")} now?`, `Each goes from your Gmail to the address on the job, with your CV attached, and the job is marked applied.${cap && cap.cap ? ` Today's limit is ${cap.cap}; ${cap.today} already sent.` : ""}`, "Send them")) startTask({ action: "send", job_ids: l }); },
-  followups: async () => { if (!S.state || !S.state.due.length) return toast("No follow-ups are due.");
-    if (await ask("Send the follow-ups?", "The stored follow-up text goes to each recruiter who has not replied.", "Send them")) startTask({ action: "followups" }); },
+    if (await ask(`Send ${plural(l.length, "email", "emails")} now?`, `Each goes from your Gmail to the address on the job, with your CV attached, and the job is marked applied.${cap && cap.cap ? ` Today's limit is ${cap.cap}; ${cap.today} already sent.` : ""}`, `Send ${plural(l.length, "email", "emails")}`)) startTask({ action: "send", job_ids: l }); },
+  followups: async () => { if (!S.state || !S.state.due.length) return toast("No follow-ups are due");
+    if (await ask(`Send ${plural(S.state.due.length, "follow-up", "follow-ups")} now?`, "The stored follow-up text goes to each recruiter who has not replied.", "Send follow-ups")) startTask({ action: "followups" }); },
   digest: async () => { try {
       const r = await fetch(`/api/digest?min_score=${S.view === "matches" && S.f.score ? S.f.score : 75}&token=${encodeURIComponent(TOKEN)}`);
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "That did not work.");
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "The digest could not be made. Reload the page and try again");
       const a = document.createElement("a"); a.href = URL.createObjectURL(await r.blob()); a.download = `job-matches-${new Date().toISOString().slice(0, 10)}.md`; a.click(); URL.revokeObjectURL(a.href);
-      toast("Digest downloaded.");
+      toast("Digest downloaded");
     } catch (e) { fail(e); } },
   "draft-one": async () => { if (S.detail.application && S.detail.application.outreach_subject && !await ask("Write the email again?", "The current draft, including your edits, is replaced.", "Write it again")) return; startTask({ action: "email", job_ids: [S.sel] }); },
   "contacts-one": () => startTask({ action: "contacts", job_ids: [S.sel] }),
   cover: () => startTask({ action: "cover-letter", job_ids: [S.sel] }),
-  "copy-cover": () => navigator.clipboard.writeText(S.detail.application.cover_letter).then(() => toast("Cover letter copied.")),
+  "copy-cover": () => navigator.clipboard.writeText(S.detail.application.cover_letter).then(() => toast("Cover letter copied")),
   sheet: b => { S.preview = b.dataset.to === "preview";
     $("#sheet").classList.toggle("preview", S.preview);
     $$("[data-act=sheet]").forEach(x => x.setAttribute("aria-pressed", String((x.dataset.to === "preview") === S.preview)));
@@ -1246,11 +1252,11 @@ const A = {
   "save-addr": async () => { const email = $("#addr").value.trim(); await keepDraft(); change("/api/contact", { job_id: S.sel, email }); },
   "followup-done": () => change("/api/followup-done", { job_id: S.sel }),
   status: b => change("/api/status", { job_id: S.sel, status: b.dataset.to }),
-  "apply-first": () => { const l = ids(() => true); l.length ? openJob(l[0]) : toast("Your shortlist is empty."); },
+  "apply-first": () => { const l = ids(() => true); l.length ? openJob(l[0]) : toast("Your shortlist is empty"); },
   back: () => closeDrawer(),
   prev: () => step(-1),
   next: () => step(1),
-  dedupe: async () => { if (await ask("Merge the duplicates?", "Each duplicate is folded into the copy marked Keep. This cannot be undone.", "Merge them")) startTask({ action: "dedupe" }); },
+  dedupe: async () => { if (await ask("Merge the duplicates?", "Each duplicate is folded into the copy marked Keep. This cannot be undone.", "Merge duplicates")) startTask({ action: "dedupe" }); },
   "notify-test": () => startTask({ action: "notify-test" }),
   "sched-on": async () => { try { toast((await api("/api/schedule", { action: "install", time: $("#schedtime").value })).message); loadPage(); } catch (e) { fail(e); } },
   "sched-off": async () => { try { toast((await api("/api/schedule", { action: "remove" })).message); loadPage(); } catch (e) { fail(e); } },
@@ -1263,37 +1269,38 @@ const A = {
   hr: () => { if ($("#adddlg").open) $("#adddlg").close(); $("#hrresult").innerHTML = ""; $("#hrdlg").showModal(); $("#hrtext").focus(); },
   "close-hr": () => $("#hrdlg").close(),
   "hr-go": async () => { const text = $("#hrtext").value.trim(), box = $("#hrresult");
-    if (!text) { box.innerHTML = `<p><span class="tag c-red">Paste at least one email address.</span></p>`; return; }
+    if (!text) { box.innerHTML = `<p><span class="tag c-red">Paste at least one email address</span></p>`; return; }
     try {
       const r = await api("/api/hr-contacts", { text, country: $("#hrcountry").value });
       box.innerHTML = `<p style="color:var(--t1)"><b>${esc(r.message)}</b> ${r.added.length ? "They are on your shortlist with no email drafted yet." : ""}</p>`
         + (r.skipped.length ? `<ul class="history" style="margin:0 0 12px;max-height:152px;overflow:auto">${r.skipped.map(([line, why]) => `<li><b>${esc(line)}</b>: ${esc(why)}</li>`).join("")}</ul>` : "");
       if (r.added.length) { $("#hrtext").value = r.skipped.map(x => x[0]).join("\n"); await refresh(); }
-    } catch (e) { box.innerHTML = `<p><span class="tag c-red">${esc(e.message)}</span></p>`; } },
+    } catch (e) { box.innerHTML = `<p><span class="tag c-red">${esc(tidy(e.message))}</span></p>`; } },
   "theme-light": () => setTheme("light"),
   "theme-dark": () => setTheme("dark"),
-  quit: async () => { if (await ask("Stop Job Search?", "Any task that is running is stopped too. Nothing saved is lost.", "Stop it")) { try { await api("/api/quit", {}); } catch {} clearInterval(S.timer);
-    document.body.innerHTML = '<div style="min-height:100vh;display:grid;place-content:center"><div class="empty"><h3>Job Search has stopped</h3>Open Job Search again to start it.</div></div>'; } },
+  quit: async () => { if (await ask("Stop Job Search?", "Any task that is running is stopped too. Nothing saved is lost.", "Stop Job Search")) { try { await api("/api/quit", {}); } catch {} clearInterval(S.timer);
+    document.body.innerHTML = '<div style="min-height:100vh;display:grid;place-content:center"><div class="empty"><h3>Job Search has stopped</h3>Open Job Search again to start it</div></div>'; } },
 };
 const go = x => x.startsWith("v:") ? showView(x.slice(2)) : A[x]();
 const PALETTE = [
   ["Find new jobs", "search every site and score", "run"], ["Collect jobs without scoring", "cheaper, scored next time", "run-noscore"],
-  ["Run the morning routine", "search, digest, summary email", "daily"], ["Add a job from a pasted post", "LinkedIn, WhatsApp, email", "add"], ["Add HR addresses", "general applications, no specific job", "hr"],
-  ["Draft emails for the shortlist", "jobs with no draft yet", "draft-all"], ["Look for recruiter addresses", "on each company's own site", "contacts-all"],
-  ["Save ready drafts to Gmail", "review and send from Gmail", "gmail-all"], ["Send ready emails", "from your Gmail, CV attached", "send-all"],
-  ["Send follow-ups that are due", "", "followups"], ["Apply for shortlisted jobs", "opens each posting on its site", "apply-first"], ["Download a digest of top matches", "Markdown file", "digest"],
-  ["Open the shortlist", "", "v:shortlist"], ["Open applications in progress", "", "v:progress"],
-  ["Open follow-ups", "", "v:followups"], ["Browse all scored matches", "", "v:matches"], ["See skill gaps and weekly progress", "", "v:insights"],
-  ["See past searches and task output", "", "v:activity"], ["Schedule the daily run", "", "v:settings"], ["Edit the email template", "", "v:settings"], ["Edit the cover letter template", "", "v:settings"], ["Edit the general application email", "", "v:settings"],
-  ["Merge duplicate jobs", "", "v:settings"], ["Send a test notification", "", "notify-test"], ["Import a resume", "PDF or text", "resume"],
-  ["Switch to the light theme", "", "theme-light"], ["Switch to the dark theme", "", "theme-dark"],
+  ["Run the morning routine", "search, digest, summary email", "daily"], ["Add a job from a post", "LinkedIn, WhatsApp, email", "add"], ["Add HR addresses", "general applications, no specific job", "hr"],
+  ["Draft emails", "shortlisted jobs with no draft yet", "draft-all"], ["Look for addresses", "on each company's own site", "contacts-all"],
+  ["Save drafts to Gmail", "review and send from Gmail", "gmail-all"], ["Send ready emails", "from your Gmail, CV attached", "send-all"],
+  ["Send follow-ups", "the ones that are due", "followups"], ["Start applying", "opens the first shortlisted job", "apply-first"], ["Download digest", "top matches as a Markdown file", "digest"],
+  ["Go to Shortlist", "", "v:shortlist"], ["Go to In progress", "applications and jobs set aside", "v:progress"],
+  ["Go to Follow-ups", "", "v:followups"], ["Go to All matches", "every scored job", "v:matches"], ["Go to Insights", "missing skills, your week, sites", "v:insights"],
+  ["Go to Activity", "past searches, task output", "v:activity"], ["Go to Settings", "", "v:settings"],
+  ["Schedule the morning routine", "", "v:settings"], ["Edit the email template", "", "v:settings"], ["Edit the cover letter template", "", "v:settings"], ["Edit the general email template", "", "v:settings"],
+  ["Merge duplicate jobs", "", "v:settings"], ["Send a test notification", "", "notify-test"], ["Import your resume", "PDF or text", "resume"],
+  ["Switch to the light look", "theme", "theme-light"], ["Switch to the dark look", "theme", "theme-dark"],
   ["Update the database", "", "migrate"], ["Stop the running task", "", "stop"],
 ];
 function openPalette() { const d = $("#palette"), q = $("#pq"); q.value = ""; d.showModal(); drawPalette(); q.focus(); }
 function drawPalette() {
   const q = $("#pq").value.toLowerCase().trim();
   const hits = PALETTE.filter(([l, h]) => !q || (l + " " + h).toLowerCase().includes(q));
-  $("#plist").innerHTML = hits.map(([l, h, a], i) => `<li><button data-p="${a}" class="${i ? "" : "cur"}">${esc(l)}<span>${esc(h)}</span></button></li>`).join("") || `<li class="empty">No action matches that.</li>`;
+  $("#plist").innerHTML = hits.map(([l, h, a], i) => `<li><button data-p="${a}" class="${i ? "" : "cur"}">${esc(l)}<span>${esc(h)}</span></button></li>`).join("") || `<li class="empty">No action matches that</li>`;
 }
 function runPalette(a) { $("#palette").close(); go(a); }
 
@@ -1301,7 +1308,7 @@ async function askApplied() {
   const p = S.applyPending;
   if (!p || document.hidden || document.querySelector("dialog[open]")) return;
   S.applyPending = null;
-  if (await ask("Did you apply?", `${p.title} at ${p.company}. Yes moves it to In progress and records today's date.`, "Yes, I applied", "Not yet"))
+  if (await ask("Did you apply?", `${p.title}${named(p.company) ? " at " + p.company : ""}. Yes moves it to In progress and records today's date.`, "Yes, I applied", "Not yet"))
     change("/api/status", { job_id: p.id, status: "applied" });
 }
 document.addEventListener("visibilitychange", askApplied);

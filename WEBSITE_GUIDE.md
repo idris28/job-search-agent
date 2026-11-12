@@ -57,13 +57,13 @@ cross).
    for a published application address. Large companies usually publish none; then either type an
    address you found yourself into the job's **To** box, or apply on the job site (step 6).
 5. **Send.** Jobs that have both a draft and an address are marked **Ready to send**. Click
-   **Send ready** to send them all, or open one job and click **Send email**. Each sent job moves to
+   **Send ready emails** to send them all, or open one job and click **Send email**. Each sent job moves to
    **In progress** as "applied".
 6. **Apply on the site where there is no address.** Open the job and click **Apply on the job
    site**. The posting opens in a new tab; apply there. When you come back, the page asks "Did you
    apply?" Answer **Yes, I applied** and the job moves to In progress.
 7. **Follow up.** When an email has had no reply for six days (the number is in `config.yaml`), the job appears under **Follow-ups**
-   and the menu shows a number beside it. Click **Send all follow-ups**.
+   and the menu shows a number beside it. Click **Send follow-ups**.
 
 The **Next steps** panel at the bottom of the page always shows which of these is waiting, with a
 button for it.
@@ -85,8 +85,8 @@ panel opens the first job on your shortlist, and the arrows at the top of the pa
 
 Use this when you have an employer's HR or careers address but no specific vacancy.
 
-1. Click the envelope button in the left column, **Add HR addresses** (also in All actions, and at
-   the bottom of the "Add from a post" box).
+1. In the menu on the left, click **Add HR addresses** (also in All actions, and at the bottom of
+   the "Add from a post" box).
 2. Paste one address per line. Put the employer's name before it if you know it:
    `Acme Gulf, hr@acme.sa`. Choose where the employers are, or leave it to be worked out from each
    address.
@@ -94,7 +94,7 @@ Use this when you have an employer's HR or careers address but no specific vacan
    Nothing is sent. Addresses that are mistyped, repeated or already on your list are listed with
    the reason and left in the box for you to fix.
 4. Draft and send them like any other job: **Draft emails**, read each one, then **Send email** or
-   **Send ready**. The same daily limit applies, and follow-ups work the same way.
+   **Send ready emails**. The same daily limit applies, and follow-ups work the same way.
 
 **Draft emails** writes all of them in one go. The email is written once for each country and reused
 for every address there, with the employer's name swapped in, so many addresses cost only a few AI
@@ -115,7 +115,7 @@ inboxes is rarely read and can get your Gmail account marked as spam.
 | Arrow beside it, **Collect only, score later** | Gathers jobs without scoring them, which is the larger part of the AI cost. They are scored on the next full search. |
 | Arrow beside it, **Morning routine** | Search, then a digest file and one summary email to yourself. |
 | Arrow beside it, **Search one site** | Searches just the site you pick. |
-| **Add from a post** | Paste a LinkedIn post, WhatsApp message or email that asks for CVs. The role, company and email address are read from it, and the job is scored and shortlisted. |
+| **Add from a post** | Paste a LinkedIn post, WhatsApp message or email that asks for CVs. The role, company and email address are read from it, and the job is scored and shortlisted. Click **Add the job** to start. |
 
 ## The table
 
@@ -142,7 +142,7 @@ outside it. The arrows at the top, or the J and K keys, move to the next and pre
 | Top | Title, company, location, when it was posted, pay (stated or estimated) and the score. |
 | Buttons | **Apply on the job site** opens the posting in a new tab so you can apply there; when you return, the page asks whether you applied. The next buttons record what happened: **I applied**, **Skip**, **Got an interview**, **Got an offer**, **Rejected**. **Other status** has the rest. Once a job is applied, the first button reads **Open the posting**. |
 | Why it matches | A short explanation, the skills you have, the skills asked for that are not on your resume, and anything to check before applying. |
-| Email to the recruiter | The email is shown as a sheet of paper. The **To** line holds the address it will go to. If the agent found none, type one you found yourself (on LinkedIn or in the posting) and click **Save address**; empty the line and save to remove it. Below it are the subject and the text. Edit either on the sheet, then **Save changes**. **Send email** sends it after asking you to confirm. **Write it again** replaces the draft with a fresh one. **Preview**, at the top right of the section, shows it as the recruiter will see it; **Edit** brings the text back. Once the email is sent, a round postmark with the date appears on the sheet. The follow-up text is underneath. |
+| Email to the recruiter | The email is shown as a sheet of paper. The **To** line holds the address it will go to. If the agent found none, type one you found yourself (on LinkedIn or in the posting) and click **Save address**; empty the line and save to remove it. Below it are the subject and the text. Edit either on the sheet, then **Save draft**. **Send email** sends it after asking you to confirm. **Write it again** replaces the draft with a fresh one. **Preview**, at the top right of the section, shows it as the recruiter will see it; **Edit** brings the text back. Once the email is sent, a round postmark with the date appears on the sheet. The follow-up text is underneath. |
 | Cover letter | **Write a cover letter** for sites that ask for one, then **Copy**. It follows your own letter in `cover_letter_template.txt`, filled in for this job. |
 | Notes | Anything you want to remember: the recruiter's name, what was said, the next step. Click **Save note**. |
 | History | Every status change with its date. |
@@ -159,24 +159,24 @@ email and cover letter leave the name out: "applying for the Java Developer posi
 
 | Screen | What it shows | Buttons on it |
 |---|---|---|
-| **Shortlist** | Jobs worth acting on. The last column says what each one needs: no draft yet, no address yet, or ready to send. | Draft emails, Look for addresses, Save to Gmail, Send ready |
+| **Shortlist** | Jobs worth acting on. The last column says what each one needs: no draft yet, no address yet, or ready to send. | Draft emails, Look for addresses, Save drafts to Gmail, Send ready emails |
 | **In progress** | Jobs you applied to, interviews and offers. Choose **Set aside** in the Stage filter to see jobs you skipped and rejections. | |
-| **Follow-ups** | Emails with no reply after six days. | Send all follow-ups |
+| **Follow-ups** | Emails with no reply after six days. | Send follow-ups |
 | **All matches** | Every job that was scored, not only the shortlist. Starts at score 70 or more; change the Score filter to see the rest. Open one and click **Add to shortlist** to act on it. | Download digest |
 | **Insights** | Your last seven days, the skills job postings ask for most that your resume lacks, and which sites deliver. | |
 | **Activity** | Everything the running or last task reported, and a list of past searches. | |
-| **Settings** | Setup, the daily run, your templates, duplicate jobs, limits, and stopping the program. | |
+| **Settings** | Setup, the morning routine, your templates, duplicate jobs, limits, and stopping the program. | |
 
 ## Sending emails
 
-- **Save to Gmail** puts the ready emails in your Gmail Drafts so you can read and send them from
+- **Save drafts to Gmail** puts the ready emails in your Gmail Drafts so you can read and send them from
   Gmail. Nothing is sent.
-- **Send ready** and **Send email** send from your Gmail with your CV attached. Both ask you to
+- **Send ready emails** and **Send email** send from your Gmail with your CV attached. Both ask you to
   confirm first.
 - Emails are sent exactly as saved, including your edits.
 - At most 10 emails go out per day, 20 seconds apart. Both numbers are in `config.yaml`.
 - A job is never emailed twice: once sent, it is marked applied.
-- If only a general inbox (such as info@) was found, **Send ready** leaves that job out. You can
+- If only a general inbox (such as info@) was found, **Send ready emails** leaves that job out. You can
   still open the job and send it yourself.
 
 ## Running tasks
@@ -195,15 +195,15 @@ post) runs as a task.
 
 | Action | Uses paid AI or browser time | Sends something outside your Mac |
 |---|---|---|
-| Find new jobs, Morning routine, Search one site | Yes | Morning routine emails you a summary |
+| Find new jobs, Run the morning routine, Search one site | Yes | The morning routine emails you a summary |
 | Collect only, score later | Yes, but less: no scoring | No |
 | Add from a post | Yes, a little | No |
 | Draft emails, Write it again | Yes | No |
 | Look for addresses | Yes | No |
 | Write a cover letter | Yes, a little | No |
 | Choose your resume | Yes, a little | No |
-| Send ready, Send email, Send all follow-ups | No | Yes, to recruiters |
-| Save to Gmail | No | Saves drafts in your Gmail |
+| Send ready emails, Send email, Send follow-ups | No | Yes, to recruiters |
+| Save drafts to Gmail | No | Saves drafts in your Gmail |
 | Send a test notification | No | Yes, to you |
 | Everything else (status, notes, saving a draft, filters, Insights, digest, merging duplicates) | No | No |
 

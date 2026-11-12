@@ -262,7 +262,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             if body.get("check_live") is False:
                 argv.append("--no-browse")
         elif action == "contacts":
-            label, argv = "Look for email addresses", ["contacts", *ids]
+            label, argv = "Look for addresses", ["contacts", *ids]
         elif action in ("send", "gmail-drafts"):
             label = "Send ready emails" if action == "send" else "Save drafts to Gmail"
             argv = ["send", *ids] + (["--gmail-drafts"] if action == "gmail-drafts" else []) \
@@ -280,7 +280,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             if not text:
                 raise ActionError("Paste the post text first.")
             path = _temp_file(text.encode("utf-8"), ".txt")
-            label, argv, cleanup = "Read and score the pasted post", ["add", path], lambda: os.unlink(path)
+            label, argv, cleanup = "Add a job from a post", ["add", path], lambda: os.unlink(path)
             link = str(body.get("url") or "").strip()
             if link.startswith(("http://", "https://")):
                 argv += ["--url", link]
@@ -300,7 +300,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         if not data:
             raise ActionError("That file is empty.")
         path = _temp_file(data, suffix)
-        return runner.start("profile", "Read your resume", ["profile", "import", path], lambda: os.unlink(path))
+        return runner.start("profile", "Import your resume", ["profile", "import", path], lambda: os.unlink(path))
 
     # --- quick changes ----------------------------------------------------------------
 
@@ -308,7 +308,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         if path == "/api/schedule":
             if body.get("action") == "remove":
                 scheduler.remove()
-                return {"message": "The daily run is switched off."}
+                return {"message": "The morning routine is switched off."}
             hour, _, minute = str(body.get("time") or "").partition(":")
             if not (hour.isdigit() and minute.isdigit() and int(hour) < 24 and int(minute) < 60):
                 raise ActionError("Choose a time, for example 08:00.")

@@ -114,6 +114,26 @@ task is really running. Nothing lifts or scales on hover.
 | Email preview page | A single column 720 wide. Each job is a heading, a status label and one muted line, then its email on a sheet, then the copy buttons. The follow-up and the notes stay quiet raised blocks. It follows the computer's light or dark setting. No postmark: these are drafts. |
 | Job panel heading | Title at 20, company under it, then location, posting age and pay as muted text with no icons. The score is a figure at 28 mono with the thin bar from the table. |
 
+## Words
+
+- **One name per action,** the same on its button, in All actions, on the progress strip and in the
+  message when it ends: Find new jobs, Add a job from a post, Add HR addresses, Draft emails, Look
+  for addresses, Save drafts to Gmail, Send ready emails, Send follow-ups, Run the morning routine,
+  Download digest. A save button names what it saves: Save draft gives "Draft saved".
+- **A confirm button repeats the action,** with the count when there is one: "Send 2 emails",
+  "Merge duplicates", "Stop Job Search". Never "OK", "Yes" or "Send them".
+- **Sentence case everywhere,** including status names: Shortlisted, Applied, Interviewing, Offer,
+  Rejected, Skipped, Withdrawn. A search is Finished, Finished with problems, Failed or Running.
+- **A one-sentence message has no full stop:** labels, captions, sub-lines, empty states, short
+  confirmations. Text of two or more sentences keeps its full stops. The page applies this to every
+  message it shows, including ones the program sends.
+- **Say the number, not "a few":** "Emails with no reply after 6 days".
+- **An error says what to do next.** "The program could not do that. Reload the page and try again",
+  not "That did not work".
+- **Words in use:** search (not run), morning routine (not daily run), address (the recruiter's
+  email address), draft (an email not yet sent), look (not theme).
+- No exclamation marks, no greetings, no praise for the product.
+
 ## Layout
 
 The app fills the window: sidebar on the left, content fluid up to 1480 wide. On a narrow window

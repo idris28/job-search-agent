@@ -197,7 +197,11 @@ def test_tasks_run_one_at_a_time_show_output_and_can_be_stopped(conn, page):
         page.wait()
         assert seen[-1] == argv
 
-    page.call("/api/task", {"action": "add", "text": "Hiring a Java dev", "url": "https://x/post"})
+    # A task carries the name of the button that starts it, so the page says one thing throughout.
+    assert page.call("/api/task", {"action": "contacts"})[1]["task"]["label"] == "Look for addresses"
+    page.wait()
+    added = page.call("/api/task", {"action": "add", "text": "Hiring a Java dev", "url": "https://x/post"})[1]
+    assert added["task"]["label"] == "Add a job from a post"
     page.wait()
     assert seen[-1][0] == "add" and seen[-1][2:] == ["--url", "https://x/post"]
     import os
