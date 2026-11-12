@@ -107,6 +107,10 @@ task is really running. Nothing lifts or scales on hover.
 | Pipeline tray | Marks 4 wide and 20 tall, 4 apart, wrapping in rows. One mark is one job, in stage order, and opens that job. Over 180 jobs, one mark stands for several and a line under the legend says how many. The legend gives count and share. |
 | Postmark | A 36px ring holding the day over the month, with three wavy lines to its right, in accent ink, turned 6 degrees. It sits at the end of a row for a job that has been emailed (on a phone the wavy lines go) and, at 48px, in the top right corner of the sent email's sheet. |
 | Email sheet | Paper (`#f4f2ec` on dark, `#fffdf9` on light) with a 2px corner and a soft neutral shadow, lying on a `--s0` well. Inside the sheet the tokens switch to the light values, so ink, lines and buttons read as on paper. To and Subject are lines with a hairline under each; the text has no box and the sheet grows with it. Edit and Preview switch the same sheet. Only the email gets a sheet: the follow-up and the cover letter stay quiet raised blocks. |
+| Lead chart (Insights) | The missing-skills chart is the largest thing on the screen: 8px bars on a hairline grid with a mono percent axis, the top bar in accent and the rest muted. The scale is the share of scored jobs that ask for the skill. Everything else on the screen is smaller and different in kind: a quiet row of weekly figures at 20, and a ranked list of sites with 2px bars. |
+| Run table (Activity) | Rows 48 tall. Numbers are mono, right-aligned, in the `3,209` format. The result is a status label. |
+| Setup rows (Settings) | An 8px status dot, the name, then one line of text: green = ready, red = missing, dim = optional and not set. |
+| Templates (Settings) | One card for the three templates with a switch at its top right. Template text is mono 13. |
 | Job panel heading | Title at 20, company under it, then location, posting age and pay as muted text with no icons. The score is a figure at 28 mono with the thin bar from the table. |
 
 ## Layout
@@ -117,11 +121,9 @@ are.
 
 ## Still to do, screen by screen
 
-The global layer, the four list screens (Shortlist, In progress, Follow-ups, All matches) and the
-job panel are done. These follow the same rules:
+The global layer and every screen of the website are done. This follows the same rules:
 
-1. **Insights, Activity, Settings.** One chart leads on Insights; lists stay lists.
-2. **Email preview page** written by `report.py`.
+1. **Email preview page** written by `report.py`.
 
 ## Checklist for any change
 

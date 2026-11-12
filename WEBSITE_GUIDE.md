@@ -100,7 +100,7 @@ Use this when you have an employer's HR or careers address but no specific vacan
 for every address there, with the employer's name swapped in, so many addresses cost only a few AI
 calls.
 
-The email comes from its own template, "Your general application email" in Settings. It asks about
+The email comes from its own template: in Settings, under **Your templates**, choose **General email**. It asks about
 openings instead of applying for a position. If you gave no employer name, the email leaves the name
 out. To see only these, choose **General applications** in the Next step filter.
 
@@ -165,7 +165,7 @@ email and cover letter leave the name out: "applying for the Java Developer posi
 | **All matches** | Every job that was scored, not only the shortlist. Starts at score 70 or more; change the Score filter to see the rest. Open one and click **Add to shortlist** to act on it. | Download digest |
 | **Insights** | Your last seven days, the skills job postings ask for most that your resume lacks, and which sites deliver. | |
 | **Activity** | Everything the running or last task reported, and a list of past searches. | |
-| **Settings** | Setup, the daily run, your email template, duplicate jobs, limits, and stopping the program. | |
+| **Settings** | Setup, the daily run, your templates, duplicate jobs, limits, and stopping the program. | |
 
 ## Sending emails
 
@@ -217,9 +217,9 @@ force**.
 | Setup | See what is ready, import a newer resume, send a test notification. |
 | Every morning | Pick a time and click **Run every morning**. The Mac then runs the morning routine daily at that time, as long as it is awake. **Switch it off** removes it. **Run it now** runs it once. |
 | Duplicate jobs | If the same job is stored twice, **Merge** folds the copies together and keeps your score and status. This cannot be undone. |
-| Your email template | Edit the wording used for every recruiter email. Text in [square brackets] is filled in for each job; everything else is sent as you wrote it. Click **Save template**. |
-| Your general application email | Edit the email sent to HR addresses you added without a job posting. |
-| Your cover letter template | Edit the letter used by **Write a cover letter**. It works like the email template: text in [square brackets] is filled in for each job. Click **Save template**. |
+| Your templates, **Email** | The three templates share one box; the buttons at its top right switch between them. **Email** is the wording used for every recruiter email. Text in [square brackets] is filled in for each job; everything else is sent as you wrote it. Click **Save template**. |
+| Your templates, **General email** | Edit the email sent to HR addresses you added without a job posting. Click **Save template**. |
+| Your templates, **Cover letter** | Edit the letter used by **Write a cover letter**. It works like the email template: text in [square brackets] is filled in for each job. Click **Save template**. |
 | Limits in force | Read-only. Change them in `config.yaml`; the page picks up the change straight away. |
 | Close the program | **Stop Job Search**. |
 
