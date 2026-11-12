@@ -72,7 +72,7 @@ a{color:var(--blue-hi)}
 .tip-down[data-tip]:hover::after,.tip-down[data-tip]:focus-visible::after{transform:none}
 
 /* top bar */
-.top{display:flex;align-items:center;gap:10px;padding:20px 24px 14px}
+.top{display:flex;align-items:center;gap:10px;padding:20px 24px 14px;position:relative;z-index:22}
 .brand{display:flex;align-items:center;gap:10px;border:0;background:none;font-size:25px;font-weight:600;letter-spacing:-.02em;padding:0;margin-right:18px;white-space:nowrap}
 .logo{width:30px;height:30px;filter:drop-shadow(0 0 10px rgba(77,130,255,.6))}
 .nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;padding:6px 2px}
@@ -90,7 +90,7 @@ kbd{font:600 11px var(--font);border:1px solid var(--line-2);border-radius:6px;p
 .me{background:linear-gradient(135deg,#7fb2ff,#6b5cf0);border-color:rgba(255,255,255,.4);color:#fff;font-weight:700;font-size:13px}
 
 /* page head */
-.head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:14px 20px;padding:8px 24px 20px}
+.head{position:relative;z-index:21;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:14px 20px;padding:8px 24px 20px}
 .head h1{font-size:23px}
 .head p{margin:4px 0 0;color:var(--muted);font-size:13px}
 .head-r{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
@@ -115,7 +115,7 @@ kbd{font:600 11px var(--font);border:1px solid var(--line-2);border-radius:6px;p
 
 /* body */
 .body{display:grid;grid-template-columns:40px minmax(0,1fr);gap:24px;padding:0 24px 26px;flex:1}
-.rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:18px;align-self:start}
+.rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:18px;align-self:start;z-index:20}
 .rail-gap{height:22px;flex:none}
 .content{min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-content:start}
 .card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
