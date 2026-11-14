@@ -542,6 +542,36 @@ def cmd_daily(args, settings):
                                    summary, _paragraphs_html(summary))
         mailer.send_messages(settings.gmail_address, settings.gmail_app_password, [msg])
         print(f"Summary emailed to {settings.gmail_address}.")
+    if cfg.backup.daily:
+        from .backup import BackupError
+
+        try:
+            print(_backup(settings, cfg))
+        except BackupError as e:  # a missed backup must not fail the morning routine
+            print(f"No backup today: {e}")
+
+
+def _backup(settings, cfg) -> str:
+    """Make a backup and say what was written, in one line."""
+    from .backup import human_size, make_backup
+
+    settings.require("database_url")
+    b = make_backup(settings.database_url, cfg.backup.folder, keep=cfg.backup.keep, repo=Path.cwd())
+    return (f"Backed up to {b['file']} ({human_size(b['size'])})"
+            + (f", with a copy of the code in {b['code'].name}" if b["code"] else "")
+            + f". The newest {cfg.backup.keep} are kept.")
+
+
+def cmd_backup(args, settings):
+    """Copy the database (and the code's history) into the backups folder."""
+    from .backup import BackupError
+
+    cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+    try:
+        print(_backup(settings, cfg))
+    except BackupError as e:
+        sys.exit(str(e))
+    print("To bring one back: pg_restore --clean --if-exists --no-owner --dbname <database> <file>")
 
 
 def cmd_schedule(args, settings):
@@ -942,6 +972,10 @@ def build_parser() -> argparse.ArgumentParser:
     dl = sub.add_parser("daily", help="search, write the digest and email yourself one summary")
     dl.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
     dl.set_defaults(fn=cmd_daily)
+
+    bk = sub.add_parser("backup", help="copy the database and the code's history into the backups folder")
+    bk.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    bk.set_defaults(fn=cmd_backup)
 
     sc = sub.add_parser("schedule", help="run `jsa daily` every morning (macOS)")
     sc.add_argument("action", choices=["install", "remove", "status"])

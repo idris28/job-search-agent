@@ -23,6 +23,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import db, scheduler
 from .actions import ActionError, add_hr_contacts, can_delete, delete_added_job, send_slots, send_stored_draft
+from .backup import find_pg_dump, latest_backup
 from .config import AgentConfig
 from .contacts import _EMAIL_RE
 from .models import names_missing_company, unfilled_placeholders
@@ -35,7 +36,7 @@ MAX_UPLOAD = 10 * 1024 * 1024
 
 # Every action the page can start as a task.
 TASKS = ("migrate", "run", "score", "daily", "email", "contacts", "send", "gmail-drafts", "followups",
-         "cover-letter", "dedupe", "notify-test", "add")
+         "cover-letter", "dedupe", "notify-test", "add", "backup")
 
 
 class TaskRunner:
@@ -258,6 +259,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                        "notify_min_score": c.matching.notify_min_score},
             "locations": c.search.locations, "sources": len([s for s in c.sources if s.enabled]),
             "schedule": scheduler.info(), "folder": str(Path.cwd()), "duplicates": [],
+            "backup": {"folder": c.backup.folder, "keep": c.backup.keep, "daily": c.backup.daily,
+                       "tool": bool(find_pg_dump()), "latest": latest_backup(c.backup.folder)},
         }
         try:
             with connect() as conn:
@@ -272,7 +275,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         """Say now, in the page's own words, why a task cannot work, instead of starting a command
         that stops with a terminal message. Everything but a database update needs the database
         to answer and be up to date; everything that reads or scores jobs needs a resume."""
-        if action in ("migrate", "notify-test"):
+        if action in ("migrate", "notify-test", "backup"):
             return
         with connect() as conn:
             if action not in ("profile", "dedupe"):
@@ -315,6 +318,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             label, argv = f"Write a cover letter for #{ids[0]}", ["cover-letter", ids[0]]
         elif action == "dedupe":
             label, argv = "Merge duplicate jobs", ["dedupe", "--apply"]
+        elif action == "backup":
+            label, argv = "Back up now", ["backup"]
         elif action == "notify-test":
             label, argv = "Send a test notification", ["notify-test"]
         elif action == "add":

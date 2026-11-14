@@ -178,6 +178,12 @@ class MatchingPrefs(BaseModel):
     concurrency: int = 4
 
 
+class BackupPrefs(BaseModel):
+    folder: str = "backups"  # where `jsa backup` writes; relative to the folder jsa runs from
+    keep: int = 7            # the newest this many are kept, older ones are removed
+    daily: bool = True       # the morning routine ends with a backup
+
+
 class SourceConfig(BaseModel):
     kind: Literal["greenhouse", "lever", "ashby", "amazon", "microsoft", "workday", "generic"]
     name: str
@@ -198,6 +204,7 @@ class AgentConfig(BaseModel):
     search: SearchPrefs = Field(default_factory=SearchPrefs)
     matching: MatchingPrefs = Field(default_factory=MatchingPrefs)
     outreach: OutreachPrefs = Field(default_factory=OutreachPrefs)
+    backup: BackupPrefs = Field(default_factory=BackupPrefs)
     sources: list[SourceConfig] = Field(default_factory=list)
 
     @classmethod

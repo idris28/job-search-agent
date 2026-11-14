@@ -686,6 +686,7 @@ const when = iso => iso ? new Date(iso).toLocaleString(undefined, { day: "numeri
 const tier = s => s == null ? "s0" : s >= 85 ? "s4" : s >= 75 ? "s3" : s >= 60 ? "s2" : "s1";
 const statusOf = r => r.status || r.application_status || "";
 const http = u => /^https?:\/\//.test(u || "");
+const size = n => n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const tidy = s => { s = String(s ?? "").trim(); return /[.!?]\s/.test(s) ? s : s.replace(/\.$/, ""); };  // a one-sentence message carries no full stop
 const cap = s => s ? s[0].toUpperCase() + s.slice(1) : "";
@@ -1205,6 +1206,8 @@ function renderPage() {
         <dt>Oldest posting</dt><dd>${L.max_age_days ? L.max_age_days + " days" : "Any age"}</dd>
         <dt>Notify me from score</dt><dd>${L.notify_min_score || "Off"}</dd>
         <dt>Searching</dt><dd>${g.sources} sites, in ${esc(g.locations.join(", ") || "any location")}</dd></dl></section>
+    <section class="card pad">${cardHead("Backups")}<p class="sub">${g.backup.latest ? `Last backup ${esc(when(g.backup.latest.at))} (${size(g.backup.latest.size)}); ${plural(g.backup.latest.count, "copy is", "copies are")} kept in the <b>${esc(g.backup.folder)}</b> folder.` : "No backup yet."} ${g.backup.daily ? "The morning routine makes one each day." : ""} A backup holds every job, score, draft and application.</p>
+      ${g.backup.tool ? `<button class="btn" data-act="backup">Back up now</button>` : `<p class="sub" style="margin:0">pg_dump, which comes with PostgreSQL, was not found, so no backup can be made from here</p>`}</section>
     <section class="card pad">${cardHead("Close the program")}<p class="sub">The page keeps working in the background after you close this tab. Stop it here; open Job Search again to bring it back.</p>
       <button class="btn danger" data-act="quit">${ic("power")}Stop Job Search</button></section>
   </div>`;
@@ -1233,6 +1236,7 @@ const A = {
     try { toast((await api("/api/delete", { job_id: id })).message); await closeDrawer(true); await refresh(); staleMatches(); } catch (e) { fail(e); } },
   daily: () => startTask({ action: "daily" }),
   migrate: () => startTask({ action: "migrate" }),
+  backup: () => startTask({ action: "backup" }),
   stop: async () => { if (await ask("Stop this task?", "What it has already saved is kept. You can start it again later.", "Stop the task")) api("/api/task/stop", {}).catch(fail); },
   dismiss: () => { S.dismissed = S.state.task ? S.state.task.id : 0; renderLive(); },
   reload: async () => { await refresh(); await staleMatches(); toast("Up to date"); },
@@ -1318,7 +1322,7 @@ const PALETTE = [
   ["Go to Follow-ups", "", "v:followups"], ["Go to All matches", "every scored job", "v:matches"], ["Go to Insights", "missing skills, your week, sites", "v:insights"],
   ["Go to Activity", "past searches, task output", "v:activity"], ["Go to Settings", "", "v:settings"],
   ["Schedule the morning routine", "", "v:settings"], ["Edit the email template", "", "v:settings"], ["Edit the cover letter template", "", "v:settings"], ["Edit the general email template", "", "v:settings"],
-  ["Merge duplicate jobs", "", "v:settings"], ["Send a test notification", "", "notify-test"], ["Import your resume", "PDF or text", "resume"],
+  ["Back up now", "the database and the code", "backup"], ["Merge duplicate jobs", "", "v:settings"], ["Send a test notification", "", "notify-test"], ["Import your resume", "PDF or text", "resume"],
   ["Switch to the light look", "theme", "theme-light"], ["Switch to the dark look", "theme", "theme-dark"],
   ["Update the database", "", "migrate"], ["Stop the running task", "", "stop"],
 ];
