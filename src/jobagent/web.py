@@ -24,7 +24,7 @@ from urllib.parse import parse_qs, urlparse
 from . import db, scheduler
 from .actions import ActionError, add_hr_contacts, can_delete, delete_added_job, send_slots, send_stored_draft
 from .backup import find_pg_dump, latest_backup
-from .config import AgentConfig
+from .config import AgentConfig, ConfigError, read_settings, write_settings
 from .contacts import _EMAIL_RE
 from .models import names_missing_company, unfilled_placeholders
 from .pipeline import waiting_jobs
@@ -350,9 +350,43 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         path = _temp_file(data, suffix)
         return runner.start("profile", "Import your resume", ["profile", "import", path], lambda: os.unlink(path))
 
+    # --- settings changed on the page -------------------------------------------------
+
+    def settings_file() -> str:
+        if not (config_path and Path(config_path).exists()):
+            raise ActionError("Settings cannot be changed here: no config.yaml was found where the page was started.")
+        return config_path
+
+    def page_settings() -> dict:
+        try:
+            return read_settings(settings_file())
+        except ConfigError as e:
+            raise ActionError(str(e)) from e
+
+    def save_page_settings(body: dict) -> dict:
+        values, sites = body.get("values", {}), body.get("sites", {})
+        values, sites = ({} if values is None else values), ({} if sites is None else sites)
+        if not isinstance(values, dict) or not isinstance(sites, dict):
+            raise ValueError
+        try:
+            info = write_settings(settings_file(), values, sites)
+        except ConfigError as e:
+            raise ActionError(str(e)) from e
+        waiting.update(at=0.0)  # the rules may have changed, so count the waiting jobs again
+        if len(sites) == 1 and not values:
+            (name, on), = sites.items()
+            state = "back to what config.yaml says" if on is None else "switched on" if on else "switched off"
+            message = f"{name} is {state}."
+        else:
+            n = info["changed"]
+            message = "Settings saved." + (f" {n} differ{'s' if n == 1 else ''} from {info['file']}." if n else f" All match {info['file']}.")
+        return {**info, "message": message}
+
     # --- quick changes ----------------------------------------------------------------
 
     def change(path: str, body: dict) -> dict:
+        if path == "/api/config":
+            return save_page_settings(body)
         if path == "/api/schedule":
             if body.get("action") == "remove":
                 scheduler.remove()
@@ -505,6 +539,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 "/api/matches": lambda: matches(int(q.get("min_score", 0))),
                 "/api/insights": lambda: insights(int(q.get("days", 30))),
                 "/api/settings": settings_info,
+                "/api/config": page_settings,
                 "/api/task": lambda: {"task": runner.snapshot(int(q.get("since", 0)))},
             }
             if parsed.path in routes:
@@ -540,7 +575,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 runner.stop()
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
             elif path in ("/api/status", "/api/note", "/api/draft", "/api/send", "/api/followup-done", "/api/contact", "/api/hr-contacts", "/api/delete",
-                          "/api/schedule", "/api/template"):
+                          "/api/schedule", "/api/template", "/api/config"):
                 self._answer(lambda: change(path, body))
             else:
                 self.send_error(404)

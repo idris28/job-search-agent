@@ -15,7 +15,7 @@
 --line:rgba(238,240,245,.08);--line-2:rgba(238,240,245,.14);
 --accent:#8aa6ff;--accent-fill:#3b63e6;--accent-soft:rgba(138,166,255,.12);
 --ok:#4cc38a;--warn:#d9a23b;--bad:#f0686c;
---main-bg:#eef0f5;--main-ink:#0b0d14;
+--main-bg:#eef0f5;--main-ink:#0b0d14;--on-accent:#fff;
 --shadow:0 16px 48px rgba(0,0,0,.5);
 --r-s:6px;--r-m:8px;--r-l:12px;--r-xl:16px;
 --ease:cubic-bezier(.22,1,.36,1);
@@ -375,6 +375,26 @@ pre.out{margin:0;max-height:440px;overflow:auto;padding:16px;border:1px solid va
 .check b{font-weight:500}
 .check>span:last-child{display:flex;gap:12px;align-items:center;flex-wrap:wrap;color:var(--t2);overflow-wrap:anywhere}
 .inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grp{margin:20px 0 8px;font-size:13px;font-weight:400;color:var(--t3)}
+.grp:first-of-type{margin-top:0}
+.form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 24px;align-items:start}
+.fld{display:grid;gap:4px;min-width:0}
+.fld.wide{grid-column:1/-1}
+.fld label{font-size:13px;color:var(--t2)}
+.fld .field{margin:0}
+.fld textarea.field.short{min-height:64px}
+.fld small{font-size:12px;color:var(--t3)}
+.chg{margin-left:8px;font-style:normal;font-size:12px;color:var(--accent)}
+.sw{display:flex;align-items:center;gap:8px;min-width:0;min-height:32px;cursor:pointer}
+.sw span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sw input{appearance:none;-webkit-appearance:none;position:relative;flex:none;width:28px;height:16px;margin:0;border-radius:8px;background:var(--line-2);cursor:pointer;transition:background .14s var(--ease)}
+.sw input::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--t2);transition:transform .14s var(--ease),background .14s var(--ease)}
+.sw input:checked{background:var(--accent-fill)}
+.sw input:checked::after{transform:translateX(12px);background:var(--on-accent)}
+.sw .chg{display:none}
+.sw.changed .chg{display:inline}
+.form .sw{align-self:end;min-height:36px}
+.sites{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:0 24px}
 .inline input[type=time]{height:36px;padding:0 8px;border:1px solid var(--line-2);border-radius:var(--r-m);background:var(--s3)}
 
 /* dialogs, search, messages */
@@ -397,7 +417,7 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 .toast.bad .ic{color:var(--bad)}
 
 @media (max-width:1400px){.chips{display:none}}
-@media (max-width:1280px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.pgrid.lead{grid-template-columns:minmax(0,1fr)}.grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1280px){.form{grid-template-columns:repeat(2,minmax(0,1fr))}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.pgrid.lead{grid-template-columns:minmax(0,1fr)}.grid{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:900px){
   .app{grid-template-columns:minmax(0,1fr)}
   .sidebar{position:fixed;z-index:45;left:0;top:0;bottom:0;width:264px;height:auto;transform:translateX(-100%);visibility:hidden}
@@ -412,7 +432,7 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
   .content{padding:0 16px 32px}
   .notice{margin:0 16px 16px}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .pair,.pgrid,.pgrid.lead{grid-template-columns:minmax(0,1fr)}
+  .pair,.pgrid,.pgrid.lead,.form{grid-template-columns:minmax(0,1fr)}
   .gp{grid-template-columns:minmax(72px,112px) minmax(0,1fr) 72px;column-gap:12px}
   .fbar{grid-template-columns:repeat(2,minmax(0,1fr))}
   .fseg:nth-child(2){border-right:0}
@@ -802,7 +822,7 @@ async function finished(t) {
   S.settings = null; S.insights = null;
   await refresh(); staleMatches();
   if (S.sel && !S.dirty) openJob(S.sel, true);
-  if (!LIST.includes(S.view)) loadPage();
+  if (!LIST.includes(S.view) && !(S.view === "settings" && S.formDirty)) loadPage();
 }
 
 /* ---------- table ---------- */
@@ -1123,7 +1143,7 @@ async function loadPage() {
   renderPage();
   try {
     if (v === "insights" || v === "activity") S.insights = await api("/api/insights?days=30");
-    if (v === "settings") S.settings = await api("/api/settings");
+    if (v === "settings") { S.settings = await api("/api/settings"); S.cfg = await api("/api/config").catch(e => ({ unavailable: tidy(e.message) })); S.formDirty = false; }
   } catch (e) {
     if (v !== "activity") { $("#page").innerHTML = `<div class="card pad"><div class="empty"><h3>Not available yet</h3>${esc(tidy(e.message))}</div></div>`; return; }
     S.insights = { runs: [], unread: tidy(e.message) };  // a task's output must still be readable, for example the first resume import
@@ -1168,7 +1188,17 @@ function renderPage() {
   }
   const g = S.settings;
   if (!g) { el.innerHTML = `<div class="card pad"><p class="sub" style="margin:0">Loading</p></div>`; return; }
-  const p = S.state.setup.profile, L = g.limits, sch = g.schedule;
+  const p = S.state.setup.profile, sch = g.schedule, C = S.cfg || { unavailable: "Loading" };
+  const changedFields = C.fields ? C.fields.filter(f => f.changed).length : 0;
+  const cfgField = f => {
+    const id = "cfg-" + f.key.replace(".", "-"), was = Array.isArray(f.file_value) ? f.file_value.join(", ") : f.file_value;
+    const mark = f.changed ? `<em class="chg" title="${esc(C.file)} has: ${esc(was === null || was === "" ? "nothing" : was)}">changed</em>` : "";
+    if (f.kind === "bool") return `<label class="sw"><input type="checkbox" id="${id}" data-cfg="${f.key}"${f.value ? " checked" : ""}><span>${esc(f.label)}</span>${mark}</label>`;
+    const val = f.kind === "list" ? (f.value || []).join(", ") : f.value ?? "";
+    const box = f.kind === "list" ? `<textarea class="field short" id="${id}" data-cfg="${f.key}" spellcheck="false">${esc(val)}</textarea>`
+      : `<input class="field" id="${id}" data-cfg="${f.key}"${f.kind === "text" ? "" : ' inputmode="decimal"'} autocomplete="off" value="${esc(val)}">`;
+    return `<div class="fld${f.kind === "list" ? " wide" : ""}"><label for="${id}">${esc(f.label)}${mark}</label>${box}${f.hint ? `<small>${esc(f.hint)}</small>` : ""}</div>`;
+  };
   const row = (ok, name, text, extra = "") => `<div class="check"><i class="sdot ${ok === true ? "c-green" : ok === null ? "c-aside" : "c-red"}"></i><b>${name}</b><span>${text} ${extra}</span></div>`;
   const dupes = g.duplicates.reduce((n, x) => n + x.drop.length, 0);
   const tpls = [["tpl", "save-tpl", "Email", g.template, "Used for every recruiter email. Text in [square brackets] is filled in for each job; everything else is sent as you wrote it.", "Switched off in config.yaml, so the built-in format is used"],
@@ -1196,16 +1226,13 @@ function renderPage() {
     <section class="card pad span2">${cardHead("Your templates", `<span class="seg" role="group" aria-label="Which template">${tpls.map(([id, , label]) => `<button data-act="tpl-show" data-to="${id}" aria-pressed="${S.tpl === id}">${label}</button>`).join("")}</span>`)}
       ${tpls.map(([id, act, label, t, on, off]) => `<div data-pane="${id}"${S.tpl === id ? "" : " hidden"}><p class="sub" style="margin-top:0">${t && t.file ? `${on} Saved to ${esc(t.file)}.` : off}</p>
         ${t && t.file ? `<textarea class="field tplbox" id="${id}" aria-label="${label} template" spellcheck="false">${esc(t.text)}</textarea><button class="btn" data-act="${act}">Save template</button>` : ""}</div>`).join("")}</section>
-    <section class="card pad">${cardHead("Limits in force")}<p class="sub">Change these in <b>config.yaml</b>; this page picks them up straight away</p>
-      <dl class="kv" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin:0">
-        <dt>Emails a day</dt><dd>${L.sends_per_day || "No limit"}, ${L.pause_seconds}s apart</dd>
-        <dt>Follow up after</dt><dd>${L.follow_up_days} days</dd>
-        <dt>AI budget per search</dt><dd>${L.tokens_per_run ? L.tokens_per_run.toLocaleString() + " tokens" : "No limit"}</dd>
-        <dt>Browser time per search</dt><dd>${L.browser_minutes ? L.browser_minutes + " minutes" : "No limit"}</dd>
-        <dt>Lowest salary</dt><dd>${L.min_salary_lpa ? L.min_salary_lpa + " LPA" : "Not set"}</dd>
-        <dt>Oldest posting</dt><dd>${L.max_age_days ? L.max_age_days + " days" : "Any age"}</dd>
-        <dt>Notify me from score</dt><dd>${L.notify_min_score || "Off"}</dd>
-        <dt>Searching</dt><dd>${g.sources} sites, in ${esc(g.locations.join(", ") || "any location")}</dd></dl></section>
+    <section class="card pad span2">${cardHead("Search and limits")}${C.unavailable ? `<p class="sub" style="margin:0">${esc(C.unavailable)}</p>` : `
+      <p class="sub">What you change here is kept in <b>${esc(C.overrides_file)}</b>; <b>${esc(C.file)}</b> itself is never rewritten. ${changedFields ? `${plural(changedFields, "setting differs", "settings differ")} from it.` : ""}</p>
+      ${[...new Set(C.fields.map(f => f.group))].map(name => `<h3 class="grp">${esc(name)}</h3><div class="form">${C.fields.filter(f => f.group === name).map(cfgField).join("")}</div>`).join("")}
+      <div class="acts" style="margin-top:20px"><button class="btn" data-act="cfg-save">Save settings</button>${changedFields ? `<button class="btn ghost" data-act="cfg-reset">Go back to ${esc(C.file)}</button>` : ""}</div>`}</section>
+    ${C.unavailable ? "" : `<section class="card pad span2">${cardHead("Sites", `<span class="count" id="sitecount">${C.sites.filter(x => x.enabled).length} of ${C.sites.length} on</span><span class="grow"></span><label class="find">${ic("search")}<input id="sitefind" placeholder="Find a site" aria-label="Find a site" autocomplete="off"></label>`)}
+      <p class="sub">A site that is off is skipped by every search. A switch takes effect at once.</p>
+      <div class="sites">${C.sites.map(x => `<label class="sw${x.changed ? " changed" : ""}" data-name="${esc(x.name.toLowerCase())}"><input type="checkbox" data-site="${esc(x.name)}"${x.enabled ? " checked" : ""}><span>${esc(x.name)}</span><em class="chg">changed</em></label>`).join("")}</div></section>`}
     <section class="card pad">${cardHead("Backups")}<p class="sub">${g.backup.latest ? `Last backup ${esc(when(g.backup.latest.at))} (${size(g.backup.latest.size)}); ${plural(g.backup.latest.count, "copy is", "copies are")} kept in the <b>${esc(g.backup.folder)}</b> folder.` : "No backup yet."} ${g.backup.daily ? "The morning routine makes one each day." : ""} A backup holds every job, score, draft and application.</p>
       ${g.backup.tool ? `<button class="btn" data-act="backup">Back up now</button>` : `<p class="sub" style="margin:0">pg_dump, which comes with PostgreSQL, was not found, so no backup can be made from here</p>`}</section>
     <section class="card pad">${cardHead("Close the program")}<p class="sub">The page keeps working in the background after you close this tab. Stop it here; open Job Search again to bring it back.</p>
@@ -1289,6 +1316,11 @@ const A = {
   "notify-test": () => startTask({ action: "notify-test" }),
   "sched-on": async () => { try { toast((await api("/api/schedule", { action: "install", time: $("#schedtime").value })).message); loadPage(); } catch (e) { fail(e); } },
   "sched-off": async () => { try { toast((await api("/api/schedule", { action: "remove" })).message); loadPage(); } catch (e) { fail(e); } },
+  "cfg-save": async () => { const values = {};
+    $$("[data-cfg]").forEach(el => values[el.dataset.cfg] = el.type === "checkbox" ? el.checked : el.value);
+    try { const r = await api("/api/config", { values }); toast(r.message); S.cfg = r; S.formDirty = false; renderPage(); refresh(); } catch (e) { fail(e); } },
+  "cfg-reset": async () => { if (!await ask(`Go back to ${S.cfg.file}?`, "The settings changed on this page are dropped. Site switches stay as they are.", "Go back")) return;
+    try { const r = await api("/api/config", { values: Object.fromEntries(S.cfg.fields.map(f => [f.key, null])) }); toast(r.message); S.cfg = r; S.formDirty = false; renderPage(); refresh(); } catch (e) { fail(e); } },
   "tpl-show": b => { S.tpl = b.dataset.to;
     $$("[data-pane]").forEach(p => p.hidden = p.dataset.pane !== S.tpl);
     $$("[data-act=tpl-show]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.to === S.tpl))); },
@@ -1320,7 +1352,7 @@ const PALETTE = [
   ["Send follow-ups", "the ones that are due", "followups"], ["Start applying", "opens the first shortlisted job", "apply-first"], ["Download digest", "top matches as a Markdown file", "digest"],
   ["Go to Shortlist", "", "v:shortlist"], ["Go to In progress", "applications and jobs set aside", "v:progress"],
   ["Go to Follow-ups", "", "v:followups"], ["Go to All matches", "every scored job", "v:matches"], ["Go to Insights", "missing skills, your week, sites", "v:insights"],
-  ["Go to Activity", "past searches, task output", "v:activity"], ["Go to Settings", "", "v:settings"],
+  ["Go to Activity", "past searches, task output", "v:activity"], ["Go to Settings", "limits, keywords, sites on or off", "v:settings"],
   ["Schedule the morning routine", "", "v:settings"], ["Edit the email template", "", "v:settings"], ["Edit the cover letter template", "", "v:settings"], ["Edit the general email template", "", "v:settings"],
   ["Back up now", "the database and the code", "backup"], ["Merge duplicate jobs", "", "v:settings"], ["Send a test notification", "", "notify-test"], ["Import your resume", "PDF or text", "resume"],
   ["Switch to the light look", "theme", "theme-light"], ["Switch to the dark look", "theme", "theme-dark"],
@@ -1363,6 +1395,8 @@ document.addEventListener("input", e => {
   if (id === "body") fit();
   if (id === "tq") { S.q = e.target.value; S.page = 0; renderList(); }
   if (id === "pq") drawPalette();
+  if (e.target.closest("#page") && e.target.matches("textarea,[data-cfg]")) S.formDirty = true;  // do not redraw over what is being typed
+  if (id === "sitefind") { const q = e.target.value.trim().toLowerCase(); $$(".sites .sw").forEach(l => l.hidden = !!q && !l.dataset.name.includes(q)); }
 });
 document.addEventListener("change", e => {
   const el = e.target, id = el.id;
@@ -1372,6 +1406,11 @@ document.addEventListener("change", e => {
   if (id === "f-extra") S.f.extra = el.value;
   if (id.startsWith("f-")) { S.page = 0; renderList(); }
   if (id === "onesite" && el.value) { startTask({ action: "run", source: el.value }); el.value = ""; $("#runmenu").hidden = true; }
+  if (el.dataset.site) return api("/api/config", { sites: { [el.dataset.site]: el.checked } }).then(r => {
+    toast(r.message); S.cfg = r; const now = r.sites.find(x => x.name === el.dataset.site);
+    el.closest(".sw").classList.toggle("changed", now.changed); $("#sitecount").textContent = `${r.sites.filter(x => x.enabled).length} of ${r.sites.length} on`; refresh();
+  }).catch(e => { el.checked = !el.checked; fail(e); });
+  if (el.dataset.cfg && el.type === "checkbox") S.formDirty = true;
   if (id === "setstatus" && el.value) change("/api/status", { job_id: S.sel, status: el.value });
   if (id === "resumefile" && el.files[0]) { const f = el.files[0];
     startTask({ action: "profile", raw: { body: f, headers: { "X-Filename": encodeURIComponent(f.name) } } }); el.value = ""; }

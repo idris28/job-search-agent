@@ -209,7 +209,171 @@ class AgentConfig(BaseModel):
 
     @classmethod
     def load(cls, path: str | Path) -> "AgentConfig":
-        p = Path(path)
-        if not p.exists():
-            raise ConfigError(f"Config file not found: {p}. Copy config.example.yaml to start.")
-        return cls.model_validate(yaml.safe_load(p.read_text()) or {})
+        """config.yaml, with the settings changed on the page laid over it."""
+        base, over = _read_both(path)
+        return cls.model_validate(_merged(base, over))
+
+
+# --- settings changed on the page ---------------------------------------------------------------
+#
+# The page never rewrites config.yaml, which may hold the person's own comments and layout. What
+# is changed there is kept in a second file beside it, config.overrides.yaml, holding only the
+# values that differ. Every command reads both, so the page and the terminal always agree.
+
+_SECTIONS = ("search", "matching", "outreach", "backup")
+
+# key: (group, kind, label, hint, lowest, highest). Kind is int, float, text, list or bool; a
+# trailing "?" means the box may be left empty (not set). The order here is the order on the page.
+EDITABLE: dict[str, tuple[str, str, str, str, float | None, float | None]] = {
+    "search.include_title_keywords": ("What to look for", "list", "Title must contain one of",
+                                      "Words or phrases, separated by commas. Empty keeps every title.", None, None),
+    "search.exclude_title_keywords": ("What to look for", "list", "Title must not contain", "", None, None),
+    "search.exclude_company_keywords": ("What to look for", "list", "Leave out companies named", "", None, None),
+    "search.locations": ("What to look for", "list", "Places",
+                         "Countries and cities. A job somewhere else is dropped before scoring.", None, None),
+    "search.max_age_days": ("What to look for", "int?", "Oldest posting, in days", "Empty means any age.", 1, 365),
+    "search.min_salary_lpa": ("What to look for", "float?", "Lowest salary, in lakhs a year",
+                              "Only jobs that state less are dropped. Empty means not set.", 0, None),
+    "search.remote_ok": ("What to look for", "bool", "Keep remote jobs", "", None, None),
+    "matching.shortlist_min_score": ("Scoring", "int", "Shortlist from score", "", 0, 100),
+    "matching.notify_min_score": ("Scoring", "int", "Message me from score", "0 switches messages off.", 0, 100),
+    "matching.max_jobs_to_score": ("Scoring", "int", "Most jobs scored in one search", "", 1, 5000),
+    "matching.max_tokens_per_run": ("Scoring", "int", "AI budget for one search, in tokens", "0 means no limit.", 0, None),
+    "matching.max_browser_minutes_per_run": ("Scoring", "float", "Browser time for one search, in minutes",
+                                             "0 means no limit.", 0, None),
+    "outreach.max_sends_per_day": ("Emails", "int", "Emails a day", "0 means no limit.", 0, 2000),
+    "outreach.send_pause_seconds": ("Emails", "int", "Seconds between emails", "", 0, 3600),
+    "outreach.follow_up_days": ("Emails", "int", "Follow up after, in days", "", 1, 90),
+    "outreach.notice_period": ("Emails", "text", "When you can join", "Used in emails, for example: immediately.", None, None),
+    "backup.daily": ("Backups", "bool", "Back up after the morning routine", "", None, None),
+    "backup.keep": ("Backups", "int", "Backups kept", "", 1, 365),
+}
+
+
+def overrides_path(path: str | Path) -> Path:
+    p = Path(path)
+    return p.with_name(p.stem + ".overrides.yaml")
+
+
+def _read_both(path: str | Path) -> tuple[dict, dict]:
+    p = Path(path)
+    if not p.exists():
+        raise ConfigError(f"Config file not found: {p}. Copy config.example.yaml to start.")
+    base = yaml.safe_load(p.read_text()) or {}
+    over_file = overrides_path(p)
+    try:
+        over = (yaml.safe_load(over_file.read_text()) or {}) if over_file.exists() else {}
+    except yaml.YAMLError as e:
+        raise ConfigError(f"{over_file} could not be read ({e}). Fix it, or delete it to go back to {p.name}.") from e
+    if not isinstance(over, dict):
+        raise ConfigError(f"{over_file} is not a list of settings. Delete it to go back to {p.name}.")
+    return base, over
+
+
+def _merged(base: dict, over: dict) -> dict:
+    out = dict(base)
+    for section in _SECTIONS:
+        if over.get(section):
+            out[section] = {**(base.get(section) or {}), **over[section]}
+    switches = over.get("sources") or {}
+    if switches:
+        out["sources"] = [{**s, "enabled": switches[s["name"]]["enabled"]}
+                          if isinstance(s, dict) and "enabled" in (switches.get(s.get("name")) or {}) else s
+                          for s in base.get("sources") or []]
+    return out
+
+
+def _coerce(key: str, raw):
+    """A value from the page as the type its setting has. Raises ConfigError in plain words."""
+    _, kind, label, _, low, high = EDITABLE[key]
+    optional, kind = kind.endswith("?"), kind.rstrip("?")
+    if kind == "bool":
+        if not isinstance(raw, bool):
+            raise ConfigError(f"{label}: choose on or off.")
+        return raw
+    if kind == "list":
+        items = raw if isinstance(raw, list) else re.split(r"[,\n]", str(raw or ""))
+        seen: list[str] = []
+        for item in (str(x).strip() for x in items):
+            if item and item.lower() not in (x.lower() for x in seen):
+                seen.append(item)
+        return seen
+    if kind == "text":
+        return str(raw or "").strip()
+    if raw is None or str(raw).strip() == "":
+        if optional:
+            return None
+        raise ConfigError(f"{label}: a number is needed.")
+    try:
+        number = float(str(raw).strip())
+        value = int(number) if kind == "int" else number
+        if kind == "int" and number != value:
+            raise ValueError
+    except ValueError:
+        raise ConfigError(f"{label}: {str(raw).strip()!r} is not a {'whole ' if kind == 'int' else ''}number.") from None
+    if (low is not None and value < low) or (high is not None and value > high):
+        limits = f"between {low:g} and {high:g}" if low is not None and high is not None else f"{low:g} or more"
+        raise ConfigError(f"{label}: must be {limits}.")
+    return value
+
+
+def read_settings(path: str | Path) -> dict:
+    """What the page shows: every changeable setting with its value now and its value in
+    config.yaml alone, and every site with its switch."""
+    base, over = _read_both(path)
+    plain, now = AgentConfig.model_validate(base), AgentConfig.model_validate(_merged(base, over))
+    fields = []
+    for key, (group, kind, label, hint, low, high) in EDITABLE.items():
+        section, name = key.split(".")
+        value, in_file = getattr(getattr(now, section), name), getattr(getattr(plain, section), name)
+        fields.append({"key": key, "group": group, "kind": kind.rstrip("?"), "optional": kind.endswith("?"),
+                       "label": label, "hint": hint, "value": value, "file_value": in_file, "changed": value != in_file})
+    sites = [{"name": s.name, "kind": s.kind, "enabled": s.enabled, "changed": s.enabled != p.enabled}
+             for s, p in zip(now.sources, plain.sources)]
+    return {"file": Path(path).name, "overrides_file": overrides_path(path).name, "fields": fields, "sites": sites,
+            "changed": sum(f["changed"] for f in fields) + sum(s["changed"] for s in sites)}
+
+
+def write_settings(path: str | Path, values: dict | None = None, sites: dict | None = None) -> dict:
+    """Store settings changed on the page. A value of None, or one equal to config.yaml's, removes
+    the override. Nothing is written unless the result is a valid configuration."""
+    base, over = _read_both(path)
+    plain = AgentConfig.model_validate(base)
+    over = {k: dict(v) if isinstance(v, dict) else v for k, v in over.items()}
+    for key, raw in (values or {}).items():
+        if key not in EDITABLE:
+            raise ConfigError("That setting cannot be changed here.")
+        section, name = key.split(".")
+        value = None if raw is None else _coerce(key, raw)
+        chosen = over.setdefault(section, {})
+        if raw is None or value == getattr(getattr(plain, section), name):
+            chosen.pop(name, None)
+        else:
+            chosen[name] = value
+    known = {s.name: s.enabled for s in plain.sources}
+    for name, on in (sites or {}).items():
+        if name not in known:
+            raise ConfigError(f"There is no site called {name!r} in {Path(path).name}.")
+        if on is not None and not isinstance(on, bool):
+            raise ConfigError(f"{name}: choose on or off.")
+        switches = over.setdefault("sources", {})
+        if on is None or on == known[name]:
+            switches.pop(name, None)
+        else:
+            switches[name] = {"enabled": on}
+    over = {k: v for k, v in over.items() if v}
+    try:
+        AgentConfig.model_validate(_merged(base, over))
+    except Exception as e:  # noqa: BLE001 - pydantic's message names the field
+        raise ConfigError(f"Those settings do not fit together: {str(e).splitlines()[-1].strip()}") from e
+    target = overrides_path(path)
+    if not over:
+        target.unlink(missing_ok=True)
+    else:
+        text = (f"# Settings changed on the Job Search page. {Path(path).name} is the base and is never rewritten;\n"
+                "# this file holds only what differs from it. Delete a line to go back to the value there.\n"
+                + yaml.safe_dump(over, sort_keys=True, allow_unicode=True))
+        part = target.with_suffix(".part")
+        part.write_text(text, encoding="utf-8")
+        os.replace(part, target)
+    return read_settings(path)
