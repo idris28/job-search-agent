@@ -111,6 +111,8 @@ task is really running. Nothing lifts or scales on hover.
 | Run table (Activity) | Rows 48 tall. Numbers are mono, right-aligned, in the `3,209` format. The result is a status label. |
 | Setup rows (Settings) | An 8px status dot, the name, then one line of text: green = ready, red = missing, dim = optional and not set. |
 | Templates (Settings) | One card for the three templates with a switch at its top right. Template text is mono 13. |
+| Settings form (Settings) | Fields in three columns (two, then one, as the window narrows), grouped under small muted headings. A label at 13 above each box, one muted line of help under it. An on/off switch is 28 by 16, accent when on, and sits on the line of the boxes beside it; its label may wrap. A value that differs from `config.yaml` carries the word "changed" in accent after its label. |
+| Sites (Settings) | One switch per site in columns at least 224 wide, with the count ("11 of 12 on") and a find box in the card heading. A switch saves at once; the form above saves with its button. |
 | Email preview page | A single column 720 wide. Each job is a heading, a status label and one muted line, then its email on a sheet, then the copy buttons. The follow-up and the notes stay quiet raised blocks. It follows the computer's light or dark setting. No postmark: these are drafts. |
 | Job panel heading | Title at 20, company under it, then location, posting age and pay as muted text with no icons. The score is a figure at 28 mono with the thin bar from the table. |
 
@@ -119,7 +121,7 @@ task is really running. Nothing lifts or scales on hover.
 - **One name per action,** the same on its button, in All actions, on the progress strip and in the
   message when it ends: Find new jobs, Add a job from a post, Add HR addresses, Draft emails, Look
   for addresses, Save drafts to Gmail, Send ready emails, Send follow-ups, Run the morning routine,
-  Score waiting jobs, Download digest, Delete entry. A save button names what it saves: Save draft gives "Draft saved".
+  Score waiting jobs, Download digest, Delete entry, Back up now. A save button names what it saves: Save draft gives "Draft saved".
 - **A confirm button repeats the action,** with the count when there is one: "Send 2 emails",
   "Merge duplicates", "Stop Job Search". Never "OK", "Yes" or "Send them".
 - **Sentence case everywhere,** including status names: Shortlisted, Applied, Interviewing, Offer,

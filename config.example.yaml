@@ -65,6 +65,17 @@ matching:
   max_tokens_per_run: 600000        # stop a run after this many AI tokens (0 = no limit)
   max_browser_minutes_per_run: 30   # stop collecting after this much browser time (0 = no limit)
   concurrency: 4
+  # Two ways to spend less on scoring. Both are off as written here.
+  prescreen_model: ""       # a cheaper model for a quick first check, e.g. claude-haiku-5-5;
+                            # jobs it rules out skip the full scoring
+  batch_scoring: false      # `jsa daily` sends its scoring as one batch: half price, answered later (Claude only)
+  batch_wait_minutes: 120   # how long a run waits for a batch; after that the next run picks the answers up
+
+# Backups (`jsa backup`, and the end of `jsa daily`)
+backup:
+  folder: backups   # where the copies go
+  keep: 7           # how many are kept
+  daily: true       # make one at the end of `jsa daily`
 
 # Recruiter emails (`jsa email`)
 outreach:

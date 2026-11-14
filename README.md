@@ -73,6 +73,15 @@ Everything lives in `config.yaml` (see `config.example.yaml`):
 - `search.notes` is free text the matcher reads (relocation, visa, preferences).
 - `matching.shortlist_min_score` auto-shortlists jobs at or above this score (default 75).
 - `matching.max_jobs_to_score` caps LLM scoring calls per run.
+- `matching.prescreen_model` (empty, so off) names a cheaper model that takes a quick first look at
+  each job; only the jobs it does not rule out get the full scoring.
+- `matching.batch_scoring` (off) makes `jsa daily` send its scoring as one batch at half price.
+  Both are described under "Cheaper scoring" below.
+
+Most of these can also be changed on the website, under Settings: **Search and limits**, and
+**Sites** to switch a job site on or off. The page never rewrites `config.yaml`. What you change
+there is kept in `config.overrides.yaml` beside it and applies to terminal commands too; delete
+that file to go back to `config.yaml` alone.
 
 ### Sources
 
@@ -92,6 +101,7 @@ Everything lives in `config.yaml` (see `config.example.yaml`):
 jsa run                          # collect + score; prints the top new matches
 jsa run --source "Acme" --no-score
 jsa score                        # score stored jobs a run left unscored, without searching again
+jsa score --batch                # the same as one batch: half the price, answered later (Claude only)
 jsa jobs --min-score 75          # best matches across all runs
 jsa show 42 --full               # one job, with matched skills, gaps, red flags
 jsa cover-letter 42              # draft, saved on the application record
@@ -102,6 +112,7 @@ jsa applications                 # your pipeline
 jsa delete 42                    # remove a pasted post or HR address you added (asks first)
 jsa digest --out digests/today.md
 jsa runs                         # run history, tokens used, and why a run was only partial
+jsa backup                       # copy the database, and the code's history, into backups/
 ```
 
 `jsa email` prepares recruiter outreach for your top shortlisted jobs. For each job it:
@@ -128,6 +139,28 @@ sites are refused. General inboxes are stored but not emailed without `--general
 
 **Reports.** `jsa gaps` counts the skills most often missing across scored jobs. `jsa progress`
 summarises the week and shows which sources deliver. `jsa dedupe [--apply]` merges jobs stored twice.
+
+**Cheaper scoring.** Two settings, both off until you switch them on:
+
+- *A quick first check.* Set `matching.prescreen_model` to a cheaper model (for Claude,
+  `claude-haiku-5-5`). It reads each job first and rules out the clear misses: another profession,
+  an internship for a senior engineer, an excluded industry. Those are stored with a score of 20
+  and a summary starting "Quick check:", so they are not looked at again. Every other job, and any
+  job the check failed on, gets the full scoring as before. Both models count toward
+  `matching.max_tokens_per_run`.
+- *Batch scoring.* `jsa score --batch`, or `matching.batch_scoring: true` for `jsa daily`, sends the
+  scoring requests as one batch (Claude only). A batch costs half and is answered later, usually
+  within the hour. The run waits up to `matching.batch_wait_minutes` (120). If the answers are not
+  back by then the run ends as `partial`, and the next run of any kind stores them. Jobs in a batch
+  that is still running are not scored a second time.
+
+**Backups.** `jsa backup` writes the whole database to `backups/jobagent-<date-time>.dump` and, when
+the folder is a git repository, the code's history to `backups/code-<date-time>.bundle`. The newest
+`backup.keep` (7) of each are kept. `jsa daily` makes one at its end unless `backup.daily` is
+`false`; a backup that fails is reported and does not fail the run. To bring one back:
+`pg_restore --clean --if-exists --no-owner --dbname jobagent backups/<file>.dump`. The copies are
+on this Mac, so keep the folder somewhere else as well if a lost disk worries you. `pg_dump` and
+`pg_restore` come with PostgreSQL.
 
 **Notifications.** New jobs at or above `matching.notify_min_score` are sent to Telegram
 (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) or, failing that, emailed to you.
@@ -231,6 +264,12 @@ pytest                                            # unit tests
 TEST_DATABASE_URL=postgresql://... pytest         # plus database and pipeline tests (wipes that DB)
 ```
 
+With `TEST_DATABASE_URL` set, `tests/test_page.py` also drives the website in a real browser: every
+screen at a wide and a narrow window, the table, a job's panel, tasks, settings, live updates, and
+what the page says when the resume or a database update is missing. It needs Playwright's Chromium
+(`playwright install chromium`) and is skipped without it. No test calls a paid service or starts a
+real `jsa` task.
+
 ## Layout
 
 ```
@@ -245,10 +284,11 @@ src/jobagent/
   web.py        local web app: JSON API, and a runner that executes jsa commands as tasks
   static/       the page itself (app.html)
   scheduler.py  macOS launchd job for `jsa daily`
+  backup.py     pg_dump copy of the database, plus a git bundle of the code
   browser.py    Browserbase session (or local Chromium) behind one fetch() interface
   report.py     terminal tables, the Markdown digest, the HTML email preview
   resume.py     reads the resume file (PDF or text)
-  config.py     .env secrets and config.yaml
+  config.py     .env secrets, config.yaml, and the settings changed on the page (config.overrides.yaml)
   llm.py        shared prompts + OpenAI provider: profile, match score, listing extraction, cover letter
   llm_anthropic.py  Claude provider for the same tasks
   filters.py    rule-based pre-filter

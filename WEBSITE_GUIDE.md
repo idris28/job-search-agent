@@ -181,8 +181,8 @@ email and cover letter leave the name out: "applying for the Java Developer posi
 - **Send ready emails** and **Send email** send from your Gmail with your CV attached. Both ask you to
   confirm first.
 - Emails are sent exactly as saved, including your edits.
-- Only so many emails go out per day, with a pause between them. Both numbers are in `config.yaml`,
-  and Settings shows them under **Limits in force**.
+- Only so many emails go out per day, with a pause between them. Both numbers can be changed under
+  **Settings**, **Search and limits**.
 - A job is never emailed twice: once sent, it is marked applied.
 - If only a general inbox (such as info@) was found, **Send ready emails** leaves that job out. You can
   still open the job and send it yourself.
@@ -200,6 +200,9 @@ post) runs as a task.
   already scored well enough are on your shortlist.
 - When it finishes, a message appears at the bottom right and the lists refresh by themselves.
 - You can keep reading and editing jobs while a task runs.
+- Progress and changes arrive by themselves. The program sends each line to the page as it is
+  printed, and tells every open tab the moment something changes, so two tabs do not disagree. If
+  that connection drops, the page goes back to asking every few seconds.
 
 ## What costs money or sends something
 
@@ -216,10 +219,12 @@ post) runs as a task.
 | Send ready emails, Send email, Send follow-ups | No | Yes, to recruiters |
 | Save drafts to Gmail | No | Saves drafts in your Gmail |
 | Send a test notification | No | Yes, to you |
-| Everything else (status, notes, saving a draft, deleting an entry, filters, Insights, digest, merging duplicates) | No | No |
+| Everything else (status, notes, saving a draft, deleting an entry, filters, Insights, digest, merging duplicates, changing settings, switching a site, backing up) | No | No |
 
-Each search stops by itself at the AI and browser limits shown under **Settings**, **Limits in
-force**.
+Each search stops by itself at the AI and browser limits set under **Settings**, **Search and
+limits**. Two settings there make scoring cheaper, and both are off until you switch them on: a
+cheaper model for a quick first check of each job, and scoring the morning routine as a batch at
+half price.
 
 ## Settings
 
@@ -231,7 +236,9 @@ force**.
 | Your templates, **Email** | The three templates share one box; the buttons at its top right switch between them. **Email** is the wording used for every recruiter email. Text in [square brackets] is filled in for each job; everything else is sent as you wrote it. Click **Save template**. |
 | Your templates, **General email** | Edit the email sent to HR addresses you added without a job posting. Click **Save template**. |
 | Your templates, **Cover letter** | Edit the letter used by **Write a cover letter**. It works like the email template: text in [square brackets] is filled in for each job. Click **Save template**. |
-| Limits in force | Read-only. Change them in `config.yaml`; the page picks up the change straight away. |
+| Search and limits | Change what is searched for and the limits: title words, places, the oldest posting, the lowest salary, the shortlist score, the AI and browser budgets, emails a day, the follow-up wait. Click **Save settings**. Your changes are kept in `config.overrides.yaml`; `config.yaml` itself is never rewritten. A value that differs from the file is marked **changed**, and **Go back to config.yaml** drops your changes. Under Scoring are the two ways to spend less: **Cheaper model for a quick first check** (for example `claude-haiku-5-5`) and **Score the morning routine as a batch**. |
+| Sites | One switch per job site. A site that is off is skipped by every search. A switch takes effect at once. Type in **Find a site** to narrow the list. |
+| Backups | **Back up now** copies the whole database into the `backups` folder. The morning routine also makes one each day, and the newest 7 are kept. The card shows when the last one was made. |
 | Close the program | **Stop Job Search**. |
 
 ## Shortcuts

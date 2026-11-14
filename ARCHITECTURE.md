@@ -153,8 +153,10 @@ Not in the diagram:
 - `jsa web` (or the Job Search app) is a separate, long-running page: `web.py` serves
   `static/app.html` and a JSON API on `http://127.0.0.1:8765`. Quick changes (status, notes, saving
   or sending one draft) happen in the request. Anything slow is started as a `jsa` child process by
-  `TaskRunner`, one at a time, and the page polls its output; so the page runs exactly the same
-  code as the terminal commands. The page talks to the API with a key written into it when it
+  `TaskRunner`, one at a time; so the page runs exactly the same code as the terminal commands.
+  Each open page holds one long-lived connection (`/api/events`, Server-Sent Events) over which
+  the program pushes every line a task prints and a note whenever something stored changed; a page
+  that cannot hold it goes back to asking every few seconds. The page talks to the API with a key written into it when it
   loads, and the server answers only on this machine. **Stop** sends the child a terminate
   signal and ends it outright if it has not finished tidying up after 15 seconds.
   [DESIGN.md](DESIGN.md) records how the page looks and reads.
@@ -202,8 +204,9 @@ Not in the diagram:
 | Contact check | `src/jobagent/contacts.py` | Confirms a found application address is printed on the company's own page |
 | Notifications | `src/jobagent/notifier.py` | Sends strong new matches to Telegram, or to your own email |
 | Schedule | `src/jobagent/scheduler.py` | The macOS launchd job that runs `jsa daily` each morning |
+| Backup | `src/jobagent/backup.py` | A `pg_dump` copy of the database and a git bundle of the code, keeping the newest few |
 | Data shapes | `src/jobagent/models.py` | `JobPosting`, the keys for matching a job across boards, and the AI's structured answers |
-| Settings | `src/jobagent/config.py` | `.env` secrets and `config.yaml`, including limits and CV variants |
+| Settings | `src/jobagent/config.py` | `.env` secrets and `config.yaml`, including limits and CV variants, plus the settings changed on the page, kept apart in `config.overrides.yaml` |
 
 ## Design points
 
@@ -228,5 +231,15 @@ Not in the diagram:
   only partly finished stores the reason: the limit reached, or the sites that could not be read.
 - **The database must be current.** Every command checks for pending updates first and says
   "Run: jsa migrate" instead of failing halfway; the page offers a button for the same.
+- **Scoring is paid for once, and as little as needed.** A cheaper model can rule out the clear
+  misses before the full scoring, and the scoring can go as one batch at half price. A batch is
+  recorded in `run_events` before the run waits for it, so if the wait runs out or the run is
+  stopped, the next run collects the answers, and its jobs are not sent again meanwhile.
+- **The page is told; it does not keep asking.** One counter moves when a task prints or changes
+  state, another when anything stored changes, and every open page waits on both.
+- **Settings changed on the page never rewrite your file.** They are stored beside `config.yaml`
+  and laid over it whenever any command loads the settings.
+- **The page is tested in a real browser.** `tests/test_page.py` opens it in Chromium against a
+  throwaway database, with a stand-in for the `jsa` commands.
 - **The agent never logs in to job sites.** They block automated browsers, so applying on a site
   is done by you in your own browser.

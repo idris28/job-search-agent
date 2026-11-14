@@ -393,7 +393,10 @@ pre.out{margin:0;max-height:440px;overflow:auto;padding:16px;border:1px solid va
 .sw input:checked::after{transform:translateX(12px);background:var(--on-accent)}
 .sw .chg{display:none}
 .sw.changed .chg{display:inline}
-.form .sw{align-self:end;min-height:36px}
+.fld.swf{padding-top:24px}
+.fld label.sw{min-height:36px;font-size:inherit;color:inherit}
+.fld .sw span{white-space:normal}
+.fld .sw .chg{display:inline;flex:none}
 .sites{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:0 24px}
 .inline input[type=time]{height:36px;padding:0 8px;border:1px solid var(--line-2);border-radius:var(--r-m);background:var(--s3)}
 
@@ -433,6 +436,7 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
   .notice{margin:0 16px 16px}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .pair,.pgrid,.pgrid.lead,.form{grid-template-columns:minmax(0,1fr)}
+  .fld.swf{padding-top:0}
   .gp{grid-template-columns:minmax(72px,112px) minmax(0,1fr) 72px;column-gap:12px}
   .fbar{grid-template-columns:repeat(2,minmax(0,1fr))}
   .fseg:nth-child(2){border-right:0}
@@ -1223,7 +1227,7 @@ function renderPage() {
   const cfgField = f => {
     const id = "cfg-" + f.key.replace(".", "-"), was = Array.isArray(f.file_value) ? f.file_value.join(", ") : f.file_value;
     const mark = f.changed ? `<em class="chg" title="${esc(C.file)} has: ${esc(was === null || was === "" ? "nothing" : was)}">changed</em>` : "";
-    if (f.kind === "bool") return `<label class="sw"><input type="checkbox" id="${id}" data-cfg="${f.key}"${f.value ? " checked" : ""}><span>${esc(f.label)}</span>${mark}</label>`;
+    if (f.kind === "bool") return `<div class="fld swf"><label class="sw"><input type="checkbox" id="${id}" data-cfg="${f.key}"${f.value ? " checked" : ""}><span>${esc(f.label)}</span>${mark}</label>${f.hint ? `<small>${esc(f.hint)}</small>` : ""}</div>`;
     const val = f.kind === "list" ? (f.value || []).join(", ") : f.value ?? "";
     const box = f.kind === "list" ? `<textarea class="field short" id="${id}" data-cfg="${f.key}" spellcheck="false">${esc(val)}</textarea>`
       : `<input class="field" id="${id}" data-cfg="${f.key}"${f.kind === "text" ? "" : ' inputmode="decimal"'} autocomplete="off" value="${esc(val)}">`;

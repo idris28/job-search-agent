@@ -117,6 +117,7 @@ Good to know:
 | `jsa run --source "Bayt - Java"` | Runs only the one source with that name. |
 | `jsa run --no-score` | Collects jobs but skips scoring, so no scoring calls are made. |
 | `jsa score` | Scores stored jobs that were never scored, without reading any site again. A run scores at most `matching.max_jobs_to_score` jobs, so the rest wait; this picks them up, newest first. On the website: **Score waiting jobs**. |
+| `jsa score --batch` | The same, sent as one batch: half the price, with the answers coming later, usually within the hour. Claude only. If they are not back within `matching.batch_wait_minutes` (120), the next search picks them up; the jobs are not scored twice. |
 | `jsa add` | Adds a job from text you paste, such as a LinkedIn post asking for CVs by email. Paste the text, press Enter, then Ctrl-D. It reads the role, company and email address, scores the job and shortlists it. |
 | `jsa add post.txt --url <link>` | The same, from a saved text file, keeping the post's link. |
 | `jsa add-contacts hr.txt --country "Saudi Arabia"` | Adds HR addresses as general applications: one address per line, optionally with the employer's name (`Acme Gulf, hr@acme.sa`). Nothing is scored or sent. Each lands on the shortlist; `jsa email` then drafts it from `general_email_template.txt`. On the website: **Add HR addresses**. |
@@ -185,6 +186,7 @@ The statuses are: `shortlisted`, `applied`, `interviewing`, `offer`, `rejected`,
 | Command | What it does |
 |---|---|
 | `jsa daily` | Runs the search, writes `digests/<date>.md`, lists follow-ups due, and emails you one summary if Gmail is set up. |
+| `jsa backup` | Copies the whole database into the `backups` folder, and the code's history beside it. The newest 7 are kept. `jsa daily` does this by itself at its end. It prints the command that brings a backup back. On the website: Settings, **Back up now**. |
 | `jsa schedule install --time 08:00` | Tells macOS to run `jsa daily` at that time every day. Run it from the project folder. |
 | `jsa schedule status` | Shows whether the schedule is installed and when it runs. |
 | `jsa schedule remove` | Removes the schedule. |
@@ -202,7 +204,7 @@ The statuses are: `shortlisted`, `applied`, `interviewing`, `offer`, `rejected`,
 
 | Option | On | What it does |
 |---|---|---|
-| `--config <file>` | `run`, `email`, `add`, `followups`, `daily`, `web` | Use a settings file other than `config.yaml`. |
+| `--config <file>` | `run`, `score`, `email`, `add`, `followups`, `daily`, `backup`, `web` | Use a settings file other than `config.yaml`. |
 | `--no-research`, `--no-review` | `email` | Skip the web research and the recruiter review. These only apply to the built-in email format; with your template they are already skipped. |
 | `--port <number>` | `web` | Serve the page on another port (default 8765). |
 | `--no-open` | `web` | Start the page without opening the browser. |
@@ -222,8 +224,10 @@ by email.
 
 ## Settings you are most likely to change
 
-All in `config.yaml`. A number in brackets is what applies until you set your own; the website shows
-your current values under Settings, "Limits in force".
+All in `config.yaml`. A number in brackets is what applies until you set your own. Most of them can
+also be changed on the website, under Settings, **Search and limits**. What you change there is kept
+in `config.overrides.yaml` beside `config.yaml`, which is never rewritten, and it applies to the
+commands here too.
 
 | Setting | Meaning |
 |---|---|
@@ -241,7 +245,10 @@ your current values under Settings, "Limits in force".
 | `outreach.max_sends_per_day`, `send_pause_seconds` | Sending limits: emails per day (10) and the wait between them (20 seconds). |
 | `matching.max_tokens_per_run`, `max_browser_minutes_per_run` | Spending limits for one run. |
 | `matching.notify_min_score` | You get a message when a new job scores this or more (85). |
-| `sources` | Job boards and company career pages to search. |
+| `matching.prescreen_model` | A cheaper AI model for a quick first check of each job (none, so off). Jobs it rules out skip the full scoring. For Claude: `claude-haiku-5-5`. |
+| `matching.batch_scoring`, `batch_wait_minutes` | Score the morning routine as one batch at half price (off), and how long a search waits for the answers (120 minutes). |
+| `backup.daily`, `backup.keep`, `backup.folder` | Back up after the morning routine (on), how many backups are kept (7), and the folder they go to (`backups`). |
+| `sources` | Job boards and company career pages to search. On the website each one has a switch under Settings, **Sites**. |
 
 ## Notifications
 
@@ -263,8 +270,13 @@ page. Treat an estimate as a rough guide, not a fact; it never lowers a score on
 - **Browserbase time**: `jsa daily`, `jsa run`, and the live posting check in `jsa email`. None of it
   is used when `.env` has `JOBAGENT_BROWSER=local`: the pages open in Chromium on this Mac.
 
-Everything else (`jobs`, `show`, `apply`, `status`, `applications`, `digest`, `runs`, `migrate`)
-is free.
+Two settings lower the AI cost of scoring, and both are off until you switch them on. A cheaper
+model can rule out the clear misses first (`matching.prescreen_model`), and the scoring can go as
+one batch at half price in exchange for a wait (`jsa score --batch`, or `matching.batch_scoring` for
+the morning routine).
+
+Everything else (`jobs`, `show`, `apply`, `status`, `applications`, `digest`, `runs`, `migrate`,
+`backup`) is free.
 
 ## Which companies are searched
 
