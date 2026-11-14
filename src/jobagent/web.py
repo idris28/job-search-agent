@@ -33,6 +33,11 @@ MAX_LINES = 4000
 MAX_UPLOAD = 10 * 1024 * 1024
 
 
+# Every action the page can start as a task.
+TASKS = ("migrate", "run", "score", "daily", "email", "contacts", "send", "gmail-drafts", "followups",
+         "cover-letter", "dedupe", "notify-test", "add")
+
+
 class TaskRunner:
     """Runs one `jsa` command at a time as a child process and keeps what it prints."""
 
@@ -263,10 +268,22 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
 
     # --- slow work: one `jsa` child process at a time ------------------------------------
 
+    def ready_for(action) -> None:
+        """Say now, in the page's own words, why a task cannot work, instead of starting a command
+        that stops with a terminal message. Everything but a database update needs the database
+        to answer and be up to date; everything that reads or scores jobs needs a resume."""
+        if action in ("migrate", "notify-test"):
+            return
+        with connect() as conn:
+            if action not in ("profile", "dedupe"):
+                profile_id(conn)
+
     def start_task(body: dict) -> dict:
         action = body.get("action")
         ids = [str(int(i)) for i in body.get("job_ids") or []]
         cleanup = None
+        if action in TASKS:
+            ready_for(action)
         if action == "migrate":
             label, argv = "Update the database", ["migrate"]
         elif action == "run":
@@ -324,6 +341,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             raise ActionError("Choose a PDF or a text file.")
         if not data:
             raise ActionError("That file is empty.")
+        ready_for("profile")
         path = _temp_file(data, suffix)
         return runner.start("profile", "Import your resume", ["profile", "import", path], lambda: os.unlink(path))
 

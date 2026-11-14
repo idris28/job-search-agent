@@ -167,6 +167,11 @@ def test_a_database_that_is_behind_is_reported_and_updated_from_the_page(conn, p
     assert "needs an update" in page.call("/api/matches")[1]["error"]
     seen = []
     page.server.runner.command = lambda argv: seen.append(argv) or [sys.executable, "-c", "print('Applied')"]
+    # Nothing else may start until the update has run: it would only fail with a terminal message.
+    for body in ({"action": "run"}, {"action": "email", "job_ids": [1]}, {"action": "dedupe"}):
+        assert "needs an update first" in page.call("/api/task", body)[1]["error"]
+    assert "needs an update first" in page.call("/api/profile", raw=b"resume", headers={"X-Filename": "cv.txt"})[1]["error"]
+    assert seen == []
     assert page.call("/api/task", {"action": "migrate"})[1]["task"]["label"] == "Update the database"
     assert page.wait()["exit_code"] == 0 and seen == [["migrate"]]
 
@@ -177,6 +182,16 @@ def test_tasks_run_one_at_a_time_show_output_and_can_be_stopped(conn, page):
     runner.command = lambda argv: seen.append(argv) or [sys.executable, "-c", script, *argv]
 
     assert page.call("/api/task", {"action": "rm -rf"})[1]["error"] == "That action is not known."
+    # With no resume yet, a task that reads or scores jobs is refused in the page's own words...
+    for action in ("run", "score", "daily", "email", "contacts", "send", "followups", "add"):
+        assert page.call("/api/task", {"action": action, "text": "x"})[1]["error"] == "Import your resume first, in Settings."
+    assert seen == []
+    # ...while the ones that need no resume still start.
+    assert page.call("/api/task", {"action": "notify-test"})[0] == 200
+    page.wait()
+    assert page.call("/api/task", {"action": "dedupe"})[0] == 200
+    page.wait()
+    db.save_profile(conn, "Alex", "resume", {})
     assert page.call("/api/task", {"action": "run", "source": "Not a site"})[0] == 400
     assert page.call("/api/task", {"action": "email", "job_ids": ["1; rm"]})[0] == 400  # ids must be numbers
 

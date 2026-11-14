@@ -95,6 +95,7 @@ kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 
 .round:disabled{opacity:.4;cursor:default;background:none}
 .link{display:inline-flex;align-items:center;gap:4px;padding:0;border:0;background:none;color:var(--t3);font-size:13px;white-space:nowrap}
 .link:hover{color:var(--t1)}
+.chip,.link{min-height:24px}
 .link.strong{color:var(--accent);font-size:inherit}
 .split{position:relative;display:flex}
 .split .btn.primary{border-radius:var(--r-m) 0 0 var(--r-m)}
@@ -112,7 +113,7 @@ kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 
 .head p{margin:4px 0 0;color:var(--t2);font-size:13px}
 .head-r{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
 .chips{display:flex;gap:16px;margin-right:8px}
-.chip{display:inline-flex;gap:4px;padding:0;border:0;background:none;color:var(--t3);font-size:12px;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:0;border:0;background:none;color:var(--t3);font-size:12px;white-space:nowrap}
 .chip b{font:400 12px var(--mono);color:var(--t2)}
 .chip:hover b{color:var(--t1)}
 .notice{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:0 32px 16px;padding:12px 16px;border:1px solid var(--line-2);border-radius:var(--r-l);background:var(--s2)}
@@ -399,7 +400,8 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 @media (max-width:1280px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.pgrid.lead{grid-template-columns:minmax(0,1fr)}.grid{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:900px){
   .app{grid-template-columns:minmax(0,1fr)}
-  .sidebar{position:fixed;z-index:45;left:0;top:0;bottom:0;width:264px;height:auto;transform:translateX(-100%);visibility:hidden;transition:transform .32s var(--ease),visibility .32s}
+  .sidebar{position:fixed;z-index:45;left:0;top:0;bottom:0;width:264px;height:auto;transform:translateX(-100%);visibility:hidden}
+  body.menu-moving .sidebar{transition:transform .32s var(--ease),visibility .32s}
   body.menu-open .sidebar{transform:none;visibility:visible}
   .menuscrim{display:block;z-index:44}
   body.menu-open .menuscrim{opacity:1;pointer-events:auto}
@@ -423,6 +425,9 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
   .pm{width:36px}
   .pm path{display:none}
   td,th{padding-left:12px;padding-right:12px}
+  .jt b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;overflow-wrap:anywhere}
+  .sheet .ln label{width:auto;min-width:24px}
+  .sheet .ln .field{flex-basis:120px}
   .ttl,.tsearch,.tfoot{padding-left:12px;padding-right:12px}
   .drawer{width:100vw;padding:16px 16px 32px;border-left:0;border-radius:0}
   .d-head{grid-template-columns:minmax(0,1fr)}
@@ -452,9 +457,6 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 <symbol id="i-sunrise" viewBox="0 0 24 24"><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/><polyline points="8 6 12 2 16 6"/></symbol>
 <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
 <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
-<symbol id="i-command" viewBox="0 0 24 24"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></symbol>
-<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
-<symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
 <symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
 <symbol id="i-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
 <symbol id="i-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
@@ -466,22 +468,15 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 <symbol id="i-square" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></symbol>
 <symbol id="i-layers" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
 <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
-<symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
-<symbol id="i-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
 <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
 <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
 <symbol id="i-filter" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
-<symbol id="i-pie" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></symbol>
 <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></symbol>
-<symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></symbol>
 <symbol id="i-trending" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
 <symbol id="i-activity" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
 <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
-<symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 3l1.9 5.6 5.6 1.9-5.6 1.9L11 18l-1.9-5.6L3.500 10.500l5.600-1.900z"/><path d="M19 15v5M16.500 17.500h5"/></symbol>
-<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
 <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
 <symbol id="i-power" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></symbol>
-<symbol id="i-note" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.500-9.500z"/></symbol>
 </defs></svg>
 
 <div class="app">
@@ -665,6 +660,12 @@ function toast(msg, bad) {
   $("#toasts").append(t); setTimeout(() => t.remove(), bad ? 9000 : 4500);
 }
 const fail = e => toast(e.message, true);
+function setMenu(open) {  // the menu slides only when it is opened or closed by hand, not when the window is resized
+  const b = document.body;
+  if (b.classList.contains("menu-open") === open) return;
+  b.classList.add("menu-moving"); b.classList.toggle("menu-open", open);
+  clearTimeout(setMenu.timer); setMenu.timer = setTimeout(() => b.classList.remove("menu-moving"), 400);
+}
 function ask(title, text, ok, no = "Cancel") {
   const d = $("#ask");
   $("h2", d).textContent = title; $("p", d).textContent = tidy(text); $(".primary", d).textContent = ok; $("[value=no]", d).textContent = no;
@@ -929,6 +930,8 @@ async function loadMatches() {
 /* ---------- side widgets ---------- */
 function nextSteps() {
   const st = S.state, sl = rowsFor("shortlist"), t = st.task, out = [];
+  if (st.setup.database === "behind") return [["amber", "refresh", "Update the database", "New features need it; your jobs stay as they are", "Update the database", "migrate"]];
+  if (st.setup.database !== "ok") return [["red", "alert", "The database is not answering", "Start PostgreSQL, then reload this page", "Reload", "reload-page"]];
   if (!st.setup.profile) return [["amber", "upload", "Import your resume", "Jobs are scored against it", "Choose your resume", "resume"]];
   const n = sl.filter(ready).length, nd = sl.filter(r => !r.has_draft).length, na = sl.filter(r => !r.contact_email).length, due = st.due.length;
   if (t && t.running) out.push(["blue", "refresh", `${t.label} is running`, "Its progress shows under the numbers above", "Show output", "v:activity"]);
@@ -1040,7 +1043,9 @@ function renderDetail(keep) {
       </div>
       ${a.follow_up_body ? `<details ${d.due ? "open" : ""}><summary>Follow-up ${a.follow_up_sent_at ? "sent " + esc(day(a.follow_up_sent_at)) : d.due ? "due now" : "for later"}</summary>
         <p><b>${esc(a.follow_up_subject)}</b></p><div class="mail desc">${esc(a.follow_up_body)}</div>
-        ${d.due ? `<div class="acts"><button class="btn" data-act="followup-done">I followed up myself</button></div>` : ""}</details>` : ""}`;
+        ${d.due ? `<div class="acts"><button class="btn" data-act="followup-done">I followed up myself</button></div>` : ""}</details>`
+      : d.due ? `<details open><summary>Follow-up due now</summary><p>No follow-up text is stored for this job. Write to them yourself, then record it here.</p>
+        <div class="acts"><button class="btn" data-act="followup-done">I followed up myself</button></div></details>` : ""}`;
   } else if (s === "shortlisted") {
     mail = `<div class="desk"><div class="sheet"><div class="lines">${toLine}</div>
       <div class="blank"><span>Nothing written yet</span><button class="btn primary" data-act="draft-one">${ic("edit")}Draft the email</button></div></div></div>`;
@@ -1100,7 +1105,7 @@ async function change(path, body, after = true) {
 async function showView(v, init) {
   if (document.body.classList.contains("reading") && !await closeDrawer()) return;
   const changed = init || v !== S.view;
-  S.view = v; S.inited = true; document.body.classList.remove("menu-open");
+  S.view = v; S.inited = true; setMenu(false);
   if (changed) { S.q = ""; $("#tq").value = ""; S.page = 0; S.sort = { key: "", dir: 1 }; S.f = { country: "", score: v === "matches" ? 70 : 0, posted: 0, extra: "" }; }
   const list = LIST.includes(v);
   $("#work").hidden = !list; $("#page").hidden = list;
@@ -1118,7 +1123,10 @@ async function loadPage() {
   try {
     if (v === "insights" || v === "activity") S.insights = await api("/api/insights?days=30");
     if (v === "settings") S.settings = await api("/api/settings");
-  } catch (e) { $("#page").innerHTML = `<div class="card pad"><div class="empty"><h3>Not available yet</h3>${esc(tidy(e.message))}</div></div>`; return; }
+  } catch (e) {
+    if (v !== "activity") { $("#page").innerHTML = `<div class="card pad"><div class="empty"><h3>Not available yet</h3>${esc(tidy(e.message))}</div></div>`; return; }
+    S.insights = { runs: [], unread: tidy(e.message) };  // a task's output must still be readable, for example the first resume import
+  }
   if (S.view === v) renderPage();
 }
 const cardHead = (title, extra = "") => `<div class="chead"><h2>${title}</h2>${extra}</div>`;
@@ -1129,7 +1137,7 @@ function renderPage() {
     el.innerHTML = `<div class="pgrid"><section class="card pad span2">${cardHead(t ? esc(t.label) : "Nothing has run yet")}
         <p class="sub">${t ? (t.running ? "Running now. " : `Finished ${esc(when(t.ended_at))}. `) + "This is what the program reported." : "When you start a search or draft emails, its progress shows here"}</p>
         ${t ? `<pre class="out" id="taskout">${esc(S.lines.join("\n") || "No output yet")}</pre>` : ""}</section>
-      <section class="card pad span2">${cardHead("Past searches")}${runs === null ? '<p class="sub">Loading</p>' : runsTable(runs)}</section></div>`;
+      <section class="card pad span2">${cardHead("Past searches")}${runs === null ? '<p class="sub">Loading</p>' : S.insights.unread ? `<p class="sub" style="margin:0">${esc(S.insights.unread)}</p>` : runsTable(runs)}</section></div>`;
     const out = $("#taskout"); if (out) out.scrollTop = out.scrollHeight;
     if (t && !S.polling && S.lines.length < t.total) api("/api/task?since=0").then(r => { if (r.task && r.task.id === S.taskId && !S.polling) { S.lines = r.task.lines; const o = $("#taskout"); if (o) { o.textContent = S.lines.join("\n"); o.scrollTop = o.scrollHeight; } } }).catch(() => {});
     return;
@@ -1168,7 +1176,8 @@ function renderPage() {
   el.innerHTML = `<div class="pgrid">
     <section class="card pad span2">${cardHead("Setup")}<p class="sub">Keys and passwords live in the <b>.env</b> file in ${esc(g.folder)}. This page never shows or changes them.</p>
       ${row(S.state.setup.database === "ok", "Database", S.state.setup.database === "ok" ? "Up to date" : "Needs attention, see the top of the page")}
-      ${row(!!p, "Resume", p ? `${esc(p.name)}, imported ${esc(day(p.imported))}` : "Not imported yet", `<button class="btn sm" data-act="resume">${ic("upload")}${p ? "Import a newer one" : "Choose your resume"}</button>`)}
+      ${S.state.setup.database !== "ok" ? row(null, "Resume", "Shown once the database is working")
+        : row(!!p, "Resume", p ? `${esc(p.name)}, imported ${esc(day(p.imported))}` : "Not imported yet", `<button class="btn sm" data-act="resume">${ic("upload")}${p ? "Import a newer one" : "Choose your resume"}</button>`)}
       ${row(g.ai.ready, "AI model", g.ai.ready ? `${esc(g.ai.model || "Default model")} (${esc(g.ai.provider)})` : "No API key in .env")}
       ${row(g.browser.ready, "Browser for job sites", g.browser.ready ? esc(cap(g.browser.kind)) : "BROWSERBASE_API_KEY is missing in .env")}
       ${row(g.gmail.ready, "Gmail", g.gmail.ready ? `Sends from ${esc(g.gmail.address)}` : "Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to .env to send from this page")}
@@ -1227,9 +1236,10 @@ const A = {
   stop: async () => { if (await ask("Stop this task?", "What it has already saved is kept. You can start it again later.", "Stop the task")) api("/api/task/stop", {}).catch(fail); },
   dismiss: () => { S.dismissed = S.state.task ? S.state.task.id : 0; renderLive(); },
   reload: async () => { await refresh(); await staleMatches(); toast("Up to date"); },
+  "reload-page": () => location.reload(),
   clear: () => { S.q = ""; $("#tq").value = ""; S.f = { country: "", score: 0, posted: 0, extra: "" }; S.page = 0; renderFilters(); renderList(); },
   "run-menu": () => { $("#runmenu").hidden = !$("#runmenu").hidden; },
-  menu: () => document.body.classList.toggle("menu-open"),
+  menu: () => setMenu(!document.body.classList.contains("menu-open")),
   palette: () => openPalette(),
   add: () => { $("#adddlg").showModal(); $("#addtext").focus(); },
   "close-add": () => $("#adddlg").close(),
@@ -1336,7 +1346,7 @@ document.addEventListener("click", e => {
   const p = t.closest("[data-p]"); if (p) return runPalette(p.dataset.p);
   const act = t.closest("[data-act]");
   if (!act || act.dataset.act !== "run-menu") $("#runmenu").hidden = true;
-  if (act) { if (act.closest(".sidebar") && act.dataset.act !== "menu") document.body.classList.remove("menu-open"); if (!act.disabled) A[act.dataset.act](act); return; }
+  if (act) { if (act.closest(".sidebar") && act.dataset.act !== "menu") setMenu(false); if (!act.disabled) A[act.dataset.act](act); return; }
   const g = t.closest("[data-go]"); if (g) return go(g.dataset.go);
   const pg = t.closest("[data-page]"); if (pg) { if (!pg.disabled) { S.page = +pg.dataset.page; renderList(); } return; }
   const th = t.closest("th[data-sort]"); if (th) return sortBy(th.dataset.sort);
@@ -1373,11 +1383,12 @@ document.addEventListener("keydown", e => {
   }
   if (document.querySelector("dialog[open]")) return;
   if (e.key === "Escape" && document.body.classList.contains("reading")) return closeDrawer();
+  const at = e.target instanceof Element ? e.target : document.body;
   if (e.key === "Enter" || e.key === " ") {
-    if (e.target.matches("tr.row")) { e.preventDefault(); return openJob(+e.target.dataset.job); }
-    if (e.target.matches("th[data-sort]")) { e.preventDefault(); return sortBy(e.target.dataset.sort); }
+    if (at.matches("tr.row")) { e.preventDefault(); return openJob(+at.dataset.job); }
+    if (at.matches("th[data-sort]")) { e.preventDefault(); return sortBy(at.dataset.sort); }
   }
-  if (e.target.matches("input,textarea,select") || !S.state || !LIST.includes(S.view)) return;
+  if (at.matches("input,textarea,select") || !S.state || !LIST.includes(S.view)) return;
   if (e.key === "j") step(1);
   if (e.key === "k") step(-1);
 });
