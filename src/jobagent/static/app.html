@@ -1455,7 +1455,8 @@ document.addEventListener("keydown", e => {
     return;
   }
   if (document.querySelector("dialog[open]")) return;
-  if (e.key === "Escape" && document.body.classList.contains("reading")) return closeDrawer();
+  // Without preventDefault the same key press would also dismiss the "close without saving?" question it opens.
+  if (e.key === "Escape" && document.body.classList.contains("reading")) { e.preventDefault(); return closeDrawer(); }
   const at = e.target instanceof Element ? e.target : document.body;
   if (e.key === "Enter" || e.key === " ") {
     if (at.matches("tr.row")) { e.preventDefault(); return openJob(+at.dataset.job); }
