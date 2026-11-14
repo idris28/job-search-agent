@@ -724,6 +724,7 @@ const grow = root => requestAnimationFrame(() => requestAnimationFrame(() => $$(
 /* ---------- state and chrome ---------- */
 async function refresh() {
   try { S.state = await api("/api/state"); } catch (e) { $("#vsub").textContent = e.message; return; }
+  S.refreshed = Date.now();
   renderChrome(); renderNotices();
   if (!S.inited) await showView(S.view, true);
   else if (LIST.includes(S.view)) { renderList(); renderWidgets(); }
@@ -788,14 +789,43 @@ function renderNotices() {
 async function startTask(body) {
   try {
     const r = await api(body.action === "profile" ? "/api/profile" : "/api/task", body.raw ? undefined : body, body.raw);
-    S.state.task = r.task; S.lines = []; S.taskId = r.task.id; S.wasRunning = true;
-    renderChrome(); if (S.view === "activity") renderPage(); if (LIST.includes(S.view)) renderWidgets(); pollTask();
+    if (r.task.id !== S.taskId) { S.lines = []; S.taskId = r.task.id; }
+    S.state.task = r.task; S.wasRunning = true;
+    renderChrome(); if (S.view === "activity") renderPage(); if (LIST.includes(S.view)) renderWidgets(); if (!S.live) pollTask();
   } catch (e) { fail(e); }
 }
 function trackTask() {
   const t = S.state.task;
   if (t && t.id !== S.taskId) { S.taskId = t.id; S.lines = []; }
-  if (t && t.running && !S.polling) { S.wasRunning = true; pollTask(); }
+  if (t && t.running) { S.wasRunning = true; if (!S.polling && !S.live) pollTask(); }
+}
+function drawOutput() {
+  const out = $("#taskout");
+  if (out) { out.textContent = S.lines.join("\n") || "No output yet"; out.scrollTop = out.scrollHeight; }
+}
+// The program tells the page when the task prints a line or anything stored changes, so the page
+// does not keep asking. If the line cannot be opened or drops, the page goes back to asking.
+function connectFeed() {
+  if (!window.EventSource) return;
+  const es = new EventSource("/api/events?token=" + encodeURIComponent(TOKEN));
+  es.onopen = () => { S.live = true; };
+  es.onerror = () => {
+    S.live = false;
+    if (es.readyState === 2) setTimeout(connectFeed, 15000);  // refused outright: try again later
+    if (S.state) trackTask();
+  };
+  es.addEventListener("task", e => {
+    const { task, lines, from } = JSON.parse(e.data);
+    if (!S.state) return;
+    if (task.id !== S.taskId) { S.taskId = task.id; S.lines = []; }
+    if (from === S.lines.length) S.lines.push(...lines);
+    else if (from > S.lines.length) api("/api/task?since=0").then(r => { if (r.task && r.task.id === S.taskId) { S.lines = r.task.lines; drawOutput(); } }).catch(() => {});
+    S.state.task = task;
+    if (task.running) S.wasRunning = true;
+    renderLive(); drawOutput();
+    if (!task.running) finished(task);
+  });
+  es.addEventListener("changed", () => { clearTimeout(S.nudge); S.nudge = setTimeout(refresh, 250); });
 }
 async function pollTask() {
   if (S.polling) return;
@@ -1441,7 +1471,9 @@ setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark", 
 
 (async () => {
   await refresh();
-  S.timer = setInterval(() => { if (!document.hidden && !S.polling) refresh(); }, 6000);
+  connectFeed();
+  // With the feed open the page is told about changes; it still looks once a minute in case one was missed.
+  S.timer = setInterval(() => { if (!document.hidden && !S.polling && !(S.live && Date.now() - S.refreshed < 60000)) refresh(); }, 6000);
 })();
 </script>
 </body>

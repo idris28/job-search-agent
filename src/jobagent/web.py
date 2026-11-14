@@ -39,6 +39,42 @@ TASKS = ("migrate", "run", "score", "daily", "email", "contacts", "send", "gmail
          "cover-letter", "dedupe", "notify-test", "add", "backup")
 
 
+class Feed:
+    """Lets open pages hear that something changed, instead of asking again every few seconds.
+
+    Two counters: one moves when the running task prints a line or changes state, the other when
+    anything stored changes. A page holds one long request open and is sent an event when either
+    moves.
+    """
+
+    def __init__(self):
+        self._changed = threading.Condition()
+        self.task_seq = 0
+        self.data_seq = 0
+        self.closed = False
+
+    def task_changed(self) -> None:
+        with self._changed:
+            self.task_seq += 1
+            self._changed.notify_all()
+
+    def data_changed(self) -> None:
+        with self._changed:
+            self.data_seq += 1
+            self._changed.notify_all()
+
+    def close(self) -> None:
+        with self._changed:
+            self.closed = True
+            self._changed.notify_all()
+
+    def wait(self, seen: tuple[int, int], timeout: float) -> tuple[int, int]:
+        """Block until a counter differs from `seen`, the feed closes, or `timeout` passes."""
+        with self._changed:
+            self._changed.wait_for(lambda: self.closed or (self.task_seq, self.data_seq) != seen, timeout)
+            return self.task_seq, self.data_seq
+
+
 class TaskRunner:
     """Runs one `jsa` command at a time as a child process and keeps what it prints."""
 
@@ -50,6 +86,7 @@ class TaskRunner:
         self.env = env or {}
         self.command = lambda argv: [sys.executable, "-u", "-m", "jobagent.cli", *argv]
         self.grace_seconds = 15.0  # how long a stopped task may take to tidy up
+        self.on_change = lambda: None  # called when the task starts, prints a line, or ends
 
     def start(self, action: str, label: str, argv: list[str], cleanup=None) -> dict:
         with self._lock:
@@ -64,6 +101,7 @@ class TaskRunner:
                     "exit_code": None, "stopped": False, "lines": [],
                     "started_at": datetime.now(timezone.utc), "ended_at": None}
             self._proc, self.task = proc, task
+        self.on_change()
         threading.Thread(target=self._read, args=(proc, task, cleanup), daemon=True).start()
         return self.snapshot()
 
@@ -71,11 +109,13 @@ class TaskRunner:
         for line in proc.stdout:
             if len(task["lines"]) < MAX_LINES:
                 task["lines"].append(line.rstrip("\n"))
+                self.on_change()
         task["exit_code"] = proc.wait()
         task["ended_at"] = datetime.now(timezone.utc)
         task["running"] = False
         if cleanup:
             cleanup()
+        self.on_change()
 
     def stop(self) -> bool:
         with self._lock:
@@ -89,7 +129,8 @@ class TaskRunner:
             timer = threading.Timer(self.grace_seconds, lambda: proc.poll() is None and proc.kill())
             timer.daemon = True
             timer.start()
-            return True
+        self.on_change()
+        return True
 
     def snapshot(self, since: int | None = None) -> dict | None:
         """The task without its output, or with the lines from `since` on."""
@@ -103,6 +144,11 @@ class TaskRunner:
         if since is not None:
             out["lines"] = lines[since:]
         return out
+
+
+def _plain(o):
+    """Dates and anything else JSON does not know, as text."""
+    return o.isoformat() if hasattr(o, "isoformat") else str(o)
 
 
 def _first_line(e: Exception) -> str:
@@ -126,6 +172,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
     token = secrets.token_urlsafe(24)
     url = settings.database_url
     runner = runner or TaskRunner({"JOBAGENT_CONFIG": config_path} if config_path else None)
+    feed = Feed()
+    runner.on_change = feed.task_changed
 
     def config() -> AgentConfig:
         """config.yaml as it is now, so an edit shows up without restarting the page."""
@@ -483,8 +531,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             self.wfile.write(body)
 
         def _json(self, obj, code: int = 200) -> None:
-            self._send(code, json.dumps(obj, default=lambda o: o.isoformat() if hasattr(o, "isoformat")
-                                        else str(o)).encode("utf-8"), "application/json; charset=utf-8")
+            self._send(code, json.dumps(obj, default=_plain).encode("utf-8"), "application/json; charset=utf-8")
 
         def _allowed(self, *, need_token: bool) -> bool:
             # The Host check stops another site reaching this page through a DNS trick; the token
@@ -508,9 +555,47 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             except Exception as e:  # noqa: BLE001 - show the reason on the page, not a blank error
                 self._json({"error": f"That did not work: {_first_line(e)}"}, 500)
 
+        def _stream(self) -> None:
+            """Server-Sent Events: "task" with the lines printed since the last one, "changed"
+            when something stored changed, and a comment every 15 seconds to keep the line open."""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            seen, task_id, sent = (-1, -1), None, 0
+            try:
+                while not feed.closed:
+                    now = feed.wait(seen, 15)
+                    events = []
+                    t = runner.task
+                    if t is not None and now[0] != seen[0]:
+                        if t["id"] != task_id:
+                            task_id, sent = t["id"], 0
+                        snap = runner.snapshot(sent)
+                        lines = snap.pop("lines")
+                        events.append(("task", {"task": snap, "lines": lines, "from": sent}))
+                        sent += len(lines)
+                    if now[1] != seen[1] and seen[1] != -1:
+                        events.append(("changed", {}))
+                    seen = now
+                    text = "".join(f"event: {name}\ndata: {json.dumps(data, default=_plain)}\n\n" for name, data in events)
+                    self.wfile.write((text or ": still here\n\n").encode("utf-8"))
+                    self.wfile.flush()
+            except OSError:  # the page was closed
+                pass
+
         def do_GET(self):
             parsed = urlparse(self.path)
             q = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+            if parsed.path == "/api/events":  # an EventSource cannot carry a header, so the token is in the link
+                if not self._allowed(need_token=False):
+                    return
+                if not secrets.compare_digest(q.get("token", ""), token):
+                    self.send_error(403)
+                    return
+                self._stream()
+                return
             if parsed.path == "/":
                 if self._allowed(need_token=False):
                     self._send(200, _page(token), "text/html; charset=utf-8")
@@ -559,6 +644,16 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             if path == "/api/profile":
                 self._answer(lambda: {"task": import_resume(self.headers.get("X-Filename") or "", raw)})
                 return
+            if path != "/api/quit":
+                self._changes(path, raw)
+                feed.data_changed()  # other open pages, and this one, hear that something may have changed
+                return
+            self._json({"message": "The page has stopped. Open Job Search again to start it."})
+            runner.stop()
+            feed.close()
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
+
+        def _changes(self, path: str, raw: bytes) -> None:
             try:
                 body = json.loads(raw or b"{}")
                 if not isinstance(body, dict):
@@ -570,10 +665,6 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 self._answer(lambda: {"task": start_task(body)})
             elif path == "/api/task/stop":
                 self._answer(lambda: {"stopped": runner.stop()})
-            elif path == "/api/quit":
-                self._json({"message": "The page has stopped. Open Job Search again to start it."})
-                runner.stop()
-                threading.Thread(target=self.server.shutdown, daemon=True).start()
             elif path in ("/api/status", "/api/note", "/api/draft", "/api/send", "/api/followup-done", "/api/contact", "/api/hr-contacts", "/api/delete",
                           "/api/schedule", "/api/template", "/api/config"):
                 self._answer(lambda: change(path, body))
@@ -587,4 +678,5 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
     server.daemon_threads = True
     server.token = token
     server.runner = runner
+    server.feed = feed
     return server
