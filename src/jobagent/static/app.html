@@ -195,6 +195,7 @@ table{width:100%;border-collapse:collapse}
 table.jobs{table-layout:fixed}
 table.jobs th:nth-child(2){width:22%}table.jobs th:nth-child(3){width:80px}table.jobs th:nth-child(4){width:96px}table.jobs th:nth-child(5){width:168px}table.jobs.sent th:nth-child(5){width:208px}
 table.jobs td{overflow:hidden}
+table.jobs.hr th:nth-child(3),table.jobs.hr td:nth-child(3),table.jobs.hr th:nth-child(4),table.jobs.hr td:nth-child(4){display:none}
 th{height:36px;padding:0 20px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);text-align:left;font-size:12px;font-weight:400;color:var(--t3);white-space:nowrap;user-select:none}
 th[data-sort]{cursor:pointer}
 th[data-sort]:hover{color:var(--t1)}
@@ -881,6 +882,7 @@ function renderList(force) {
   $("#tcount").textContent = rows.length === all.length ? all.length : `${rows.length} of ${all.length}`;
   $("#thlast").textContent = S.view === "shortlist" ? "Next step" : "Status";
   $("table.jobs").classList.toggle("sent", S.view !== "shortlist");
+  $("table.jobs").classList.toggle("hr", S.f.extra === "general" && S.view !== "matches");  // an HR address has no score or posting date
   let tb = "", hint = "";
   if (S.view === "shortlist") {
     tb = `<button class="btn sm" data-act="draft-all">${ic("edit")}Draft emails (${nd})</button><button class="btn sm" data-act="contacts-all">${ic("at")}Look for addresses (${na})</button>
@@ -898,7 +900,7 @@ function renderList(force) {
   const body = $("#tbody");
   if (S.view === "matches" && S.matches === null) body.innerHTML = `<tr><td colspan="5"><div class="empty">Loading matches</div></td></tr>`;
   else body.innerHTML = slice.map(r => `<tr class="row" data-job="${r.job_id}" tabindex="0" aria-selected="${r.job_id === S.sel}">
-      <td><span class="jt"><b>${esc(rowName(r)[0])}</b><small>${esc(rowName(r)[1])}</small></span></td>
+      <td><span class="jt" title="${esc(rowName(r).join(", "))}"><b>${esc(rowName(r)[0])}</b><small>${esc(rowName(r)[1])}</small></span></td>
       <td class="loc">${esc(r.location || "Not given")}</td>
       <td>${r.score == null ? '<span class="faint">None</span>' : `<span class="sc ${tier(r.score)}"><b>${r.score}</b><span class="bar"><u style="width:${r.score}%"></u></span></span>`}</td>
       <td class="nw">${esc(ago(r.posted_at)) || '<span class="faint">Not shown</span>'}</td>
