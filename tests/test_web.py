@@ -160,6 +160,50 @@ def test_send_from_the_page_and_follow_up(conn, monkeypatch, tmp_path):
         page.close()
 
 
+def test_an_email_goes_a_second_time_only_when_asked_for_that_one_job(conn, monkeypatch, tmp_path):
+    pid, jid = seed(conn)
+    _, never = seed(conn, title="Backend Dev")
+    for j in (jid, never):
+        db.save_outreach(conn, pid, j, subject="Java Dev", body="Dear Team", recruiter_name=None,
+                         contact_email="hr@acme.ae", still_open=True)
+    cv = tmp_path / "cv.pdf"
+    cv.write_bytes(b"%PDF fake")
+    sent = []
+    monkeypatch.setattr("jobagent.mailer.send_messages", lambda a, p, msgs: sent.extend(m["To"] for m in msgs))
+    page = Page(Settings(database_url=TEST_DB, gmail_address="me@gmail.com", gmail_app_password="p"),
+                AgentConfig(outreach=OutreachPrefs(resume_path=str(cv))))
+    app = lambda: db.get_application(conn, pid, jid)  # noqa: E731
+    try:
+        assert page.call("/api/note", {"job_id": jid, "note": "The recruiter asked for a call on Monday"})[0] == 200
+        assert "Email sent to hr@acme.ae." in page.call("/api/send", {"job_id": jid})[1]["message"]
+        # What the program records about the send goes to the history, not over the person's own notes.
+        assert app()["notes"] == "The recruiter asked for a call on Monday"
+        assert page.call("/api/status", {"job_id": jid, "status": "interviewing"})[0] == 200
+        assert app()["notes"] == "The recruiter asked for a call on Monday"
+        db.mark_follow_up_sent(conn, pid, jid)
+        first = app()["outreach_sent_at"]
+
+        for not_asked in ({}, {"again": "yes"}, {"again": 1}):  # only a plain yes counts
+            assert "so it was not emailed again" in page.call("/api/send", {"job_id": jid, **not_asked})[1]["error"]
+        assert sent == ["hr@acme.ae"]
+
+        assert "Email sent to hr@acme.ae." in page.call("/api/send", {"job_id": jid, "again": True})[1]["message"]
+        assert sent == ["hr@acme.ae", "hr@acme.ae"]
+        after = app()
+        assert after["status"] == "applied" and after["outreach_sent_at"] > first
+        assert after["follow_up_sent_at"] is None  # the follow-up starts over with the new email
+        assert after["notes"] == "The recruiter asked for a call on Monday"
+        notes = [e["note"] for e in page.call(f"/api/job?id={jid}")[1]["events"]]
+        assert notes.count("emailed hr@acme.ae") == 1 and notes.count("emailed hr@acme.ae again") == 1
+
+        # A job that was never emailed has nothing to send again, and stays unsent.
+        code, said = page.call("/api/send", {"job_id": never, "again": True})
+        assert code == 400 and said["error"] == "This job has not been emailed yet, so there is nothing to send again."
+        assert len(sent) == 2 and db.get_application(conn, pid, never)["outreach_sent_at"] is None
+    finally:
+        page.close()
+
+
 def test_a_database_that_is_behind_is_reported_and_updated_from_the_page(conn, page):
     conn.execute("DELETE FROM schema_migrations WHERE name = '006_contacts_salary.sql'")
     st = page.call("/api/state")[1]

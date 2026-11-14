@@ -481,7 +481,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             if path == "/api/status":
                 if body.get("status") not in db.APPLICATION_STATUSES:
                     raise ActionError("That status is not known.")
-                db.set_application_status(conn, pid, jid, body["status"], "set on the web page")
+                db.set_application_status(conn, pid, jid, body["status"], "set on the web page", history_only=True)
                 return {"message": f"#{jid} marked {body['status']}."}
             if path == "/api/note":
                 db.set_application_status_if_missing(conn, pid, jid)
@@ -497,7 +497,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 return {"message": "Draft saved."}
             if path == "/api/send":
                 to = send_stored_draft(conn, settings, config().outreach, pid, jid,
-                                       allow_general=bool(body.get("general")))
+                                       allow_general=bool(body.get("general")), again=body.get("again") is True)
                 left = send_slots(conn, pid, config().outreach)
                 return {"message": f"Email sent to {to}." + (f" {left} more can go out today." if left < 100 else "")}
             if path == "/api/contact":

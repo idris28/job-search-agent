@@ -160,12 +160,19 @@ unfilled, the posting looked closed, or the draft names a company the posting di
 
 **Send email** shows only for a shortlisted job with a draft and an address that has not been
 emailed yet. When it is not there, the line under the buttons says why: there is no address yet,
-the job is marked applied or set aside, or the email already went. A job is emailed once, and the
-round mark with a date at the top right of the sheet is the day it was sent. What follows a sent
-email is its follow-up, on the **Follow-ups** screen when it is due.
+the job is marked applied or set aside, or the email already went. The round mark with a date at
+the top right of the sheet is the day it was sent. What follows a sent email is its follow-up, on
+the **Follow-ups** screen when it is due.
+
+By itself a job is emailed once. To write to the same address a second time, for example because
+the recruiter posted the role again, open the job and click **Send again**. It asks first, naming
+the address and the day the first email went, then sends the letter as it is now and records the
+new date; the follow-up is counted from that date. Use **Write it again** beforehand if the letter
+should be redone from the new post.
 
 Pasting a post you added before does not make a second job: it opens the one already stored. If
-its email has gone, the task says so, with the date and the address, and nothing is sent again.
+its email has gone, the task says so, with the date and the address, and nothing is sent by
+itself; **Send again** in the job's panel is there if you want a second email.
 
 When a posting does not name the company (a pasted post, or a "Confidential Company" listing), the
 email and cover letter leave the name out: "applying for the Java Developer position", with no
@@ -192,7 +199,8 @@ email and cover letter leave the name out: "applying for the Java Developer posi
 - Emails are sent exactly as saved, including your edits.
 - Only so many emails go out per day, with a pause between them. Both numbers can be changed under
   **Settings**, **Search and limits**.
-- A job is never emailed twice: once sent, it is marked applied.
+- **Send ready emails** never writes to the same job twice: once sent, a job is marked applied. Only
+  **Send again**, inside one job's panel, sends a second time, and it asks first.
 - If only a general inbox (such as info@) was found, **Send ready emails** leaves that job out. You can
   still open the job and send it yourself.
 
@@ -225,7 +233,7 @@ post) runs as a task.
 | Look for addresses | Yes | No |
 | Write a cover letter | Yes, a little | No |
 | Choose your resume | Yes, a little | No |
-| Send ready emails, Send email, Send follow-ups | No | Yes, to recruiters |
+| Send ready emails, Send email, Send again, Send follow-ups | No | Yes, to recruiters |
 | Save drafts to Gmail | No | Saves drafts in your Gmail |
 | Send a test notification | No | Yes, to you |
 | Everything else (status, notes, saving a draft, deleting an entry, filters, Insights, digest, merging duplicates, changing settings, switching a site, backing up) | No | No |

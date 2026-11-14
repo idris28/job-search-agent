@@ -208,7 +208,8 @@ email (paste, then Ctrl-D, or pass a text file). It reads the role, company and 
 scores the job and shortlists it; `jsa email <id> --send` then emails that address.
 
 **Sending.** `jsa email --send` sends each ready email from your Gmail with the CV from
-`outreach.resume_path` attached, then marks the job applied so it is never emailed twice.
+`outreach.resume_path` attached, then marks the job applied so it is not emailed twice by accident (a deliberate second email goes
+from the website, with **Send again** in that job's panel).
 `jsa email --gmail-drafts` saves them to Gmail Drafts instead, for you to review and send. Both need
 `GMAIL_ADDRESS` and `GMAIL_APP_PASSWORD` (a Google app password) in `.env`. An email is ready only
 when the posting shows a recipient address, is still open, and no placeholder is unfilled; other

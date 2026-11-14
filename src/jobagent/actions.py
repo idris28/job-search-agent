@@ -122,13 +122,17 @@ def send_slots(conn, profile_id: int, outreach) -> int:
 
 
 def stored_draft_message(conn, settings, outreach, profile_id: int, job_id: int, *,
-                         allow_general: bool = False, need_cv: bool = True):
+                         allow_general: bool = False, need_cv: bool = True, again: bool = False):
     """Build the email for one job from its saved draft, edits included.
-    Returns (message, address)."""
+    Returns (message, address). `again` is for a job that was already emailed and that the person
+    asked, for this one job, to write to once more; without it a job is never emailed twice."""
     job, app = db.get_job(conn, job_id), db.get_application(conn, profile_id, job_id)
     if not job or not app or not (app["outreach_subject"] and app["outreach_body"]):
         raise ActionError("There is no draft for this job yet. Draft the email first.")
-    if app["status"] != "shortlisted":
+    if again:
+        if not app["outreach_sent_at"]:
+            raise ActionError("This job has not been emailed yet, so there is nothing to send again.")
+    elif app["status"] != "shortlisted":
         raise ActionError(f"This job is already marked {app['status']}, so it was not emailed again.")
     if not app["contact_email"]:
         raise ActionError("No email address is known for this job. Look for one, or apply on the job site.")
@@ -148,13 +152,15 @@ def stored_draft_message(conn, settings, outreach, profile_id: int, job_id: int,
 
 
 def send_stored_draft(conn, settings, outreach, profile_id: int, job_id: int, *,
-                      allow_general: bool = False) -> str:
-    """Send the draft saved for one job from the user's Gmail. Returns the address it went to."""
+                      allow_general: bool = False, again: bool = False) -> str:
+    """Send the draft saved for one job from the user's Gmail. Returns the address it went to.
+    `again` sends it a second time on purpose (see stored_draft_message)."""
     msg, to = stored_draft_message(conn, settings, outreach, profile_id, job_id,
-                                   allow_general=allow_general)
+                                   allow_general=allow_general, again=again)
     if send_slots(conn, profile_id, outreach) <= 0:
         raise ActionError(f"The daily limit of {outreach.max_sends_per_day} emails has been reached.")
     mailer.send_messages(settings.gmail_address, settings.gmail_app_password, [msg])
-    db.set_application_status(conn, profile_id, job_id, "applied", f"emailed {to}")
-    db.mark_outreach_sent(conn, profile_id, job_id)
+    db.set_application_status(conn, profile_id, job_id, "applied", f"emailed {to}{' again' if again else ''}",
+                              history_only=True)
+    db.mark_outreach_sent(conn, profile_id, job_id, again=again)
     return to

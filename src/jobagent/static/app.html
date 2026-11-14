@@ -1087,7 +1087,9 @@ function renderDetail(keep) {
     const canSend = s === "shortlisted" && a.contact_email && !a.outreach_sent_at;
     // Where the Send button would be, say why it is not there.
     const after = a.follow_up_sent_at ? "; its follow-up has gone too" : d.due ? "; its follow-up is due now" : s === "applied" ? "; its follow-up goes out from the Follow-ups screen when it is due" : "";
-    const whyNot = canSend ? "" : sentAt ? `Sent ${when(sentAt)}. A job is emailed once${after}.`
+    // A job is emailed once by itself. Writing to it a second time is possible, one job at a time, on purpose.
+    const canResend = sentAt && a.contact_email;
+    const whyNot = canSend ? "" : sentAt ? `Sent ${when(sentAt)}${after}. ${canResend ? "Send again writes to the same address once more." : "Add an address in the To line to send it again."}`
       : s !== "shortlisted" ? `${s ? "Marked " + (STATUS_L[s] || s).toLowerCase() : "Not on your shortlist"}, so this email is not sent. Set the status to Shortlisted to send it.`
       : "Add an address in the To line to send this email";
     mail = `${a.unfilled.length ? `<p><span class="tag c-red">Fill in before sending: ${esc(a.unfilled.join(", "))}</span></p>` : ""}
@@ -1101,6 +1103,7 @@ function renderDetail(keep) {
       <div class="acts">
         <button class="btn" data-act="save-draft">Save draft</button>
         ${canSend ? `<button class="btn primary" data-act="send-one">${ic("send")}Send email</button>` : ""}
+        ${canResend ? `<button class="btn" data-act="send-again">${ic("send")}Send again</button>` : ""}
         <button class="btn ghost" data-act="draft-one">Write it again</button>
       </div>
       ${whyNot ? `<p class="faint" id="nosend">${esc(whyNot)}</p>` : ""}
@@ -1354,6 +1357,9 @@ const A = {
   "send-one": async () => { const a = S.detail.application;
     if (S.dirty && !await change("/api/draft", { job_id: S.sel, subject: $("#subj").value, body: $("#body").value }, false)) return;
     if (await ask("Send this email now?", `It goes from your Gmail to ${a.contact_email} with your CV attached.`, "Send email")) change("/api/send", { job_id: S.sel, general: a.contact_kind === "general" }); },
+  "send-again": async () => { const a = S.detail.application;
+    if (S.dirty && !await change("/api/draft", { job_id: S.sel, subject: $("#subj").value, body: $("#body").value }, false)) return;
+    if (await ask("Send this email again?", `It already went on ${when(a.outreach_sent_at)}. This sends the letter as it is now a second time, to ${a.contact_email}, with your CV attached.`, "Send again")) change("/api/send", { job_id: S.sel, general: a.contact_kind === "general", again: true }); },
   "save-note": async () => { const note = $("#note").value; await keepDraft(); change("/api/note", { job_id: S.sel, note }); },
   "save-addr": async () => { const email = $("#addr").value.trim(); await keepDraft(); change("/api/contact", { job_id: S.sel, email }); },
   "followup-done": () => change("/api/followup-done", { job_id: S.sel }),

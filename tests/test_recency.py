@@ -98,8 +98,8 @@ def test_a_post_pasted_again_after_its_email_went_says_so_and_offers_no_second_e
     cli.cmd_add(args, Settings(database_url=TEST_DB), read=post)
     out = capsys.readouterr().out
     assert "Updated job #1" in out and "You added this post before, on " in out
-    assert "Its email went to hr@acme.ae on " in out and "so nothing is sent again. Its follow-up is due from " in out
-    assert "Next:" not in out and "--send" not in out
+    assert "Its email went to hr@acme.ae on " in out and "so nothing is sent again by itself. Its follow-up is due from " in out
+    assert "use Send again" in out and "Next:" not in out and "--send" not in out
     assert conn.execute("SELECT count(*) AS n FROM jobs").fetchone()["n"] == 1
     assert db.get_application(conn, pid, 1)["status"] == "applied"  # pasting it again does not move it back
 

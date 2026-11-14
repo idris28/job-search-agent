@@ -119,7 +119,7 @@ Good to know:
 | `jsa score` | Scores stored jobs that were never scored, without reading any site again. A run scores at most `matching.max_jobs_to_score` jobs, so the rest wait; this picks them up, newest first. On the website: **Score waiting jobs**. |
 | `jsa score --batch` | The same, sent as one batch: half the price, with the answers coming later, usually within the hour. Claude only. If they are not back within `matching.batch_wait_minutes` (120), the next search picks them up; the jobs are not scored twice. |
 | `jsa add` | Adds a job from text you paste, such as a LinkedIn post asking for CVs by email. Paste the text, press Enter, then Ctrl-D. It reads the role, company and email address, scores the job and shortlists it. |
-| `jsa add`, for a post you added before | Updates the job already stored instead of adding a second one. If its email has gone, it says when and to which address, and offers no second email. |
+| `jsa add`, for a post you added before | Updates the job already stored instead of adding a second one. If its email has gone, it says when and to which address, and sends nothing by itself; a second email goes only from the website, with **Send again** in that job's panel. |
 | `jsa add post.txt --url <link>` | The same, from a saved text file, keeping the post's link. |
 | `jsa add-contacts hr.txt --country "Saudi Arabia"` | Adds HR addresses as general applications: one address per line, optionally with the employer's name (`Acme Gulf, hr@acme.sa`). Nothing is scored or sent. Each lands on the shortlist; `jsa email` then drafts it from `general_email_template.txt`. On the website: **Add HR addresses**. |
 

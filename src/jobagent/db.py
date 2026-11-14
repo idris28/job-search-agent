@@ -381,9 +381,15 @@ def unscored_jobs(conn, profile_id: int, seen_within_days: int, *, brief: bool =
 
 
 def set_application_status(conn, profile_id: int, job_id: int, status: str,
-                           note: str | None = None) -> int:
+                           note: str | None = None, *, history_only: bool = False) -> int:
+    """Set a job's status and record the change, with `note`, in its history.
+
+    A note the person gave (`jsa status 42 applied --note ...`) also becomes the job's notes. A
+    line the program writes ("emailed ...", "set on the web page") is passed with `history_only`,
+    so it never replaces what the person wrote in the Notes box."""
     if status not in APPLICATION_STATUSES:
         raise ValueError(f"status must be one of {', '.join(APPLICATION_STATUSES)}")
+    kept = None if history_only else note
     with conn.transaction():
         prev = conn.execute(
             "SELECT id, status FROM applications WHERE profile_id = %s AND job_id = %s FOR UPDATE",
@@ -397,14 +403,14 @@ def set_application_status(conn, profile_id: int, job_id: int, status: str,
                                          THEN now() ELSE applied_at END,
                        notes = COALESCE(%s, notes)
                    WHERE id = %s""",
-                (status, status, note, app_id),
+                (status, status, kept, app_id),
             )
             from_status = prev["status"]
         else:
             app_id = conn.execute(
                 """INSERT INTO applications (profile_id, job_id, status, notes, applied_at)
                    VALUES (%s, %s, %s, %s, CASE WHEN %s = 'applied' THEN now() END) RETURNING id""",
-                (profile_id, job_id, status, note, status),
+                (profile_id, job_id, status, kept, status),
             ).fetchone()["id"]
             from_status = None
         conn.execute(
@@ -431,7 +437,7 @@ def set_application_status_if_missing(conn, profile_id: int, job_id: int,
     ).fetchone()
     if exists:
         return False
-    set_application_status(conn, profile_id, job_id, "shortlisted", note)
+    set_application_status(conn, profile_id, job_id, "shortlisted", note, history_only=True)
     return True
 
 
@@ -493,9 +499,13 @@ def is_other_listing(conn, job_id: int, job: JobPosting) -> bool:
 # --- sending, follow-ups and the dashboard ------------------------------------
 
 
-def mark_outreach_sent(conn, profile_id: int, job_id: int) -> None:
-    conn.execute("UPDATE applications SET outreach_sent_at = now() WHERE profile_id = %s AND job_id = %s",
-                 (profile_id, job_id))
+def mark_outreach_sent(conn, profile_id: int, job_id: int, *, again: bool = False) -> None:
+    """Record that the job's email went now. Sent `again`, its follow-up starts over: the one that
+    belonged to the first email no longer counts."""
+    conn.execute(
+        """UPDATE applications SET outreach_sent_at = now(),
+               follow_up_sent_at = CASE WHEN %s THEN NULL ELSE follow_up_sent_at END
+           WHERE profile_id = %s AND job_id = %s""", (again, profile_id, job_id))
 
 
 def mark_follow_up_sent(conn, profile_id: int, job_id: int) -> None:

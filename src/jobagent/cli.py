@@ -463,7 +463,7 @@ def _deliver(items, settings, outreach, *, send: bool, general: bool = False) ->
                     time.sleep(outreach.send_pause_seconds)
                 mailer.send_messages(settings.gmail_address, settings.gmail_app_password, [msg])
                 db.set_application_status(conn, pid, it["job"]["id"], "applied",
-                                          f"emailed {it['email'].contact_email}")
+                                          f"emailed {it['email'].contact_email}", history_only=True)
                 db.mark_outreach_sent(conn, pid, it["job"]["id"])
                 print(f"  sent: #{it['job']['id']} to {it['email'].contact_email} (CV: {cv.name})")
             print(f"Sent {len(built)} email(s) from {settings.gmail_address}. A follow-up is due in "
@@ -706,7 +706,7 @@ def cmd_apply(args, settings, *, open_url=None, ask=input):
             if answer == "q":
                 break
             if answer == "y":
-                db.set_application_status(conn, pid, j["id"], "applied", "applied on the job site")
+                db.set_application_status(conn, pid, j["id"], "applied", "applied on the job site", history_only=True)
                 applied += 1
             elif answer == "s":
                 db.set_application_status(conn, pid, j["id"], "skipped")
@@ -747,7 +747,8 @@ def cmd_add(args, settings, *, read=None):
                      if app.get("status") == "applied" else "")
         print(f"You added this post before{', on ' + day(first_seen) if first_seen else ''}. Its email went to "
               f"{app.get('contact_email') or 'the recruiter'} on {day(sent)} at {sent.astimezone():%H:%M}, "
-              f"so nothing is sent again. {follow_up}".rstrip())
+              f"so nothing is sent again by itself. {follow_up}".rstrip())
+        print("To write to them once more, open the job on the website and use Send again.")
     elif found.contact_email:
         print(f"Applications go to {found.contact_email}. Next: jsa email {job_id} --gmail-drafts"
               f"   (or --send)")

@@ -312,18 +312,30 @@ def test_a_job_panel_says_why_an_email_cannot_be_sent(conn, open_site):
 
     site.show("progress")
     page.locator(f'tr.row[data-job="{ids[2]}"]').click()  # already emailed
-    expect(why).to_contain_text("A job is emailed once; its follow-up goes out from the Follow-ups screen when it is due.")
+    expect(why).to_contain_text("; its follow-up goes out from the Follow-ups screen when it is due. Send again writes to the same address once more.")
     expect(why).to_contain_text("Sent ")
     expect(send).to_have_count(0)
+    # A second email is possible, for this one job, and only after saying yes to a clear question.
+    again = panel.locator('[data-act="send-again"]')
+    expect(again).to_have_text("Send again")
+    again.click()
+    expect(page.locator("#ask h2")).to_have_text("Send this email again?")
+    expect(page.locator("#ask p")).to_contain_text("to talent.acquisition@riverbank-mobility.example, with your CV attached")
+    page.locator('#ask [value="no"]').click()
+    again.click()
+    site.confirm("Send this email again?", "Send again")
+    site.toast("Gmail is not set up", bad=True)  # it got as far as sending: this test copy has no Gmail
     panel.locator("#setstatus").select_option("skipped")
-    expect(why).to_contain_text("A job is emailed once.")  # set aside: no follow-up is promised
+    expect(why).not_to_contain_text("follow-up")  # set aside: no follow-up is promised
+    expect(again).to_be_visible()
     page.keyboard.press("Escape")
 
     site.show("shortlist")
     page.locator(f'tr.row[data-job="{ids[0]}"]').click()
     panel.locator('[data-act="status"][data-to="skipped"]').click()
     expect(why).to_have_text("Marked skipped, so this email is not sent. Set the status to Shortlisted to send it.")
-    assert site.refusals() == 0
+    expect(panel.locator('[data-act="send-again"]')).to_have_count(0)  # never sent, so nothing to send again
+    assert site.refusals() == 1
 
 
 def test_hr_addresses_are_added_listed_and_can_be_deleted(conn, open_site):

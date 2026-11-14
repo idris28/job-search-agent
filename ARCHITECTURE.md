@@ -222,6 +222,9 @@ Not in the diagram:
   the token limit; what is left waits for the next run.
 - **Nothing reaches a recruiter by accident.** A draft is saved before delivery is attempted,
   delivery happens only with `--gmail-drafts` or `--send`, and sending stops at the daily cap.
+  A job is emailed once; a second email needs **Send again** on that one job, after a question
+  that names the address and the first date. What the program records about a send or a status
+  change goes to the job's history and never over the notes the person wrote.
 - **Addresses are found, never guessed.** `jsa contacts` asks the AI to search, but an address is
   stored only after `contacts.py` fetches the page itself and finds the address printed there.
 - **A run always gets an end.** A terminate signal is handled like Ctrl-C, so a stopped run
