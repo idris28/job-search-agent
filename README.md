@@ -75,8 +75,9 @@ Everything lives in `config.yaml` (see `config.example.yaml`):
 - `matching.max_jobs_to_score` caps LLM scoring calls per run.
 - `matching.prescreen_model` (empty, so off) names a cheaper model that takes a quick first look at
   each job; only the jobs it does not rule out get the full scoring.
+- `matching.reader_model` (empty, so off) names a cheaper model that reads the job-site pages.
 - `matching.batch_scoring` (off) makes `jsa daily` send its scoring as one batch at half price.
-  Both are described under "Cheaper scoring" below.
+  All three are described under "Spending less on AI" below.
 
 Most of these can also be changed on the website, under Settings: **Search and limits**, and
 **Sites** to switch a job site on or off. The page never rewrites `config.yaml`. What you change
@@ -140,7 +141,7 @@ sites are refused. General inboxes are stored but not emailed without `--general
 **Reports.** `jsa gaps` counts the skills most often missing across scored jobs. `jsa progress`
 summarises the week and shows which sources deliver. `jsa dedupe [--apply]` merges jobs stored twice.
 
-**Cheaper scoring.** Two settings, both off until you switch them on:
+**Spending less on AI.** Three settings, all off until you switch them on:
 
 - *A quick first check.* Set `matching.prescreen_model` to a cheaper model (for Claude,
   `claude-haiku-5-5`). It reads each job first and rules out the clear misses: another profession,
@@ -148,6 +149,10 @@ summarises the week and shows which sources deliver. `jsa dedupe [--apply]` merg
   and a summary starting "Quick check:", so they are not looked at again. Every other job, and any
   job the check failed on, gets the full scoring as before. Both models count toward
   `matching.max_tokens_per_run`.
+- *A cheaper page reader.* Set `matching.reader_model` the same way. That model turns each job-site
+  page into a list of jobs, which is mechanical work and takes a quarter to half of a run's tokens;
+  scoring and emails keep the main model. A page it cannot read (a mistyped model name, an outage)
+  is read by the main model instead, with a warning in the run's log, so no site is lost.
 - *Batch scoring.* `jsa score --batch`, or `matching.batch_scoring: true` for `jsa daily`, sends the
   scoring requests as one batch (Claude only). A batch costs half and is answered later, usually
   within the hour. The run waits up to `matching.batch_wait_minutes` (120). If the answers are not

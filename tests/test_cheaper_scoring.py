@@ -258,3 +258,115 @@ def test_both_are_off_until_switched_on_in_the_settings(tmp_path):
     settings = Settings(anthropic_api_key="test-key", llm_provider="anthropic", llm_model="claude-sonnet-5-5")
     assert make_llm(settings).model == "claude-sonnet-5-5"
     assert make_llm(settings, chosen.prescreen_model).model == "claude-haiku-5-5"
+
+
+# --- a cheaper model for reading job-site pages ---
+
+BOARD = "https://board.example.com/java-jobs"
+BOARD_LINKS = [{"href": "https://board.example.com/jobs/1", "text": "Senior Java Engineer"},
+               {"href": "https://board.example.com/jobs/2", "text": "Backend Engineer"}]
+BOARD_LISTINGS = [{"title": "Senior Java Engineer", "url": "https://board.example.com/jobs/1", "company": "Acme", "location": "Dubai"},
+                  {"title": "Backend Engineer", "url": "https://board.example.com/jobs/2", "company": "Acme", "location": "Dubai"}]
+
+
+def board_cfg():
+    from jobagent.config import AgentConfig, MatchingPrefs, SourceConfig
+
+    return AgentConfig(search=SearchPrefs(locations=["Dubai"], include_title_keywords=["java", "backend"]),
+                       matching=MatchingPrefs(shortlist_min_score=75),
+                       sources=[SourceConfig(kind="generic", name="Board", urls=[BOARD])])
+
+
+def board_browser():
+    from jobagent.browser import PageContent
+
+    return FakeBrowser({BOARD: PageContent(BOARD, "Jobs", "Senior Java Engineer\nBackend Engineer", BOARD_LINKS),
+                        "https://board.example.com/jobs/1": PageContent("u1", "", "Java and Spring Boot in Dubai.", []),
+                        "https://board.example.com/jobs/2": PageContent("u2", "", "Backend services in Dubai.", [])})
+
+
+class PageReader(FakeLLM):
+    """The cheaper model: it reads pages, and must never be asked to score."""
+
+    model = "cheap-model"
+
+    def __init__(self, listings=None, broken=False):
+        super().__init__(listings=listings)
+        self.broken, self.pages_read = broken, []
+
+    def extract_listings(self, text, links, url):
+        self.pages_read.append(url)
+        if self.broken:
+            raise RuntimeError("model not found")
+        self.tokens_used += 40
+        return super().extract_listings(text, links, url)
+
+    def score_job(self, profile, prefs, job):
+        raise AssertionError("the page reader was asked to score a job")
+
+
+class MainModel(FakeLLM):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.pages_read = []
+
+    def extract_listings(self, text, links, url):
+        self.pages_read.append(url)
+        self.tokens_used += 500
+        return super().extract_listings(text, links, url)
+
+
+def test_a_cheaper_model_reads_the_job_site_pages_and_the_main_one_scores(conn):
+    db.save_profile(conn, "Alex", "resume", {})
+    main, reader = MainModel(scores={"Senior Java Engineer": 90}), PageReader(listings=BOARD_LISTINGS)
+    s = run_agent(conn, board_cfg(), main, board_browser(), http=mock_http({}), reader=reader)
+
+    assert reader.pages_read == [BOARD] and main.pages_read == []
+    assert sorted(main.scored_titles) == ["Backend Engineer", "Senior Java Engineer"]
+    assert (s.status, s.found, s.scored, s.shortlisted) == ("succeeded", 2, 2, 1)
+    assert s.tokens == 200 + 40  # both models count toward the search's total and its budget
+    said = [r["message"] for r in conn.execute("SELECT message FROM run_events ORDER BY id").fetchall()]
+    assert "Job-site pages are read by cheap-model" in said
+
+    # Scoring stored jobs reads no page, so the reader is not mentioned or used.
+    again = PageReader(listings=BOARD_LISTINGS)
+    run_agent(conn, board_cfg(), MainModel(), None, http=mock_http({}), collect=False, reader=again)
+    assert again.pages_read == []
+
+
+def test_a_page_the_cheaper_model_cannot_read_goes_to_the_main_model(conn):
+    db.save_profile(conn, "Alex", "resume", {})
+    main, reader = MainModel(listings=BOARD_LISTINGS), PageReader(broken=True)  # for example a mistyped model name
+    s = run_agent(conn, board_cfg(), main, board_browser(), http=mock_http({}), reader=reader)
+
+    assert reader.pages_read == [BOARD] and main.pages_read == [BOARD]
+    assert (s.status, s.found, s.scored, s.source_errors) == ("succeeded", 2, 2, {})  # the site is not lost
+    warned = conn.execute("SELECT message FROM run_events WHERE level = 'warning'").fetchall()
+    assert [w["message"] for w in warned] == [f"cheap-model could not read {BOARD}: model not found. The main model read it instead"]
+
+
+def test_the_page_reader_is_a_setting_and_runs_on_its_own_model(tmp_path):
+    from jobagent import cli
+    from jobagent.config import AgentConfig, Settings, read_settings, write_settings
+
+    f = tmp_path / "config.yaml"
+    f.write_text("search:\n  roles: [Java Engineer]\n")
+    settings = Settings(anthropic_api_key="test-key", llm_provider="anthropic", llm_model="claude-sonnet-5-5")
+    assert AgentConfig.load(f).matching.reader_model == "" and cli._reader(settings, AgentConfig.load(f)) is None
+
+    write_settings(f, {"matching.reader_model": "claude-haiku-5-5"})
+    cfg = AgentConfig.load(f)
+    assert cfg.matching.reader_model == "claude-haiku-5-5"
+    assert {x["key"]: x for x in read_settings(f)["fields"]}["matching.reader_model"]["changed"]
+    assert cli._reader(settings, cfg).model == "claude-haiku-5-5" and cli._screen(settings, cfg) is None
+
+    # What the real library sends when the cheaper model reads a page.
+    seen = {}
+
+    def handler(request):
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(200, json=message(json.dumps({"listings": BOARD_LISTINGS[:1]})))
+
+    found = claude(handler, model="claude-haiku-5-5").extract_listings("Senior Java Engineer", BOARD_LINKS, BOARD)
+    assert [x.title for x in found.listings] == ["Senior Java Engineer"]
+    assert seen["body"]["model"] == "claude-haiku-5-5" and BOARD in seen["body"]["messages"][0]["content"]

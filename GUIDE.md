@@ -246,6 +246,7 @@ commands here too.
 | `matching.max_tokens_per_run`, `max_browser_minutes_per_run` | Spending limits for one run. |
 | `matching.notify_min_score` | You get a message when a new job scores this or more (85). |
 | `matching.prescreen_model` | A cheaper AI model for a quick first check of each job (none, so off). Jobs it rules out skip the full scoring. For Claude: `claude-haiku-5-5`. |
+| `matching.reader_model` | A cheaper AI model for reading job-site pages into lists of jobs (none, so off). Scoring and emails keep the main model. For Claude: `claude-haiku-5-5`. |
 | `matching.batch_scoring`, `batch_wait_minutes` | Score the morning routine as one batch at half price (off), and how long a search waits for the answers (120 minutes). |
 | `backup.daily`, `backup.keep`, `backup.folder` | Back up after the morning routine (on), how many backups are kept (7), and the folder they go to (`backups`). |
 | `sources` | Job boards and company career pages to search. On the website each one has a switch under Settings, **Sites**. |
@@ -270,10 +271,10 @@ page. Treat an estimate as a rough guide, not a fact; it never lowers a score on
 - **Browserbase time**: `jsa daily`, `jsa run`, and the live posting check in `jsa email`. None of it
   is used when `.env` has `JOBAGENT_BROWSER=local`: the pages open in Chromium on this Mac.
 
-Two settings lower the AI cost of scoring, and both are off until you switch them on. A cheaper
-model can rule out the clear misses first (`matching.prescreen_model`), and the scoring can go as
-one batch at half price in exchange for a wait (`jsa score --batch`, or `matching.batch_scoring` for
-the morning routine).
+Three settings lower the AI cost of a search, and all are off until you switch them on. A cheaper
+model can read the job-site pages (`matching.reader_model`) and can rule out the clear misses before
+the full scoring (`matching.prescreen_model`), and the scoring can go as one batch at half price in
+exchange for a wait (`jsa score --batch`, or `matching.batch_scoring` for the morning routine).
 
 Everything else (`jobs`, `show`, `apply`, `status`, `applications`, `digest`, `runs`, `migrate`,
 `backup`) is free.

@@ -55,14 +55,30 @@ def waiting_jobs(conn, cfg: AgentConfig, profile_id: int, *, brief: bool = False
     return out
 
 
+class _PageReader:
+    """Reads job-site pages with the cheaper model. A page it cannot read goes to the main model,
+    so a wrong model name or an outage costs a little more instead of losing the site."""
+
+    def __init__(self, cheap, main, warn):
+        self.cheap, self.main, self.warn = cheap, main, warn
+
+    def extract_listings(self, text, links, url):
+        try:
+            return self.cheap.extract_listings(text, links, url)
+        except Exception as e:  # noqa: BLE001
+            self.warn(f"{self.cheap.model} could not read {url}: {e}. The main model read it instead")
+            return self.main.extract_listings(text, links, url)
+
+
 def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: httpx.Client | None = None,
               only_source: str | None = None, score: bool = True, collect: bool = True,
-              prescreen=None, batch: bool = False) -> RunSummary:
+              prescreen=None, reader=None, batch: bool = False) -> RunSummary:
     """One search. With collect=False no site is read: the stored jobs still waiting are scored.
 
     `prescreen` is a second, cheaper AI client: each job gets its quick look first, and only the
-    ones it does not rule out get the full scoring. `batch` sends the full scoring as one batch,
-    which costs half and is answered later; it is used when nobody is waiting for the result.
+    ones it does not rule out get the full scoring. `reader` is a cheaper client too: it turns
+    job-site pages into lists of jobs. `batch` sends the full scoring as one batch, which costs
+    half and is answered later; it is used when nobody is waiting for the result.
     """
     profile = db.active_profile(conn)
     if profile is None:
@@ -79,7 +95,8 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
         db.log_event(conn, run_id, msg, level=level, source_id=source_id, data=data)
 
     def tokens_spent() -> int:
-        return getattr(llm, "tokens_used", 0) + getattr(prescreen, "tokens_used", 0)
+        clients = {id(c): c for c in (llm, prescreen, reader) if c is not None}  # one model may serve two jobs
+        return sum(getattr(c, "tokens_used", 0) for c in clients.values())
 
     def over_budget() -> str:
         m = cfg.matching
@@ -98,6 +115,10 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
         if not collect:
             candidates = waiting_jobs(conn, cfg, profile["id"])
             event(f"{len(candidates)} stored jobs are waiting to be scored")
+        page_llm = llm
+        if reader is not None and collect:
+            page_llm = _PageReader(reader, llm, lambda m: event(m, level="warning"))
+            event(f"Job-site pages are read by {reader.model}")
         for scfg in cfg.sources if collect else []:
             if not scfg.enabled or (only_source and scfg.name != only_source):
                 continue
@@ -107,7 +128,7 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
                 continue
             source_id = db.upsert_source(conn, scfg.kind, scfg.name, scfg.identity_url,
                                          scfg.model_dump(mode="json"))
-            ctx = SourceContext(http=http, browser=browser, llm=llm,
+            ctx = SourceContext(http=http, browser=browser, llm=page_llm,
                                 log=lambda m, sid=source_id: event(m, source_id=sid),
                                 prefs=cfg.search)
             try:

@@ -231,8 +231,9 @@ Not in the diagram:
   only partly finished stores the reason: the limit reached, or the sites that could not be read.
 - **The database must be current.** Every command checks for pending updates first and says
   "Run: jsa migrate" instead of failing halfway; the page offers a button for the same.
-- **Scoring is paid for once, and as little as needed.** A cheaper model can rule out the clear
-  misses before the full scoring, and the scoring can go as one batch at half price. A batch is
+- **Scoring is paid for once, and as little as needed.** A cheaper model can read the job-site
+  pages (a page it cannot read goes to the main model) and can rule out the clear misses before the
+  full scoring, and the scoring can go as one batch at half price. A batch is
   recorded in `run_events` before the run waits for it, so if the wait runs out or the run is
   stopped, the next run collects the answers, and its jobs are not sent again meanwhile.
 - **The page is told; it does not keep asking.** One counter moves when a task prints or changes

@@ -363,6 +363,7 @@ def test_settings_are_changed_on_the_page_and_kept_beside_the_file(conn, open_si
     site.show("settings")
     expect(age).to_have_value("14")
     expect(page.locator('[data-cfg="matching.prescreen_model"]')).to_have_value("")
+    expect(page.locator('[data-cfg="matching.reader_model"]')).to_have_value("")
     expect(page.locator('[data-cfg="matching.batch_scoring"]')).not_to_be_checked()
 
     age.fill("7")

@@ -38,6 +38,13 @@ def _screen(settings: Settings, cfg):
     return make_llm(settings, cfg.matching.prescreen_model) if cfg.matching.prescreen_model else None
 
 
+def _reader(settings: Settings, cfg):
+    """The cheaper AI client that reads job-site pages, when one is set."""
+    from .llm import make_llm
+
+    return make_llm(settings, cfg.matching.reader_model) if cfg.matching.reader_model else None
+
+
 def _profile_id(conn) -> int:
     p = db.active_profile(conn)
     if not p:
@@ -108,7 +115,8 @@ def cmd_run(args, settings):
     try:
         with _conn(settings) as conn:
             s = run_agent(conn, cfg, llm, browser, only_source=args.source,
-                          score=not args.no_score, prescreen=_screen(settings, cfg))
+                          score=not args.no_score, prescreen=_screen(settings, cfg),
+                          reader=_reader(settings, cfg))
             print(f"\nRun #{s.run_id}: {s.status}. {s.found} jobs found, {s.new} new, "
                   f"{s.filtered} filtered out, {s.scored} scored "
                   + (f"and {s.screened_out} ruled out by the quick check " if s.screened_out else "") +
@@ -523,7 +531,8 @@ def cmd_daily(args, settings):
     llm, browser = _llm(settings), LazyBrowser(settings)
     try:
         with _conn(settings) as conn:
-            s = run_agent(conn, cfg, llm, browser, prescreen=_screen(settings, cfg), batch=cfg.matching.batch_scoring)
+            s = run_agent(conn, cfg, llm, browser, prescreen=_screen(settings, cfg), reader=_reader(settings, cfg),
+                          batch=cfg.matching.batch_scoring)
             pid = _profile_id(conn)
             new = db.top_matches(conn, pid, run_id=s.run_id, min_score=cfg.matching.shortlist_min_score, limit=20)
             due = db.followups_due(conn, pid, cfg.outreach.follow_up_days)

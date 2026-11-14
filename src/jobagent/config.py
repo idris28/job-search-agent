@@ -179,6 +179,9 @@ class MatchingPrefs(BaseModel):
     # A cheaper model that looks at each job first; only the ones it does not rule out get the
     # full scoring. Empty switches the first check off. Example: claude-haiku-5-5
     prescreen_model: str = ""
+    # A cheaper model that reads job-site pages into a list of jobs, which is mechanical work.
+    # Scoring and emails keep the main model. Empty: the main model reads the pages too.
+    reader_model: str = ""
     # Send the morning routine's scoring as one batch: half the price, answered later (usually
     # within the hour). Claude only. The search waits up to batch_wait_minutes for the answers;
     # if they are not back by then, the next search picks them up.
@@ -252,6 +255,9 @@ EDITABLE: dict[str, tuple[str, str, str, str, float | None, float | None]] = {
     "matching.prescreen_model": ("Scoring", "text", "Cheaper model for a quick first check",
                                  "For example claude-haiku-5-5. Only jobs it does not rule out get the full scoring. "
                                  "Empty switches it off.", None, None),
+    "matching.reader_model": ("Scoring", "text", "Cheaper model for reading job-site pages",
+                              "For example claude-haiku-5-5. It turns each page into a list of jobs; scoring keeps the "
+                              "main model. Empty switches it off.", None, None),
     "matching.batch_wait_minutes": ("Scoring", "int", "Longest wait for a batch, in minutes",
                                     "After that the next search picks the answers up.", 1, 1440),
     "matching.batch_scoring": ("Scoring", "bool", "Score the morning routine as a batch",
