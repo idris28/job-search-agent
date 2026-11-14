@@ -285,6 +285,47 @@ def test_a_job_panel_saves_a_note_and_a_draft_and_moves_the_job_on(conn, open_si
     assert site.refusals() == 0
 
 
+def test_a_job_panel_says_why_an_email_cannot_be_sent(conn, open_site):
+    pid, ids = seed(conn, 4)
+    for jid in ids[:3]:
+        draft(conn, pid, jid, to="talent.acquisition@riverbank-mobility.example")
+    conn.execute("UPDATE applications SET contact_email = NULL WHERE job_id = %s", (ids[1],))
+    db.set_application_status(conn, pid, ids[2], "applied")
+    db.mark_outreach_sent(conn, pid, ids[2])
+    site = open_site()
+    page, panel = site.page, site.page.locator("#detail")
+    send, why = panel.locator('[data-act="send-one"]'), panel.locator("#nosend")
+
+    page.locator(f'tr.row[data-job="{ids[0]}"]').click()  # a draft and an address: it can go
+    expect(send).to_be_visible()
+    expect(why).to_have_count(0)
+    box = page.locator("#addr")
+    expect(box).to_have_attribute("type", "text")  # not an "email" box, which browser extensions decorate
+    # A long address is shown whole, with room left at the end of the box.
+    assert box.evaluate("e => e.scrollWidth <= e.clientWidth") and box.evaluate("e => parseFloat(getComputedStyle(e).paddingRight)") >= 24
+    page.keyboard.press("Escape")
+
+    page.locator(f'tr.row[data-job="{ids[1]}"]').click()  # a draft, no address
+    expect(why).to_have_text("Add an address in the To line to send this email")
+    expect(send).to_have_count(0)
+    page.keyboard.press("Escape")
+
+    site.show("progress")
+    page.locator(f'tr.row[data-job="{ids[2]}"]').click()  # already emailed
+    expect(why).to_contain_text("A job is emailed once; its follow-up goes out from the Follow-ups screen when it is due.")
+    expect(why).to_contain_text("Sent ")
+    expect(send).to_have_count(0)
+    panel.locator("#setstatus").select_option("skipped")
+    expect(why).to_contain_text("A job is emailed once.")  # set aside: no follow-up is promised
+    page.keyboard.press("Escape")
+
+    site.show("shortlist")
+    page.locator(f'tr.row[data-job="{ids[0]}"]').click()
+    panel.locator('[data-act="status"][data-to="skipped"]').click()
+    expect(why).to_have_text("Marked skipped, so this email is not sent. Set the status to Shortlisted to send it.")
+    assert site.refusals() == 0
+
+
 def test_hr_addresses_are_added_listed_and_can_be_deleted(conn, open_site):
     seed(conn, 2)
     site = open_site()

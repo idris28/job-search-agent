@@ -158,6 +158,15 @@ outside it. The arrows at the top, or the J and K keys, move to the next and pre
 A red label in the email section means the draft is not ready: a blank in your template was left
 unfilled, the posting looked closed, or the draft names a company the posting did not name.
 
+**Send email** shows only for a shortlisted job with a draft and an address that has not been
+emailed yet. When it is not there, the line under the buttons says why: there is no address yet,
+the job is marked applied or set aside, or the email already went. A job is emailed once, and the
+round mark with a date at the top right of the sheet is the day it was sent. What follows a sent
+email is its follow-up, on the **Follow-ups** screen when it is due.
+
+Pasting a post you added before does not make a second job: it opens the one already stored. If
+its email has gone, the task says so, with the date and the address, and nothing is sent again.
+
 When a posting does not name the company (a pasted post, or a "Confidential Company" listing), the
 email and cover letter leave the name out: "applying for the Java Developer position", with no
 "at ...".
@@ -259,6 +268,8 @@ scoring the morning routine as a batch at half price.
 | "The database is not answering." | PostgreSQL is not running. Start it, then reload. |
 | A yellow bar asking to update the database | Click **Update the database**. It only adds what new features need. |
 | Double-clicking Job Search does nothing | Open `digests/web.log` in the project folder; the reason is at the end. |
+| A job's panel has no **Send email** button | Read the line under **Save draft**: it says what is missing, or that the email already went on the date in the round mark. |
+| An icon sits inside the **To** box, over the address | That icon comes from an extension in your browser, such as a mail or password helper, not from Job Search. The box keeps room at its end for it. To remove it, switch that extension off for `127.0.0.1`. |
 | "No email is ready yet." | A job needs both a draft and an address. Use **Draft emails** and **Look for addresses** first, or type an address into the job's **To** box. |
 | "Found an address for 0 of 7 jobs" | Those companies publish no application address. Apply on the job sites, or add an address yourself. |
 | A task says "did not finish" | Click **Show output** to read why. A site blocking the search is the usual cause, and the other sites still complete. |

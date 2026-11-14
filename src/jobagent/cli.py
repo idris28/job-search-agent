@@ -729,10 +729,26 @@ def cmd_add(args, settings, *, read=None):
             job_id, is_new, found, m = add_pasted_job(conn, llm, cfg, text, args.url)
         except ActionError as e:
             sys.exit(str(e))
+        app = db.get_application(conn, _profile_id(conn), job_id) or {}
+        first_seen = (db.get_job(conn, job_id) or {}).get("first_seen_at")
     print(f"{'Added' if is_new else 'Updated'} job #{job_id}: {found.title} at {found.company}"
           f" ({found.location or 'location not given'})")
     print(f"Match score {m.score} ({m.verdict}): {m.summary}")
-    if found.contact_email:
+    sent = app.get("outreach_sent_at")
+    if sent:
+        # The same post pasted again after its email went: say what happened, and offer no second email.
+        from datetime import timedelta
+
+        def day(d):
+            return d.astimezone().strftime("%d %b").lstrip("0")
+
+        follow_up = ("Its follow-up has gone too." if app.get("follow_up_sent_at")
+                     else f"Its follow-up is due from {day(sent + timedelta(days=cfg.outreach.follow_up_days))}."
+                     if app.get("status") == "applied" else "")
+        print(f"You added this post before{', on ' + day(first_seen) if first_seen else ''}. Its email went to "
+              f"{app.get('contact_email') or 'the recruiter'} on {day(sent)} at {sent.astimezone():%H:%M}, "
+              f"so nothing is sent again. {follow_up}".rstrip())
+    elif found.contact_email:
         print(f"Applications go to {found.contact_email}. Next: jsa email {job_id} --gmail-drafts"
               f"   (or --send)")
     else:

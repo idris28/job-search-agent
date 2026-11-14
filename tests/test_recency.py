@@ -81,6 +81,29 @@ class PasteLLM:
                            missing_skills=[], red_flags=[])
 
 
+def test_a_post_pasted_again_after_its_email_went_says_so_and_offers_no_second_email(conn, monkeypatch, tmp_path, capsys):
+    pid = db.save_profile(conn, "Alex", "resume", {})
+    monkeypatch.setattr(cli, "_llm", lambda s: PasteLLM())
+    args = SimpleNamespace(file=None, url=None, config=str(tmp_path / "missing.yaml"))
+    post = lambda: "We are hiring! Send CV to hr@acme.ae"  # noqa: E731
+    cli.cmd_add(args, Settings(database_url=TEST_DB), read=post)
+    assert "Next: jsa email 1" in capsys.readouterr().out
+
+    cli.cmd_add(args, Settings(database_url=TEST_DB), read=post)  # again, before anything was sent
+    out = capsys.readouterr().out
+    assert "Updated job #1" in out and "Next: jsa email 1" in out and "added this post before" not in out
+
+    db.set_application_status(conn, pid, 1, "applied")
+    db.mark_outreach_sent(conn, pid, 1)
+    cli.cmd_add(args, Settings(database_url=TEST_DB), read=post)
+    out = capsys.readouterr().out
+    assert "Updated job #1" in out and "You added this post before, on " in out
+    assert "Its email went to hr@acme.ae on " in out and "so nothing is sent again. Its follow-up is due from " in out
+    assert "Next:" not in out and "--send" not in out
+    assert conn.execute("SELECT count(*) AS n FROM jobs").fetchone()["n"] == 1
+    assert db.get_application(conn, pid, 1)["status"] == "applied"  # pasting it again does not move it back
+
+
 def test_add_job_from_pasted_post(conn, monkeypatch, tmp_path, capsys):
     pid = db.save_profile(conn, "Alex", "resume", {})
     monkeypatch.setattr(cli, "_llm", lambda s: PasteLLM())

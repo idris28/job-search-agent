@@ -319,7 +319,9 @@ color-scheme:light;padding:8px 32px 32px;border-radius:2px;background:var(--pape
 .sheet .ln label{width:56px;flex:none;font-size:13px;color:var(--t3)}
 .sheet .ln .field{flex:1 1 160px;width:auto;height:32px;margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;outline:none}
 .sheet #subj{font-weight:500}
-.sheet .toinfo{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;flex-basis:100%;margin:0;padding-left:64px;max-width:none;font-size:13px;color:var(--t3)}
+.sheet .ln #addr{padding-right:28px}
+#nosend{margin:8px 0 0}
+.toinfo{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;flex-basis:100%;margin:0;padding-left:64px;max-width:none;font-size:13px;color:var(--t3)}
 .sheet .ln+.ln{grid-column:1/-1}
 .sheet .lines .pm{grid-column:2;grid-row:1;width:72px;height:48px;margin-left:16px}
 .sheet .body{display:block;width:100%;min-height:240px;margin:24px 0 0;padding:0;border:0;background:none;font:400 14px/24px var(--sans);color:var(--t1);resize:none;overflow:hidden;outline:none;transition:box-shadow .14s var(--ease)}
@@ -1077,12 +1079,17 @@ function renderDetail(keep) {
   const info = !a ? "" : a.contact_email
     ? `${a.contact_kind ? `<span class="tag ${a.contact_kind === "general" ? "c-amber" : "c-slate"}">${esc(cap(a.contact_kind))} address</span>` : ""}${http(a.contact_source) ? `<a href="${esc(a.contact_source)}" target="_blank" rel="noopener noreferrer">Where it was found</a>` : ""}${sentAt ? `<span>Sent ${esc(when(sentAt))}</span>` : ""}`
     : "No address yet. Type one you found yourself, or let the agent look on the company's site.";
-  const toLine = !a ? "" : `<div class="ln"><label for="addr">To</label><input class="field" id="addr" type="email" autocomplete="off" spellcheck="false" placeholder="recruiter@company.com" value="${esc(a.contact_email)}">
+  const toLine = !a ? "" : `<div class="ln"><label for="addr">To</label><input class="field" id="addr" type="text" inputmode="email" autocapitalize="off" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" placeholder="recruiter@company.com" value="${esc(a.contact_email)}">
       <button class="btn sm" data-act="save-addr">Save address</button>${a.contact_email ? "" : `<button class="btn sm" data-act="contacts-one">${ic("at")}Look for one</button>`}
       ${info ? `<p class="toinfo">${info}</p>` : ""}</div>`;
   const stamp = sentAt ? postmark(sentAt) : "";
   if (hasDraft) {
     const canSend = s === "shortlisted" && a.contact_email && !a.outreach_sent_at;
+    // Where the Send button would be, say why it is not there.
+    const after = a.follow_up_sent_at ? "; its follow-up has gone too" : d.due ? "; its follow-up is due now" : s === "applied" ? "; its follow-up goes out from the Follow-ups screen when it is due" : "";
+    const whyNot = canSend ? "" : sentAt ? `Sent ${when(sentAt)}. A job is emailed once${after}.`
+      : s !== "shortlisted" ? `${s ? "Marked " + (STATUS_L[s] || s).toLowerCase() : "Not on your shortlist"}, so this email is not sent. Set the status to Shortlisted to send it.`
+      : "Add an address in the To line to send this email";
     mail = `${a.unfilled.length ? `<p><span class="tag c-red">Fill in before sending: ${esc(a.unfilled.join(", "))}</span></p>` : ""}
       ${a.posting_open === false ? `<p><span class="tag c-red">The posting looked closed when this was drafted</span></p>` : ""}
       <div class="desk"><div class="sheet${S.preview ? " preview" : ""}" id="sheet">
@@ -1096,6 +1103,7 @@ function renderDetail(keep) {
         ${canSend ? `<button class="btn primary" data-act="send-one">${ic("send")}Send email</button>` : ""}
         <button class="btn ghost" data-act="draft-one">Write it again</button>
       </div>
+      ${whyNot ? `<p class="faint" id="nosend">${esc(whyNot)}</p>` : ""}
       ${a.follow_up_body ? `<details ${d.due ? "open" : ""}><summary>Follow-up ${a.follow_up_sent_at ? "sent " + esc(day(a.follow_up_sent_at)) : d.due ? "due now" : "for later"}</summary>
         <p><b>${esc(a.follow_up_subject)}</b></p><div class="mail desc">${esc(a.follow_up_body)}</div>
         ${d.due ? `<div class="acts"><button class="btn" data-act="followup-done">I followed up myself</button></div>` : ""}</details>`
@@ -1133,8 +1141,16 @@ function renderDetail(keep) {
       <button class="btn" data-act="save-note">Save note</button></div>
     ${d.events.length ? `<div class="block"><h3>History</h3><ul class="history">${d.events.map(e => `<li>${esc(when(e.created_at))}: <b>${esc(STATUS_L[e.to_status] || cap(e.to_status))}</b>${e.note ? ", " + esc(e.note) : ""}</li>`).join("")}</ul></div>` : ""}
     ${j.description ? `<div class="block"><details><summary>Full job description</summary><div class="desc">${esc(j.description)}</div></details></div>` : ""}`;
-  fit();
+  fit(); fitAddr();
   if (!keep) { el.scrollTop = 0; $("[data-act=back]", el).focus({ preventScroll: true }); }
+}
+function fitAddr() {  // the To box is as wide as its address, so a long one is not cut short; the buttons move down when there is no room
+  const a = $("#addr");
+  if (!a || !a.offsetParent) return;
+  const s = document.createElement("span"), cs = getComputedStyle(a);
+  s.style.cssText = `font:${cs.font};letter-spacing:${cs.letterSpacing};position:absolute;visibility:hidden;white-space:pre`;
+  s.textContent = a.value || a.placeholder; document.body.append(s);
+  a.style.flexBasis = Math.ceil(s.getBoundingClientRect().width) + 36 + "px"; s.remove();  // 28 kept clear at the end, 8 to spare
 }
 function fit() {  // the sheet grows with the letter, so the whole text is on the page
   const b = $("#body");
@@ -1427,6 +1443,7 @@ document.addEventListener("input", e => {
   const id = e.target.id;
   if (id === "subj" || id === "body" || id === "note" || id === "addr") S.dirty = true;
   if (id === "body") fit();
+  if (id === "addr") fitAddr();
   if (id === "tq") { S.q = e.target.value; S.page = 0; renderList(); }
   if (id === "pq") drawPalette();
   if (e.target.closest("#page") && e.target.matches("textarea,[data-cfg]")) S.formDirty = true;  // do not redraw over what is being typed
