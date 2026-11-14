@@ -170,6 +170,20 @@ def list_runs(conn, limit: int = 20) -> list[dict]:
     return conn.execute("SELECT * FROM runs ORDER BY id DESC LIMIT %s", (limit,)).fetchall()
 
 
+BATCH_SENT, BATCH_TAKEN = "scoring batch sent", "scoring batch collected"
+
+
+def pending_batches(conn) -> list[dict]:
+    """Scoring batches that were sent and whose answers have not been stored yet. What each one
+    holds is in the event that recorded it, so a later search can finish the job."""
+    return conn.execute(
+        """SELECT e.run_id, e.data FROM run_events e
+           WHERE e.message = %s AND e.created_at >= now() - interval '28 days'
+             AND NOT EXISTS (SELECT 1 FROM run_events d
+                             WHERE d.message = %s AND d.data->>'batch' = e.data->>'batch')
+           ORDER BY e.id""", (BATCH_SENT, BATCH_TAKEN)).fetchall()
+
+
 def partial_reason(unread: list[str], stopped: str = "") -> str:
     """Why a search ended only partly finished, as one line: a limit reached, sites not read."""
     parts = [f"Stopped early: {stopped}"] if stopped else []

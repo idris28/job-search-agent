@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from .llm import CONTACT_INSTRUCTIONS, CONTENT_RESEARCH_INSTRUCTIONS, BaseLLM, T
+from .llm import CONTACT_INSTRUCTIONS, CONTENT_RESEARCH_INSTRUCTIONS, MATCH_INSTRUCTIONS, BaseLLM, T
+from .models import MatchResult
 
 # Server-side refusal fallback: if Claude declines a request on policy grounds, the API
 # re-runs it on a suitable fallback model inside the same call.
@@ -73,6 +74,50 @@ class ClaudeLLM(BaseLLM):
         self._count(resp)
         self._check(resp)
         return "".join(b.text for b in resp.content if b.type == "text").strip()
+
+    # --- batch scoring -----------------------------------------------------------------
+    #
+    # The Message Batches API takes the same requests, answers them later (most within the hour,
+    # 24 hours at most) and charges half. A batch request cannot use the refusal fallback, so a
+    # declined request comes back as a refusal and that job is simply scored another time.
+
+    def submit_scores(self, profile: dict, prefs, jobs: list[tuple[str, object]]) -> str:
+        """Send one scoring request per (custom_id, job) as a batch. Returns the batch id."""
+        from anthropic import transform_schema
+
+        fmt = {"type": "json_schema", "schema": transform_schema(MatchResult)}
+        requests = []
+        for custom_id, job in jobs:
+            params = self._common(MATCH_INSTRUCTIONS, "JOB POSTING:\n" + job.as_prompt_text(),
+                                  self._candidate(profile, prefs))
+            del params["betas"], params["fallbacks"]
+            params["output_config"] = {**params.get("output_config", {}), "format": fmt}
+            requests.append({"custom_id": custom_id, "params": params})
+        return self.client.messages.batches.create(requests=requests).id
+
+    def batch_done(self, batch_id: str) -> bool:
+        return self.client.messages.batches.retrieve(batch_id).processing_status == "ended"
+
+    def collect_scores(self, batch_id: str) -> dict[str, MatchResult | Exception]:
+        """The answers of a finished batch by custom_id: a score, or why there is none."""
+        out: dict[str, MatchResult | Exception] = {}
+        for item in self.client.messages.batches.results(batch_id):  # they arrive in any order
+            result = item.result
+            if result.type != "succeeded":
+                error = getattr(getattr(result, "error", None), "error", None)
+                out[item.custom_id] = RuntimeError(f"the batch request {result.type}"
+                                                   + (f": {error.message}" if error is not None else ""))
+                continue
+            try:
+                self._count(result.message)
+                self._check(result.message)
+                text = next(b.text for b in result.message.content if b.type == "text")
+                match = MatchResult.model_validate_json(text)
+                match.score = max(0, min(100, match.score))
+                out[item.custom_id] = match
+            except Exception as e:  # noqa: BLE001 - one unreadable answer must not lose the others
+                out[item.custom_id] = e
+        return out
 
     def research_email_content(self, roles: str, country: str,
                                max_searches: int = 4) -> str | None:

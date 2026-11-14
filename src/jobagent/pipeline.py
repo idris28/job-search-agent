@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 
@@ -12,7 +13,7 @@ from . import db
 from .browser import Browser
 from .config import AgentConfig
 from .filters import reject_reason
-from .models import JobPosting
+from .models import JobPosting, MatchResult
 from .sources import SourceContext, build_source
 
 log = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class RunSummary:
     new: int = 0
     filtered: int = 0
     scored: int = 0
+    screened_out: int = 0  # ruled out by the quick first check, so not given the full scoring
     skipped_unchanged: int = 0
     shortlisted: int = 0
     tokens: int = 0
@@ -34,6 +36,8 @@ class RunSummary:
 
 
 WAITING_DAYS = 7  # a stored job counts as still open if a search saw it this recently
+SCREENED_SCORE = 20  # the score recorded for a job the quick first check ruled out
+BATCH_POLL_SECONDS = 30  # how often a search asks whether its scoring batch has been answered
 
 
 def waiting_jobs(conn, cfg: AgentConfig, profile_id: int, *, brief: bool = False) -> list[tuple[int, JobPosting]]:
@@ -52,8 +56,14 @@ def waiting_jobs(conn, cfg: AgentConfig, profile_id: int, *, brief: bool = False
 
 
 def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: httpx.Client | None = None,
-              only_source: str | None = None, score: bool = True, collect: bool = True) -> RunSummary:
-    """One search. With collect=False no site is read: the stored jobs still waiting are scored."""
+              only_source: str | None = None, score: bool = True, collect: bool = True,
+              prescreen=None, batch: bool = False) -> RunSummary:
+    """One search. With collect=False no site is read: the stored jobs still waiting are scored.
+
+    `prescreen` is a second, cheaper AI client: each job gets its quick look first, and only the
+    ones it does not rule out get the full scoring. `batch` sends the full scoring as one batch,
+    which costs half and is answered later; it is used when nobody is waiting for the result.
+    """
     profile = db.active_profile(conn)
     if profile is None:
         raise RuntimeError("No profile yet. Run: jsa profile import <resume.pdf>")
@@ -68,9 +78,12 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
         log.log(logging.WARNING if level in ("warning", "error") else logging.INFO, msg)
         db.log_event(conn, run_id, msg, level=level, source_id=source_id, data=data)
 
+    def tokens_spent() -> int:
+        return getattr(llm, "tokens_used", 0) + getattr(prescreen, "tokens_used", 0)
+
     def over_budget() -> str:
         m = cfg.matching
-        tokens = getattr(llm, "tokens_used", 0)
+        tokens = tokens_spent()
         minutes = getattr(browser, "minutes_used", 0.0)
         if m.max_tokens_per_run and tokens >= m.max_tokens_per_run:
             return f"token limit reached ({tokens:,} of {m.max_tokens_per_run:,})"
@@ -118,6 +131,105 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
             event(f"{scfg.name}: {len(postings)} jobs ({new_here} new)", source_id=source_id)
 
         # 2. Score -------------------------------------------------------------
+        workers = max(1, cfg.matching.concurrency)
+        floor = cfg.matching.shortlist_min_score
+
+        def pooled(jobs, call, done, what, failed=None) -> None:
+            """Run `call` for each job, a few at a time, so a spending limit is checked between
+            rounds; jobs not reached stay unscored and are picked up by the next search."""
+            pool = ThreadPoolExecutor(max_workers=workers)
+            try:
+                for start in range(0, len(jobs), workers):
+                    summary.stopped = summary.stopped or over_budget()
+                    if summary.stopped:
+                        event(f"{what} stopped with {len(jobs) - start} jobs left: {summary.stopped}", level="warning")
+                        break
+                    futures = {pool.submit(call, profile["profile"], cfg.search, p): (job_id, p)
+                               for job_id, p in jobs[start:start + workers]}
+                    for fut in as_completed(futures):
+                        job_id, p = futures[fut]
+                        try:
+                            result = fut.result()
+                        except Exception as e:  # noqa: BLE001
+                            event(f"{what.lower()} failed for job {job_id} ({p.title}): {e}", level="error")
+                            if failed:
+                                failed(job_id, p)
+                            continue
+                        done(job_id, p, result)
+            finally:
+                # Never wait here for calls still in flight: when the search is stopped its end
+                # must be recorded at once, and a job left unscored is picked up next time.
+                pool.shutdown(wait=False, cancel_futures=True)
+
+        def keep(job_id: int, m: MatchResult, model: str, content_hash: str) -> None:
+            db.save_match(conn, profile["id"], job_id, run_id, m, model, content_hash)
+            summary.scored += 1
+            if m.score >= floor:
+                strong.append(job_id)
+
+        def quick_check(jobs: list) -> list:
+            """The cheaper model's first look. A job it rules out is recorded with a low score and
+            the reason, so it is not looked at again; the rest go on to the full scoring."""
+            passed: list = []
+
+            def done(job_id, p, verdict) -> None:
+                if verdict.worth_scoring:
+                    passed.append((job_id, p))
+                    return
+                db.save_match(conn, profile["id"], job_id, run_id,
+                              MatchResult(score=SCREENED_SCORE, verdict="poor", summary=f"Quick check: {verdict.reason}",
+                                          matched_skills=[], missing_skills=[], red_flags=[]),
+                              prescreen.model, p.content_hash)
+                summary.screened_out += 1
+
+            # A quick check that fails says nothing about the job, so the job keeps its full scoring.
+            pooled(jobs, prescreen.prescreen_job, done, "Quick check", failed=lambda job_id, p: passed.append((job_id, p)))
+            event(f"Quick check ({prescreen.model}): {summary.screened_out} of {len(jobs)} jobs ruled out")
+            return passed
+
+        def take_batch(batch_id: str, model: str, jobs: dict) -> None:
+            """Store the answers of a finished batch. `jobs` maps each request to (job id, text hash)."""
+            answers = llm.collect_scores(batch_id)
+            for custom_id, (job_id, content_hash) in jobs.items():
+                answer = answers.get(custom_id)
+                if not isinstance(answer, MatchResult):
+                    event(f"scoring failed for job {job_id}: {answer or 'no answer in the batch'}", level="error")
+                # The job may have been deleted while the batch ran, or scored meanwhile in the ordinary way.
+                elif db.get_job(conn, job_id) and db.existing_match_hash(conn, profile["id"], job_id) != content_hash:
+                    keep(job_id, answer, model, content_hash)
+            event(db.BATCH_TAKEN, data={"batch": batch_id})
+
+        def score_as_batch(jobs: list) -> None:
+            ids = {f"job-{job_id}": (job_id, p) for job_id, p in jobs}
+            batch_id = llm.submit_scores(profile["profile"], cfg.search, [(cid, p) for cid, (_, p) in ids.items()])
+            held = {cid: [job_id, p.content_hash] for cid, (job_id, p) in ids.items()}
+            # Recorded before waiting: if this search is stopped, a later one still finds the batch.
+            event(db.BATCH_SENT, data={"batch": batch_id, "model": llm.model, "jobs": held})
+            wait = cfg.matching.batch_wait_minutes
+            event(f"{len(jobs)} jobs sent for scoring as a batch; waiting up to {wait} minutes for the answers")
+            deadline = time.monotonic() + wait * 60
+            while not llm.batch_done(batch_id):
+                if time.monotonic() >= deadline:
+                    summary.stopped = summary.stopped or (f"the scoring batch was still running after {wait} minutes; "
+                                                          "the next search picks its answers up")
+                    return
+                time.sleep(BATCH_POLL_SECONDS)
+            take_batch(batch_id, llm.model, held)
+
+        being_scored: dict[int, str] = {}  # job id -> text hash, for jobs in a batch that is still running
+        if score and hasattr(llm, "collect_scores"):
+            for waiting in db.pending_batches(conn):  # sent by an earlier search that did not wait long enough
+                data = waiting["data"]
+                try:
+                    if llm.batch_done(data["batch"]):
+                        take_batch(data["batch"], data.get("model") or llm.model, data["jobs"])
+                    else:
+                        being_scored.update({job_id: content_hash for job_id, content_hash in data["jobs"].values()})
+                        event(f"The scoring batch from search #{waiting['run_id']} is still running; "
+                              f"its {len(data['jobs'])} jobs are not scored again")
+                except Exception as e:  # noqa: BLE001 - leave it for the next search rather than lose paid work
+                    event(f"The scoring batch from search #{waiting['run_id']} could not be read: {e}", level="warning")
+
         if score and candidates:
             to_score, queued = [], set()
             for job_id, p in candidates:
@@ -127,6 +239,8 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
                 if job_id in queued or seen_hash == p.content_hash \
                         or (seen_hash and db.is_other_listing(conn, job_id, p)):
                     summary.skipped_unchanged += 1
+                elif being_scored.get(job_id) == p.content_hash:
+                    pass  # already paid for in a batch; its answer is stored when the batch finishes
                 else:
                     queued.add(job_id)
                     to_score.append((job_id, p))
@@ -135,40 +249,16 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
                 event(f"{len(to_score)} jobs to score; capped at {cap} (matching.max_jobs_to_score)",
                       level="warning")
                 to_score = to_score[:cap]
-
-            workers = max(1, cfg.matching.concurrency)
-            pool = ThreadPoolExecutor(max_workers=workers)
-            try:
-                # Scored a few at a time so a spending limit is checked between batches; jobs
-                # left over stay unscored and are picked up by the next run.
-                for start in range(0, len(to_score), workers):
-                    summary.stopped = summary.stopped or over_budget()
-                    if summary.stopped:
-                        event(f"Scoring stopped with {len(to_score) - start} jobs left: {summary.stopped}",
-                              level="warning")
-                        break
-                    futures = {
-                        pool.submit(llm.score_job, profile["profile"], cfg.search, p): (job_id, p)
-                        for job_id, p in to_score[start:start + workers]
-                    }
-                    for fut in as_completed(futures):
-                        job_id, p = futures[fut]
-                        try:
-                            m = fut.result()
-                        except Exception as e:  # noqa: BLE001
-                            event(f"scoring failed for job {job_id} ({p.title}): {e}", level="error")
-                            continue
-                        db.save_match(conn, profile["id"], job_id, run_id, m, llm.model, p.content_hash)
-                        summary.scored += 1
-                        if m.score >= cfg.matching.shortlist_min_score:
-                            strong.append(job_id)
-            finally:
-                # Never wait here for calls still in flight: when the search is stopped its end
-                # must be recorded at once, and a job left unscored is picked up next time.
-                pool.shutdown(wait=False, cancel_futures=True)
+            if prescreen is not None and to_score:
+                to_score = quick_check(to_score)
+            if batch and to_score and hasattr(llm, "submit_scores"):
+                score_as_batch(to_score)
+            else:
+                pooled(to_score, llm.score_job, lambda job_id, p, m: keep(job_id, m, llm.model, p.content_hash), "Scoring")
+        if score:
             summary.shortlisted = db.shortlist_many(conn, profile["id"], strong)
 
-        summary.tokens = getattr(llm, "tokens_used", 0)
+        summary.tokens = tokens_spent()
         summary.status = "partial" if summary.source_errors or summary.stopped else "succeeded"
         db.finish_run(conn, run_id, status=summary.status, stats=summary.__dict__,
                       error=db.partial_reason(list(summary.source_errors), summary.stopped) or None)
@@ -178,7 +268,7 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
         # shortlist the jobs already scored high enough, then record where the search ended.
         why = "; ".join(filter(None, [db.STOPPED_EARLY, db.partial_reason(list(summary.source_errors), summary.stopped)]))
         summary.status, summary.stopped = "partial", "stopped before it finished"
-        summary.tokens = getattr(llm, "tokens_used", 0)
+        summary.tokens = tokens_spent()
         try:
             summary.shortlisted = db.shortlist_many(conn, profile["id"], strong)
             db.finish_run(conn, run_id, status="partial", stats=summary.__dict__, error=why)

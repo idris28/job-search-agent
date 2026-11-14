@@ -135,6 +135,13 @@ class MatchResult(BaseModel):
         "company and city in local currency, e.g. '18-26 LPA (estimate)'. Null if you cannot judge."))
 
 
+class Prescreen(BaseModel):
+    """A cheaper model's quick look at a job, before the full scoring."""
+
+    worth_scoring: bool = Field(description="False only when the job is clearly not for this candidate")
+    reason: str = Field(description="One short sentence saying why")
+
+
 class ExtractedListing(BaseModel):
     title: str
     url: str

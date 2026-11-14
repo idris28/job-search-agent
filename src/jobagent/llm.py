@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from .config import OutreachPrefs, SearchPrefs
 from .models import (CandidateProfile, ExtractedListings, JobPosting, MatchResult,
-                     PastedJob, RecruiterEmail, RecruiterReview, TemplateEmail)
+                     PastedJob, Prescreen, RecruiterEmail, RecruiterReview, TemplateEmail)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -37,6 +37,15 @@ range from the role, seniority, company and city, and end it with "(estimate)". 
 never lowers the score; if its top is clearly below the candidate's minimum, add the red flag
 "estimated pay may be below your minimum".
 Only list skills that actually appear in the job text as missing_skills. Be concise and specific."""
+
+PRESCREEN_INSTRUCTIONS = """You take a quick first look at a job posting for a candidate, before a
+careful assessment that costs more. Decide only whether the careful assessment is worth doing.
+Say worth_scoring false only for a clear miss: a different profession or field, a seniority far
+from the candidate's (an internship for a senior engineer, a director role for a junior), a main
+technology the candidate plainly does not have and the role cannot be done without, a location or
+work arrangement the candidate has ruled out, or an excluded industry. If the posting is thin or
+you are unsure, say worth_scoring true: a missed good job costs more than one extra assessment.
+reason: one short sentence, naming the fact in the posting that decided it."""
 
 EXTRACT_INSTRUCTIONS = """You are given the visible text and links of a careers/job search page.
 Return every individual job posting on the page: its title, absolute URL (from the links list),
@@ -253,8 +262,10 @@ class BaseLLM:
     def extract_profile(self, resume_text: str) -> CandidateProfile:
         return self._parse(PROFILE_INSTRUCTIONS, f"RESUME:\n{resume_text}", CandidateProfile)
 
-    def score_job(self, profile: dict, prefs: SearchPrefs, job: JobPosting) -> MatchResult:
-        payload = (
+    @staticmethod
+    def _candidate(profile: dict, prefs: SearchPrefs) -> str:
+        """The part of a scoring request that is the same for every job, so it can be cached."""
+        return (
             "CANDIDATE PROFILE:\n" + json.dumps(profile, indent=1)
             + "\n\nCANDIDATE PREFERENCES:\n"
             + json.dumps({
@@ -267,10 +278,17 @@ class BaseLLM:
             }, indent=1)
             + "\n\n"
         )
+
+    def score_job(self, profile: dict, prefs: SearchPrefs, job: JobPosting) -> MatchResult:
         result = self._parse(MATCH_INSTRUCTIONS, "JOB POSTING:\n" + job.as_prompt_text(),
-                             MatchResult, cached_prefix=payload)
+                             MatchResult, cached_prefix=self._candidate(profile, prefs))
         result.score = max(0, min(100, result.score))
         return result
+
+    def prescreen_job(self, profile: dict, prefs: SearchPrefs, job: JobPosting) -> Prescreen:
+        """A quick look by a cheaper model: is the full scoring worth doing for this job?"""
+        return self._parse(PRESCREEN_INSTRUCTIONS, "JOB POSTING:\n" + job.as_prompt_text(4000),
+                           Prescreen, cached_prefix=self._candidate(profile, prefs))
 
     def extract_listings(self, page_text: str, links: list[dict], page_url: str) -> ExtractedListings:
         links_txt = "\n".join(f"- {l['text']} -> {l['href']}" for l in links[:400])
@@ -380,8 +398,9 @@ class OpenAILLM(BaseLLM):
 LLM = OpenAILLM  # backwards-compatible name
 
 
-def make_llm(settings) -> BaseLLM:
-    """Build the client for the configured provider (LLM_PROVIDER, or whichever key is set)."""
+def make_llm(settings, model: str | None = None) -> BaseLLM:
+    """Build the client for the configured provider (LLM_PROVIDER, or whichever key is set).
+    `model` replaces LLM_MODEL, for a second client such as the cheaper one used for a first check."""
     from .config import ConfigError
 
     if not (settings.anthropic_api_key or settings.openai_api_key):
@@ -394,6 +413,6 @@ def make_llm(settings) -> BaseLLM:
         from .llm_anthropic import ClaudeLLM
 
         settings.require("anthropic_api_key")
-        return ClaudeLLM(settings.anthropic_api_key, settings.llm_model, effort=settings.llm_effort)
+        return ClaudeLLM(settings.anthropic_api_key, model or settings.llm_model, effort=settings.llm_effort)
     settings.require("openai_api_key")
-    return OpenAILLM(settings.openai_api_key, settings.llm_model)
+    return OpenAILLM(settings.openai_api_key, model or settings.llm_model)

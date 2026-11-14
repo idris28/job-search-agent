@@ -31,6 +31,13 @@ def _llm(settings: Settings):
     return make_llm(settings)
 
 
+def _screen(settings: Settings, cfg):
+    """The cheaper AI client for the quick first check, when one is set."""
+    from .llm import make_llm
+
+    return make_llm(settings, cfg.matching.prescreen_model) if cfg.matching.prescreen_model else None
+
+
 def _profile_id(conn) -> int:
     p = db.active_profile(conn)
     if not p:
@@ -101,9 +108,10 @@ def cmd_run(args, settings):
     try:
         with _conn(settings) as conn:
             s = run_agent(conn, cfg, llm, browser, only_source=args.source,
-                          score=not args.no_score)
+                          score=not args.no_score, prescreen=_screen(settings, cfg))
             print(f"\nRun #{s.run_id}: {s.status}. {s.found} jobs found, {s.new} new, "
                   f"{s.filtered} filtered out, {s.scored} scored "
+                  + (f"and {s.screened_out} ruled out by the quick check " if s.screened_out else "") +
                   f"({s.skipped_unchanged} unchanged, not re-scored), "
                   f"{s.shortlisted} shortlisted, {s.tokens} tokens"
                   + (f" ({llm.cache_read_tokens:,} read from cache)" if getattr(llm, "cache_read_tokens", 0) else "")
@@ -128,8 +136,10 @@ def cmd_score(args, settings):
     cfg = AgentConfig.load(args.config)
     llm = _llm(settings)
     with _conn(settings) as conn:
-        s = run_agent(conn, cfg, llm, None, collect=False)
-        print(f"\nRun #{s.run_id}: {s.status}. {s.scored} scored, {s.shortlisted} shortlisted, {s.tokens} tokens.")
+        s = run_agent(conn, cfg, llm, None, collect=False, prescreen=_screen(settings, cfg), batch=args.batch)
+        print(f"\nRun #{s.run_id}: {s.status}. {s.scored} scored, "
+              + (f"{s.screened_out} ruled out by the quick check, " if s.screened_out else "")
+              + f"{s.shortlisted} shortlisted, {s.tokens} tokens.")
         if s.stopped:
             print(f"  ! Stopped early: {s.stopped}. The rest wait for the next time.")
         rows = db.top_matches(conn, _profile_id(conn), run_id=s.run_id,
@@ -513,7 +523,7 @@ def cmd_daily(args, settings):
     llm, browser = _llm(settings), LazyBrowser(settings)
     try:
         with _conn(settings) as conn:
-            s = run_agent(conn, cfg, llm, browser)
+            s = run_agent(conn, cfg, llm, browser, prescreen=_screen(settings, cfg), batch=cfg.matching.batch_scoring)
             pid = _profile_id(conn)
             new = db.top_matches(conn, pid, run_id=s.run_id, min_score=cfg.matching.shortlist_min_score, limit=20)
             due = db.followups_due(conn, pid, cfg.outreach.follow_up_days)
@@ -904,6 +914,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sc = sub.add_parser("score", help="score stored jobs that were never scored, without searching again")
     sc.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    sc.add_argument("--batch", action="store_true", help="send the scoring as one batch: half price, answered later (Claude only)")
     sc.set_defaults(fn=cmd_score)
 
     dl = sub.add_parser("delete", help="remove a pasted post or a general application you added")
