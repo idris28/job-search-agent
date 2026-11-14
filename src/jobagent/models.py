@@ -33,6 +33,9 @@ def names_missing_company(text: str, company: str | None) -> bool:
         re.search(rf"(?<![\w-]){re.escape(stand_in)}(?![\w-])", text, re.I) is not None
 
 
+MIN_READ_CHARS = 200  # less text than this is a listing line, not a posting that was read
+
+
 class JobPosting(BaseModel):
     """A job as returned by a source adapter, before it is stored."""
 
@@ -53,6 +56,12 @@ class JobPosting(BaseModel):
         """Stable identity used to dedupe the same job seen via different URLs/runs."""
         key = "|".join(_norm(x) for x in (self.company, self.title, self.location or ""))
         return hashlib.sha256(key.encode()).hexdigest()[:32]
+
+    @property
+    def is_read(self) -> bool:
+        """Whether the posting's own text was captured. A job board's list gives only a title, a
+        company and a place; the rest comes from opening the job's page."""
+        return len((self.description or "").strip()) >= MIN_READ_CHARS
 
     @property
     def content_hash(self) -> str:

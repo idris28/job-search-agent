@@ -281,8 +281,8 @@ def board_browser():
     from jobagent.browser import PageContent
 
     return FakeBrowser({BOARD: PageContent(BOARD, "Jobs", "Senior Java Engineer\nBackend Engineer", BOARD_LINKS),
-                        "https://board.example.com/jobs/1": PageContent("u1", "", "Java and Spring Boot in Dubai.", []),
-                        "https://board.example.com/jobs/2": PageContent("u2", "", "Backend services in Dubai.", [])})
+                        "https://board.example.com/jobs/1": PageContent("u1", "", "Java and Spring Boot services for banks in Dubai. " * 6, []),
+                        "https://board.example.com/jobs/2": PageContent("u2", "", "Backend services for a payments company in Dubai. " * 6, [])})
 
 
 class PageReader(FakeLLM):

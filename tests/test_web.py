@@ -88,7 +88,7 @@ def test_state_job_detail_and_quick_changes(conn, page):
                                            "profile": st["setup"]["profile"]}
     assert st["setup"]["profile"]["name"] == "Alex"
     assert st["counts"] == {"found": 1, "found_week": 1, "scored": 1, "shortlisted": 1, "emailed": 0,
-                            "applied": 0, "due": 0, "waiting": 0}
+                            "applied": 0, "due": 0, "waiting": 0, "unread": 0}
     assert st["countries"] == [{"country": "UAE", "jobs": 1}] and st["search"]["max_age_days"] == 30
     row = st["jobs"][0]
     assert row["title"] == "Java <Dev>" and row["has_draft"] and "outreach_body" not in row

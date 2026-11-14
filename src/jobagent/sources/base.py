@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
@@ -23,6 +23,9 @@ class SourceContext:
     llm: object  # jobagent.llm.LLM
     log: Callable[[str], None] = lambda msg: None
     prefs: object = None  # config.SearchPrefs: lets a reader skip jobs the rule filters would drop
+    # Set by the search for job boards, so each job's own page is opened once:
+    recall: Callable[[JobPosting], JobPosting | None] = lambda job: None  # the stored copy of a listed job
+    unread: list = field(default_factory=list)  # stored for this board earlier, page not opened yet
 
 
 class Source(ABC):

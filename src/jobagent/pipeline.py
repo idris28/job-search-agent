@@ -29,6 +29,7 @@ class RunSummary:
     scored: int = 0
     screened_out: int = 0  # ruled out by the quick first check, so not given the full scoring
     skipped_unchanged: int = 0
+    unread: int = 0  # job-board jobs left unscored because their own page has not been opened yet
     shortlisted: int = 0
     tokens: int = 0
     source_errors: dict[str, str] = field(default_factory=dict)
@@ -49,10 +50,33 @@ def waiting_jobs(conn, cfg: AgentConfig, profile_id: int, *, brief: bool = False
     out = []
     for r in db.unscored_jobs(conn, profile_id, WAITING_DAYS, brief=brief):
         job_id = r.pop("id")
-        posting = JobPosting(**{**r, "remote_type": r["remote_type"] or "unknown"})
+        posting = _posting(r)
         if reject_reason(posting, cfg.search) is None:
             out.append((job_id, posting))
     return out
+
+
+def _posting(row: dict) -> JobPosting:
+    return JobPosting(**{**row, "remote_type": row["remote_type"] or "unknown"})
+
+
+def unread_jobs(conn, cfg: AgentConfig) -> int:
+    """How many job-board jobs that pass the rule filters wait for their own page to be opened.
+    Jobs of a board that is switched off are left out: no search will read them."""
+    boards = {s.name for s in cfg.sources if s.enabled and s.kind == "generic" and s.max_detail_pages > 0}
+    return sum(1 for r in db.unread_postings(conn, WAITING_DAYS, brief=True)
+               if r.pop("board") in boards and reject_reason(_posting(r), cfg.search) is None)
+
+
+def _recalled(conn, job: JobPosting) -> JobPosting | None:
+    """The stored copy of a job a board lists again, reached through the link listed now."""
+    row = db.stored_posting(conn, job)
+    if row is None:
+        return None
+    old = _posting(row)
+    return old.model_copy(update={
+        "url": job.url, "posted_at": old.posted_at or job.posted_at,
+        "remote_type": old.remote_type if old.remote_type != "unknown" else job.remote_type})
 
 
 class _PageReader:
@@ -131,6 +155,12 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
             ctx = SourceContext(http=http, browser=browser, llm=page_llm,
                                 log=lambda m, sid=source_id: event(m, source_id=sid),
                                 prefs=cfg.search)
+            # A job board's list gives a title, a company and a place. The job's own page is opened
+            # once, and until it has been the job is not scored: a title alone tells too little.
+            board = scfg.kind == "generic" and scfg.max_detail_pages > 0
+            if board:
+                ctx.recall = lambda job: _recalled(conn, job)
+                ctx.unread = [_posting(r) for r in db.unread_postings(conn, WAITING_DAYS, source_id=source_id)]
             try:
                 postings = build_source(scfg).fetch(ctx)
             except Exception as e:  # noqa: BLE001 - one bad source must not kill the run
@@ -145,6 +175,8 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
                 why = reject_reason(p, cfg.search)
                 if why:
                     summary.filtered += 1
+                elif board and not p.is_read:
+                    summary.unread += 1
                 else:
                     candidates.append((job_id, p))
             summary.found += len(postings)

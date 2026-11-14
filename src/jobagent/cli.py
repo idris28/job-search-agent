@@ -121,6 +121,7 @@ def cmd_run(args, settings):
                   f"{s.filtered} filtered out, {s.scored} scored "
                   + (f"and {s.screened_out} ruled out by the quick check " if s.screened_out else "") +
                   f"({s.skipped_unchanged} unchanged, not re-scored), "
+                  + (f"{s.unread} waiting for their page to be read, " if s.unread else "") +
                   f"{s.shortlisted} shortlisted, {s.tokens} tokens"
                   + (f" ({llm.cache_read_tokens:,} read from cache)" if getattr(llm, "cache_read_tokens", 0) else "")
                   + (f", {browser.minutes_used:.1f} browser minutes" if browser.minutes_used else "") + ".")

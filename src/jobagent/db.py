@@ -11,7 +11,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from .filters import country_of
-from .models import JobPosting, MatchResult, company_key, title_key
+from .models import MIN_READ_CHARS, JobPosting, MatchResult, company_key, title_key
 
 APPLICATION_STATUSES = (
     "shortlisted", "applied", "interviewing", "offer", "rejected", "withdrawn", "skipped",
@@ -268,6 +268,35 @@ def upsert_job(conn, job: JobPosting, source_id: int | None, run_id: int | None)
     return row["id"], row["inserted"]
 
 
+_POSTING = """title, company, url, location, remote_type, employment_type, salary_text, description,
+              posted_at, external_id"""
+# A job-board job whose own page has not been opened: only its list line is stored.
+_UNREAD = f"""coalesce(s.kind, '') = 'generic' AND coalesce((s.config->>'max_detail_pages')::int, 20) > 0
+              AND length(btrim(coalesce(j.description, ''))) < {MIN_READ_CHARS}"""
+
+
+def stored_posting(conn, job: JobPosting) -> dict | None:
+    """The stored row for a listed job, found the way upsert_job would find it: the same link, the
+    same company, title and place, or the same job on another board."""
+    return conn.execute(
+        f"""SELECT {_POSTING} FROM jobs WHERE url = %s OR fingerprint = %s OR match_key = %s
+            ORDER BY (url = %s) DESC, (fingerprint = %s) DESC, id LIMIT 1""",
+        (job.url, job.fingerprint, match_key(job.title, job.company, job.location), job.url, job.fingerprint)).fetchone()
+
+
+def unread_postings(conn, seen_within_days: int, *, source_id: int | None = None, brief: bool = False) -> list[dict]:
+    """Job-board jobs listed recently whose own page was never opened, newest first. For one board
+    when `source_id` is given. `brief` leaves the text out and names the board, for counting."""
+    columns = "j.title, j.company, j.url, j.location, j.remote_type, j.posted_at, s.name AS board" if brief \
+        else ", ".join("j." + c.strip() for c in _POSTING.split(","))
+    return conn.execute(
+        f"""SELECT {columns} FROM jobs j JOIN sources s ON s.id = j.source_id
+            WHERE j.is_active AND j.url LIKE 'http%%' AND {_UNREAD}
+              AND j.last_seen_at >= now() - make_interval(days => %s) AND (%s::int IS NULL OR j.source_id = %s)
+            ORDER BY j.posted_at DESC NULLS LAST, j.id DESC LIMIT 500""",
+        (seen_within_days, source_id, source_id)).fetchall()
+
+
 def existing_match_hash(conn, profile_id: int, job_id: int) -> str | None:
     row = conn.execute(
         "SELECT content_hash FROM job_matches WHERE profile_id = %s AND job_id = %s",
@@ -333,15 +362,16 @@ def delete_job(conn, job_id: int) -> None:
 def unscored_jobs(conn, profile_id: int, seen_within_days: int, *, brief: bool = False) -> list[dict]:
     """Jobs a search stored but never scored for this profile, still listed recently, newest first.
 
-    General applications are left out: they have no posting to score. `brief` cuts the description
+    General applications are left out: they have no posting to score. So are job-board jobs whose
+    own page was never opened: a later search reads the page first. `brief` cuts the description
     to what the rule filters read, for counting many rows cheaply.
     """
     description = "left(j.description, 1200)" if brief else "j.description"
     return conn.execute(
         f"""SELECT j.id, j.title, j.company, j.url, j.location, j.remote_type, j.employment_type,
                    j.salary_text, {description} AS description, j.posted_at, j.external_id
-            FROM jobs j
-            WHERE j.is_active AND j.url NOT LIKE 'general:%%'
+            FROM jobs j LEFT JOIN sources s ON s.id = j.source_id
+            WHERE j.is_active AND j.url NOT LIKE 'general:%%' AND NOT ({_UNREAD})
               AND j.last_seen_at >= now() - make_interval(days => %s)
               AND NOT EXISTS (SELECT 1 FROM job_matches m WHERE m.job_id = j.id AND m.profile_id = %s)
             ORDER BY j.posted_at DESC NULLS LAST, j.id DESC""", (seen_within_days, profile_id)).fetchall()

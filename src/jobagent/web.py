@@ -27,7 +27,7 @@ from .backup import find_pg_dump, latest_backup
 from .config import AgentConfig, ConfigError, read_settings, write_settings
 from .contacts import _EMAIL_RE
 from .models import names_missing_company, unfilled_placeholders
-from .pipeline import waiting_jobs
+from .pipeline import unread_jobs, waiting_jobs
 from .report import _paragraphs_html, digest_markdown
 
 MAX_LINES = 4000
@@ -202,16 +202,18 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
 
     # --- reading ----------------------------------------------------------------------
 
-    waiting = {"at": 0.0, "task": None, "n": 0}
+    waiting = {"at": 0.0, "task": None, "n": 0, "unread": 0}
 
-    def waiting_count(conn, pid: int, c: AgentConfig) -> int:
-        """How many stored jobs wait to be scored. Counting reads every unscored job, so the answer
-        is kept for two minutes, or until a task starts or ends."""
+    def waiting_count(conn, pid: int, c: AgentConfig) -> tuple[int, int]:
+        """How many stored jobs wait to be scored, and how many job-board jobs wait for their own
+        page to be opened first. Counting reads every such job, so the answer is kept for two
+        minutes, or until a task starts or ends."""
         t = runner.task
         key = (t["id"], t["running"]) if t else None
         if key != waiting["task"] or time.monotonic() - waiting["at"] > 120:
-            waiting.update(at=time.monotonic(), task=key, n=len(waiting_jobs(conn, c, pid, brief=True)))
-        return waiting["n"]
+            waiting.update(at=time.monotonic(), task=key, n=len(waiting_jobs(conn, c, pid, brief=True)),
+                           unread=unread_jobs(conn, c))
+        return waiting["n"], waiting["unread"]
 
     def state() -> dict:
         c = config()
@@ -242,7 +244,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             due = db.followups_due(conn, pid, c.outreach.follow_up_days)
             out["due"] = [r["job_id"] for r in due]
             out["counts"]["due"] = len(due)
-            out["counts"]["waiting"] = waiting_count(conn, pid, c)
+            out["counts"]["waiting"], out["counts"]["unread"] = waiting_count(conn, pid, c)
             out["sends"] = {"today": db.sends_today(conn, pid), "cap": c.outreach.max_sends_per_day}
             out["countries"] = db.match_countries(conn, pid)
             for r in db.dashboard_rows(conn, pid):

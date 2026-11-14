@@ -318,8 +318,10 @@ Adobe says "Computer Scientist", Salesforce says "Member of Technical Staff".
   rest; set `enabled: false` on it in `config.yaml` to stop the report.
 - Most job board postings show no email address, so `--send` only covers the ones that do, plus
   posts you add with `jsa add`.
-- Only the first few job pages per site are opened in full each run (`max_detail_pages` on each
-  source); the newest postings go first.
+- Only so many job pages per job board are opened in full each run (`max_detail_pages` on each
+  source); the newest postings go first. A job from a board is scored only after its own page was
+  read, so with a long list some jobs wait a run or two. The run's summary says how many, and the
+  website shows it under **Scored** as "waiting to be read". A page is opened once, never again.
 - `--send` stops at the daily limit and waits between emails; both are settings
   (`outreach.max_sends_per_day`, `send_pause_seconds`).
 - The daily schedule only runs while the Mac is awake.

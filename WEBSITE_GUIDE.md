@@ -119,7 +119,7 @@ inboxes is rarely read and can get your Gmail account marked as spam.
 |---|---|
 | **Find new jobs** | Searches every site in `config.yaml`, drops jobs that do not fit your rules, scores the rest against your resume and shortlists the strong ones. |
 | Arrow beside it, **Collect only, score later** | Gathers jobs without scoring them, which is the larger part of the AI cost. They are scored on the next full search. |
-| Arrow beside it, **Score waiting jobs** | Scores jobs that earlier searches found but did not score, without searching the sites again. A search scores only so many jobs at a time, so some are left waiting; the number shows under **Scored** and in Next steps. |
+| Arrow beside it, **Score waiting jobs** | Scores jobs that earlier searches found but did not score, without searching the sites again. A search scores only so many jobs at a time, so some are left waiting; the number shows under **Scored** (when it says "waiting to be read" instead, those are job-board jobs whose own page the next search will open before scoring them) and in Next steps. |
 | Arrow beside it, **Morning routine** | Search, then a digest file and one summary email to yourself. |
 | Arrow beside it, **Search one site** | Searches just the site you pick. |
 | **Add from a post** | Paste a LinkedIn post, WhatsApp message or email that asks for CVs. The role, company and email address are read from it, and the job is scored and shortlisted. Click **Add the job** to start. |

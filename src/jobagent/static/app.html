@@ -746,7 +746,7 @@ function renderChrome() {
   if ($("#chips").dataset.k !== chips) { $("#chips").innerHTML = chips; $("#chips").dataset.k = chips; }
   const subs = {
     found: c.found_week ? `<i class="up">+${c.found_week.toLocaleString()}</i> new this week` : `from ${st.sources.length} sites`,
-    scored: c.waiting ? `${c.waiting.toLocaleString()} waiting to be scored` : "against your resume", shortlisted: `scoring ${st.shortlist_min_score} or more`,
+    scored: c.waiting ? `${c.waiting.toLocaleString()} waiting to be scored` : c.unread ? `${c.unread.toLocaleString()} waiting to be read` : "against your resume", shortlisted: `scoring ${st.shortlist_min_score} or more`,
     emailed: st.sends ? `${st.sends.today} sent today${st.sends.cap ? ", limit " + st.sends.cap : ""}` : "none sent yet",
     applied: "in progress", due: c.due ? "due now" : `${st.follow_up_days} days after an email` };
   const hot = t && t.running ? HOT[t.action] || [] : [];

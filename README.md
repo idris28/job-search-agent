@@ -94,7 +94,7 @@ that file to go back to `config.yaml` alone.
 | `amazon` | nothing | amazon.jobs search feed, asked for your countries only |
 | `microsoft` | nothing | Microsoft careers search, then one request per job that fits your rules |
 | `workday` | `urls: [<careers address>]`, e.g. `https://adobe.wd5.myworkdayjobs.com/external_experienced` | the careers system shared by Salesforce, eBay, HP and many others; filtered to your countries |
-| `generic` | `urls: [...]` any careers or search results page | Browserbase renders it, the LLM picks out the postings (URLs must exist on the page), then up to `max_detail_pages` detail pages are visited |
+| `generic` | `urls: [...]` any careers or search results page | Browserbase renders it, the LLM picks out the postings (URLs must exist on the page), then up to `max_detail_pages` job pages are opened per run. A job is scored only after its own page was read, and each page is opened once |
 
 ## Daily use
 
@@ -239,7 +239,11 @@ placeholder that was left unfilled. Edit the file to change the wording; delete 
 `outreach.template_file: ""` in `config.yaml`, to go back to the built-in format.
 
 Re-running is cheap: jobs are deduplicated by company, title, and location, and a job is only
-re-scored when its text changes. One failing source marks the run `partial` and the rest
+re-scored when its text changes. A job board's list gives just a title, a company and a place, so a
+job from a board is not scored until its own page has been read. Each run opens up to
+`max_detail_pages` such pages per board, only for jobs the rule filters would keep: first the ones
+listed now, then ones listed in the last 7 days and still unread. The rest wait for the next run,
+and a page is never opened twice. A board that lists nothing is not asked for job pages. One failing source marks the run `partial` and the rest
 continue. A run that is stopped (Ctrl-C, or **Stop** on the page) is also marked `partial`: it
 shortlists what it had already scored and records where it ended. A run whose program was closed
 before it could do that is given its end the next time runs are listed or a new run starts.

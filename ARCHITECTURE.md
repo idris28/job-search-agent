@@ -41,7 +41,7 @@ sequenceDiagram
             Note over Web: If the session ends mid-run, a new one is opened and the page is retried
             Src->>AI: extract_listings(page)
             AI-->>Src: jobs with title, link, location, posted age
-            Src->>Web: fetch(job page) for up to max_detail_pages jobs, newest first
+            Src->>Web: fetch(job page) for up to max_detail_pages unread jobs, newest first
             Web-->>Src: full description
         else company career feed (Greenhouse, Lever, Ashby, Amazon, Microsoft, Workday)
             Src->>Feeds: HTTP GET the public feed
@@ -231,6 +231,10 @@ Not in the diagram:
   only partly finished stores the reason: the limit reached, or the sites that could not be read.
 - **The database must be current.** Every command checks for pending updates first and says
   "Run: jsa migrate" instead of failing halfway; the page offers a button for the same.
+- **A job is read before it is scored.** A job board's list gives a title, a company and a place.
+  Until the job's own page has been opened the job is stored but not scored, and it waits for a
+  later run. The search hands each board the stored copy of every job it lists again, so a page is
+  opened once and a job does not look changed because its list line was read differently.
 - **Scoring is paid for once, and as little as needed.** A cheaper model can read the job-site
   pages (a page it cannot read goes to the main model) and can rule out the clear misses before the
   full scoring, and the scoring can go as one batch at half price. A batch is
