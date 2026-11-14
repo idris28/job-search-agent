@@ -102,7 +102,13 @@ calls.
 
 The email comes from its own template: in Settings, under **Your templates**, choose **General email**. It asks about
 openings instead of applying for a position. If you gave no employer name, the email leaves the name
-out. To see only these, choose **General applications** in the Next step filter.
+out.
+
+**Where the list is.** Before an address is emailed it is on **Shortlist**: choose **General
+applications** in the Next step filter. Once emailed it moves to **In progress**: choose **General
+applications** in the Stage filter there. Each row shows the employer and the address it was sent
+to, with the postmark for the day. Typing part of an address in the search box finds its row.
+**Job postings only** in the same filters shows everything else.
 
 Send these to employers that could plausibly hire you. The same email to dozens of unrelated
 inboxes is rarely read and can get your Gmail account marked as spam.

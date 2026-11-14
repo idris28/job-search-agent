@@ -811,6 +811,10 @@ function rowsFor(view) {
   return S.matches || [];
 }
 const isGeneral = r => String(r.url || "").startsWith("general:");
+// What a row is called: a job by its title and company; a general application by the employer
+// and the address written to, since its title is the same on every one.
+const rowName = r => !isGeneral(r) ? [r.title, r.company]
+  : named(r.company) ? [r.company, r.contact_email || r.title] : [r.contact_email || r.company, r.title];
 const ready = r => r.status === "shortlisted" && r.has_draft && r.contact_email && r.contact_kind !== "general" && !r.outreach_sent_at;
 function passes(r) {
   const f = S.f, s = statusOf(r), x = f.extra;
@@ -818,21 +822,21 @@ function passes(r) {
   if (f.score && (r.score ?? 0) < f.score) return false;
   if (f.posted && !(r.posted_at && Date.now() - new Date(r.posted_at) <= f.posted * 864e5)) return false;
   if (S.view === "shortlist") return !(x === "ready" && !ready(r)) && !(x === "nodraft" && r.has_draft) && !(x === "noaddr" && r.contact_email) && !(x === "general" && !isGeneral(r)) && !(x === "posted" && isGeneral(r));
-  if (S.view === "progress") return x === "aside" ? ASIDE.includes(s) : x ? s === x : ACTIVE.includes(s);
+  if (S.view === "progress") return x === "aside" ? ASIDE.includes(s) : x === "general" ? isGeneral(r) : x === "posted" ? ACTIVE.includes(s) && !isGeneral(r) : x ? s === x : ACTIVE.includes(s);
   if (S.view === "matches") return !(x === "new" && s) && !(x === "shortlisted" && s !== "shortlisted") && !(x === "applied" && !ACTIVE.includes(s)) && !(x === "aside" && !ASIDE.includes(s));
   return true;
 }
 function shown() {
   let rows = rowsFor(S.view).filter(passes);
   const q = S.q.trim().toLowerCase();
-  if (q) rows = rows.filter(r => `${r.title} ${r.company} ${r.location || ""}`.toLowerCase().includes(q));
+  if (q) rows = rows.filter(r => `${r.title} ${r.company} ${r.location || ""} ${r.contact_email || ""}`.toLowerCase().includes(q));
   const { key, dir } = S.sort;
   if (key) rows = [...rows].sort((a, b) => { const x = a[key] ?? "", y = b[key] ?? ""; return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * dir; });
   return rows;
 }
 const EXTRA = {
   shortlist: ["Next step", [["", "Any next step"], ["ready", "Ready to send"], ["nodraft", "No draft yet"], ["noaddr", "No address yet"], ["general", "General applications"], ["posted", "Job postings only"]]],
-  progress: ["Stage", [["", "In progress"], ["applied", "Applied"], ["interviewing", "Interviewing"], ["offer", "Offer"], ["aside", "Set aside"]]],
+  progress: ["Stage", [["", "In progress"], ["applied", "Applied"], ["interviewing", "Interviewing"], ["offer", "Offer"], ["aside", "Set aside"], ["general", "General applications"], ["posted", "Job postings only"]]],
   matches: ["Status", [["", "Any status"], ["new", "Not listed yet"], ["shortlisted", "Shortlisted"], ["applied", "Applied or later"], ["aside", "Set aside"]]],
 };
 function renderFilters() {
@@ -873,7 +877,7 @@ function renderList(force) {
     slice.map(r => [r.job_id, statusOf(r), r.score, r.has_draft, r.contact_email, r.contact_kind, r.outreach_sent_at, ago(r.posted_at)])]);
   if (!force && sig === S.lsig) return;
   S.lsig = sig;
-  $("#ttitle").textContent = { shortlist: "Shortlisted jobs", progress: S.f.extra === "aside" ? "Set aside" : "Applications", followups: "Follow-ups due", matches: "All scored jobs" }[S.view];
+  $("#ttitle").textContent = { shortlist: "Shortlisted jobs", progress: S.f.extra === "aside" ? "Set aside" : S.f.extra === "general" ? "General applications" : "Applications", followups: "Follow-ups due", matches: "All scored jobs" }[S.view];
   $("#tcount").textContent = rows.length === all.length ? all.length : `${rows.length} of ${all.length}`;
   $("#thlast").textContent = S.view === "shortlist" ? "Next step" : "Status";
   $("table.jobs").classList.toggle("sent", S.view !== "shortlist");
@@ -894,9 +898,9 @@ function renderList(force) {
   const body = $("#tbody");
   if (S.view === "matches" && S.matches === null) body.innerHTML = `<tr><td colspan="5"><div class="empty">Loading matches</div></td></tr>`;
   else body.innerHTML = slice.map(r => `<tr class="row" data-job="${r.job_id}" tabindex="0" aria-selected="${r.job_id === S.sel}">
-      <td><span class="jt"><b>${esc(r.title)}</b><small>${esc(r.company)}</small></span></td>
+      <td><span class="jt"><b>${esc(rowName(r)[0])}</b><small>${esc(rowName(r)[1])}</small></span></td>
       <td class="loc">${esc(r.location || "Not given")}</td>
-      <td>${r.score == null ? '<span class="faint">No score</span>' : `<span class="sc ${tier(r.score)}"><b>${r.score}</b><span class="bar"><u style="width:${r.score}%"></u></span></span>`}</td>
+      <td>${r.score == null ? '<span class="faint">None</span>' : `<span class="sc ${tier(r.score)}"><b>${r.score}</b><span class="bar"><u style="width:${r.score}%"></u></span></span>`}</td>
       <td class="nw">${esc(ago(r.posted_at)) || '<span class="faint">Not shown</span>'}</td>
       <td><div class="stc">${tagFor(r, due)}${r.outreach_sent_at ? postmark(r.outreach_sent_at) : ""}</div></td></tr>`).join("") || `<tr><td colspan="5"><div class="empty">${emptyText(all.length)}</div></td></tr>`;
   const from = rows.length ? S.page * PAGE + 1 : 0, to = Math.min(rows.length, (S.page + 1) * PAGE);
