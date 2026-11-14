@@ -119,7 +119,7 @@ task is really running. Nothing lifts or scales on hover.
 - **One name per action,** the same on its button, in All actions, on the progress strip and in the
   message when it ends: Find new jobs, Add a job from a post, Add HR addresses, Draft emails, Look
   for addresses, Save drafts to Gmail, Send ready emails, Send follow-ups, Run the morning routine,
-  Download digest. A save button names what it saves: Save draft gives "Draft saved".
+  Score waiting jobs, Download digest, Delete entry. A save button names what it saves: Save draft gives "Draft saved".
 - **A confirm button repeats the action,** with the count when there is one: "Send 2 emails",
   "Merge duplicates", "Stop Job Search". Never "OK", "Yes" or "Send them".
 - **Sentence case everywhere,** including status names: Shortlisted, Applied, Interviewing, Offer,

@@ -37,6 +37,28 @@ def add_pasted_job(conn, llm, cfg, text: str, url: str | None = None):
     return job_id, is_new, found, m
 
 
+def can_delete(job: dict, application: dict | None) -> str | None:
+    """None when this entry may be deleted, otherwise why not."""
+    if job["source_id"] is not None:
+        return "This job came from a job site, so the next search would bring it back. Use Skip to set it aside."
+    if application and application["outreach_sent_at"]:
+        return "This one has been emailed, so it is kept as a record. Use Skip to set it aside."
+    return None
+
+
+def delete_added_job(conn, profile_id: int, job_id: int) -> dict:
+    """Remove a pasted post or a general application the person added, with its draft and notes.
+    Returns the job that was removed."""
+    job = db.get_job(conn, job_id)
+    if not job:
+        raise ActionError("That job was not found.")
+    why_not = can_delete(job, db.get_application(conn, profile_id, job_id))
+    if why_not:
+        raise ActionError(why_not)
+    db.delete_job(conn, job_id)
+    return job
+
+
 _ADDRESS_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 _WEBMAIL = ("gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "live.com", "icloud.com")
 _COUNTRY_BY_ENDING = {".sa": "Saudi Arabia", ".ae": "UAE", ".qa": "Qatar", ".in": "India"}

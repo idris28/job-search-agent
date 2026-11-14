@@ -7,7 +7,7 @@ import pytest
 from jobagent import db
 from jobagent.config import AgentConfig, MatchingPrefs, SearchPrefs, SourceConfig
 from jobagent.models import JobPosting, MatchResult
-from jobagent.pipeline import run_agent
+from jobagent.pipeline import run_agent, waiting_jobs
 
 from conftest import TEST_DB, FakeBrowser, FakeLLM, mock_http
 
@@ -220,3 +220,35 @@ def test_older_searches_get_their_reason_from_what_they_logged(conn):
     finished, partial = db.settled_runs(conn)
     assert partial["error"] == stored and finished["error"] is None
     assert db.fill_missing_reasons(conn) == 0
+
+
+def test_waiting_jobs_are_scored_without_reading_any_site(conn):
+    """Jobs a search stored but did not score are scored later from the database alone."""
+    from jobagent.actions import add_hr_contacts
+
+    pid = db.save_profile(conn, "Alex", "resume", {})
+    http = mock_http({"boards-api.greenhouse.io/v1/boards/acme/jobs": gh(
+        ("Senior Java Engineer", "Dubai"), ("Backend Engineer", "Pune, India"), ("Backend Engineer II", "Dubai"),
+        ("Java Engineer", "Berlin"), ("Designer", "Dubai"))})
+    run_agent(conn, make_cfg(), FakeLLM(), FakeBrowser({}), http=http, only_source="Acme", score=False)
+    add_hr_contacts(conn, make_cfg(), "Gulf Tech, hr@gulftech.example", "Saudi Arabia")  # has no posting to score
+
+    cfg = make_cfg(max_jobs_to_score=2, concurrency=1)
+    waiting = waiting_jobs(conn, cfg, pid)
+    assert sorted(p.title for _, p in waiting) == ["Backend Engineer", "Backend Engineer II", "Senior Java Engineer"]
+    assert len(waiting_jobs(conn, cfg, pid, brief=True)) == 3
+
+    no_sites = mock_http({})  # any site read would fail and leave the run partial
+    llm = FakeLLM(scores={"Senior Java Engineer": 90, "Backend Engineer": 60, "Backend Engineer II": 80})
+    first = run_agent(conn, cfg, llm, None, http=no_sites, collect=False)
+    assert (first.status, first.found, first.scored, first.source_errors) == ("succeeded", 0, 2, {})
+    assert len(waiting_jobs(conn, cfg, pid)) == 1  # the cap left one for next time
+
+    second = run_agent(conn, cfg, llm, None, http=no_sites, collect=False)
+    assert second.scored == 1 and waiting_jobs(conn, cfg, pid) == []
+    assert sorted(llm.scored_titles) == ["Backend Engineer", "Backend Engineer II", "Senior Java Engineer"]
+    listed = {r["title"]: r["application_status"] for r in db.top_matches(conn, pid, min_score=0)}
+    assert listed == {"Senior Java Engineer": "shortlisted", "Backend Engineer II": "shortlisted", "Backend Engineer": None}
+
+    third = run_agent(conn, cfg, llm, None, http=no_sites, collect=False)  # nothing left: no AI call
+    assert third.scored == 0 and len(llm.scored_titles) == 3

@@ -113,6 +113,7 @@ inboxes is rarely read and can get your Gmail account marked as spam.
 |---|---|
 | **Find new jobs** | Searches every site in `config.yaml`, drops jobs that do not fit your rules, scores the rest against your resume and shortlists the strong ones. |
 | Arrow beside it, **Collect only, score later** | Gathers jobs without scoring them, which is the larger part of the AI cost. They are scored on the next full search. |
+| Arrow beside it, **Score waiting jobs** | Scores jobs that earlier searches found but did not score, without searching the sites again. A search scores only so many jobs at a time, so some are left waiting; the number shows under **Scored** and in Next steps. |
 | Arrow beside it, **Morning routine** | Search, then a digest file and one summary email to yourself. |
 | Arrow beside it, **Search one site** | Searches just the site you pick. |
 | **Add from a post** | Paste a LinkedIn post, WhatsApp message or email that asks for CVs. The role, company and email address are read from it, and the job is scored and shortlisted. Click **Add the job** to start. |
@@ -140,7 +141,7 @@ outside it. The arrows at the top, or the J and K keys, move to the next and pre
 | Section | What you can do |
 |---|---|
 | Top | Title, company, location, when it was posted, pay (stated or estimated) and the score. |
-| Buttons | **Apply on the job site** opens the posting in a new tab so you can apply there; when you return, the page asks whether you applied. The next buttons record what happened: **I applied**, **Skip**, **Got an interview**, **Got an offer**, **Rejected**. **Other status** has the rest. Once a job is applied, the first button reads **Open the posting**. |
+| Buttons | **Apply on the job site** opens the posting in a new tab so you can apply there; when you return, the page asks whether you applied. The next buttons record what happened: **I applied**, **Skip**, **Got an interview**, **Got an offer**, **Rejected**. **Other status** has the rest. Once a job is applied, the first button reads **Open the posting**. **Delete entry** appears only on something you added yourself (a pasted post or an HR address) that has not been emailed; it removes it for good, with its draft and notes. A job from a job site has no Delete, because the next search would bring it back: use **Skip**. |
 | Why it matches | A short explanation, the skills you have, the skills asked for that are not on your resume, and anything to check before applying. |
 | Email to the recruiter | The email is shown as a sheet of paper. The **To** line holds the address it will go to. If the agent found none, type one you found yourself (on LinkedIn or in the posting) and click **Save address**; empty the line and save to remove it. Below it are the subject and the text. Edit either on the sheet, then **Save draft**. **Send email** sends it after asking you to confirm. **Write it again** replaces the draft with a fresh one. **Preview**, at the top right of the section, shows it as the recruiter will see it; **Edit** brings the text back. Once the email is sent, a round postmark with the date appears on the sheet. The follow-up text is underneath. |
 | Cover letter | **Write a cover letter** for sites that ask for one, then **Copy**. It follows your own letter in `cover_letter_template.txt`, filled in for this job. |
@@ -200,6 +201,7 @@ post) runs as a task.
 |---|---|---|
 | Find new jobs, Run the morning routine, Search one site | Yes | The morning routine emails you a summary |
 | Collect only, score later | Yes, but less: no scoring | No |
+| Score waiting jobs | Yes: AI only, no browser | No |
 | Add from a post | Yes, a little | No |
 | Draft emails, Write it again | Yes | No |
 | Look for addresses | Yes | No |
@@ -208,7 +210,7 @@ post) runs as a task.
 | Send ready emails, Send email, Send follow-ups | No | Yes, to recruiters |
 | Save drafts to Gmail | No | Saves drafts in your Gmail |
 | Send a test notification | No | Yes, to you |
-| Everything else (status, notes, saving a draft, filters, Insights, digest, merging duplicates) | No | No |
+| Everything else (status, notes, saving a draft, deleting an entry, filters, Insights, digest, merging duplicates) | No | No |
 
 Each search stops by itself at the AI and browser limits shown under **Settings**, **Limits in
 force**.
@@ -239,7 +241,7 @@ force**.
 
 | What you see | What to do |
 |---|---|
-| "This page is out of date. Reload it." | Reload the page. This happens after the program restarts. |
+| "This page is older than the running program. Reload it" | Reload the page. This happens after the program restarts. |
 | "The page lost contact with the job search program." | Double-click **Job Search** to start it again, then reload. |
 | "The database is not answering." | PostgreSQL is not running. Start it, then reload. |
 | A yellow bar asking to update the database | Click **Update the database**. It only adds what new features need. |
@@ -247,4 +249,5 @@ force**.
 | "No email is ready yet." | A job needs both a draft and an address. Use **Draft emails** and **Look for addresses** first, or type an address into the job's **To** box. |
 | "Found an address for 0 of 7 jobs" | Those companies publish no application address. Apply on the job sites, or add an address yourself. |
 | A task says "did not finish" | Click **Show output** to read why. A site blocking the search is the usual cause, and the other sites still complete. |
+| The same site "could not be read" in every search | Some job sites close the connection to an automated browser; the output then says "the site closed the connection". Naukrigulf does this to the browser on your Mac. The agent does not try to get around it. Set `enabled: false` on that site in `config.yaml` so searches stop reporting it, or search it through Browserbase, which it accepted. |
 | New buttons or panels look wrong after an update | Stop the program in Settings, open **Job Search** again, and reload the page. |

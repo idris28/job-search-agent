@@ -116,6 +116,7 @@ Good to know:
 | `jsa run` | Collects jobs from every job board in `config.yaml`, filters and scores them, and prints the best new ones. Uses AI calls, and Browserbase time unless the browser is local. |
 | `jsa run --source "Bayt - Java"` | Runs only the one source with that name. |
 | `jsa run --no-score` | Collects jobs but skips scoring, so no scoring calls are made. |
+| `jsa score` | Scores stored jobs that were never scored, without reading any site again. A run scores at most `matching.max_jobs_to_score` jobs, so the rest wait; this picks them up, newest first. On the website: **Score waiting jobs**. |
 | `jsa add` | Adds a job from text you paste, such as a LinkedIn post asking for CVs by email. Paste the text, press Enter, then Ctrl-D. It reads the role, company and email address, scores the job and shortlists it. |
 | `jsa add post.txt --url <link>` | The same, from a saved text file, keeping the post's link. |
 | `jsa add-contacts hr.txt --country "Saudi Arabia"` | Adds HR addresses as general applications: one address per line, optionally with the employer's name (`Acme Gulf, hr@acme.sa`). Nothing is scored or sent. Each lands on the shortlist; `jsa email` then drafts it from `general_email_template.txt`. On the website: **Add HR addresses**. |
@@ -172,6 +173,7 @@ in `.env` (an app password from myaccount.google.com/apppasswords), and `outreac
 | `jsa apply --dry-run` | Lists the jobs and links without opening anything. |
 | `jsa status 343 applied --note "via referral"` | Sets a job's status yourself, with an optional note. |
 | `jsa applications` | Lists every job you are tracking and its status. |
+| `jsa delete 343` | Removes a pasted post or a general application you added yourself, for good. It asks first (`--yes` skips the question). It refuses a job that came from a job site, or one already emailed: set those aside with `jsa status 343 skipped`. On the website: **Delete entry**. |
 | `jsa web` | Starts the page described in "Using it without the terminal" from a terminal instead of the Job Search app. Ctrl-C stops it. |
 | `jsa send` | Sends the saved drafts as they are, edits included, without writing them again. `--gmail-drafts` saves them to Gmail Drafts instead; `--general` also uses a general inbox. |
 
@@ -256,7 +258,7 @@ page. Treat an estimate as a rough guide, not a fact; it never lowers a score on
 
 ## What costs money
 
-- **AI model calls** (Claude): `jsa contacts`, the "add a job" form on the web page, `jsa daily`, `jsa run` (reading pages and scoring), `jsa email`, `jsa add`,
+- **AI model calls** (Claude): `jsa contacts`, the "add a job" form on the web page, `jsa daily`, `jsa run` (reading pages and scoring), `jsa score`, `jsa email`, `jsa add`,
   `jsa cover-letter` and `jsa profile import`.
 - **Browserbase time**: `jsa daily`, `jsa run`, and the live posting check in `jsa email`. None of it
   is used when `.env` has `JOBAGENT_BROWSER=local`: the pages open in Chromium on this Mac.
@@ -298,6 +300,9 @@ Adobe says "Computer Scientist", Salesforce says "Member of Technical Staff".
 
 - Job sites block automated browsers, so the agent cannot log in or click Apply for you. That is
   why `jsa apply` opens the page in your own browser.
+- A site can also refuse to be read at all. Naukrigulf closes the connection to the browser on this
+  Mac (it accepted Browserbase). The run then reports that site as not read and carries on with the
+  rest; set `enabled: false` on it in `config.yaml` to stop the report.
 - Most job board postings show no email address, so `--send` only covers the ones that do, plus
   posts you add with `jsa add`.
 - Only the first few job pages per site are opened in full each run (`max_detail_pages` on each

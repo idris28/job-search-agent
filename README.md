@@ -91,6 +91,7 @@ Everything lives in `config.yaml` (see `config.example.yaml`):
 ```bash
 jsa run                          # collect + score; prints the top new matches
 jsa run --source "Acme" --no-score
+jsa score                        # score stored jobs a run left unscored, without searching again
 jsa jobs --min-score 75          # best matches across all runs
 jsa show 42 --full               # one job, with matched skills, gaps, red flags
 jsa cover-letter 42              # draft, saved on the application record
@@ -98,6 +99,7 @@ jsa email                        # recruiter emails for your top shortlisted job
 jsa email 94 96                  # ...or for specific jobs; --no-browse skips the live check
 jsa status 42 applied --note "via referral"
 jsa applications                 # your pipeline
+jsa delete 42                    # remove a pasted post or HR address you added (asks first)
 jsa digest --out digests/today.md
 jsa runs                         # run history, tokens used, and why a run was only partial
 ```

@@ -33,8 +33,27 @@ class RunSummary:
     stopped: str = ""  # why the run stopped early, when a spending limit was reached
 
 
-def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Client | None = None,
-              only_source: str | None = None, score: bool = True) -> RunSummary:
+WAITING_DAYS = 7  # a stored job counts as still open if a search saw it this recently
+
+
+def waiting_jobs(conn, cfg: AgentConfig, profile_id: int, *, brief: bool = False) -> list[tuple[int, JobPosting]]:
+    """Stored jobs that pass the rule filters and were never scored, newest first.
+
+    They are left behind when a search reaches its cap or a spending limit, is stopped, or was
+    run to collect only.
+    """
+    out = []
+    for r in db.unscored_jobs(conn, profile_id, WAITING_DAYS, brief=brief):
+        job_id = r.pop("id")
+        posting = JobPosting(**{**r, "remote_type": r["remote_type"] or "unknown"})
+        if reject_reason(posting, cfg.search) is None:
+            out.append((job_id, posting))
+    return out
+
+
+def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: httpx.Client | None = None,
+              only_source: str | None = None, score: bool = True, collect: bool = True) -> RunSummary:
+    """One search. With collect=False no site is read: the stored jobs still waiting are scored."""
     profile = db.active_profile(conn)
     if profile is None:
         raise RuntimeError("No profile yet. Run: jsa profile import <resume.pdf>")
@@ -63,7 +82,10 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser, *, http: httpx.Clie
     try:
         # 1. Collect -----------------------------------------------------------
         candidates: list[tuple[int, JobPosting]] = []
-        for scfg in cfg.sources:
+        if not collect:
+            candidates = waiting_jobs(conn, cfg, profile["id"])
+            event(f"{len(candidates)} stored jobs are waiting to be scored")
+        for scfg in cfg.sources if collect else []:
             if not scfg.enabled or (only_source and scfg.name != only_source):
                 continue
             summary.stopped = summary.stopped or over_budget()

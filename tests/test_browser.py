@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import pytest
 
 from jobagent import browser as bmod
-from jobagent.browser import LazyBrowser, PageContent, PlaywrightBrowser
+from jobagent.browser import LazyBrowser, PageContent, PlaywrightBrowser, SiteRefused
 from jobagent.config import Settings
 
 SESSION_ENDED = "Page.goto: Target page, context or browser has been closed"
@@ -99,3 +99,12 @@ def test_other_load_failures_are_reported_at_once():
     with pytest.raises(RuntimeError, match="Timeout"):
         PlaywrightBrowser(page).fetch("https://x/jobs")
     assert page.waits == 0
+
+
+def test_a_site_that_drops_the_connection_is_reported_as_refusing_the_browser():
+    page = FailingPage("Page.goto: net::ERR_HTTP2_PROTOCOL_ERROR at https://x/jobs\nCall log:\n  - navigating")
+    with pytest.raises(SiteRefused) as e:
+        PlaywrightBrowser(page).fetch("https://x/jobs")
+    assert str(e.value) == ("the site closed the connection when this browser asked for https://x/jobs "
+                            "(ERR_HTTP2_PROTOCOL_ERROR). Job sites often do this to automated browsers")
+    assert page.url.startswith("chrome-error://")  # the next fetch on this page is still safe

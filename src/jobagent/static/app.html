@@ -531,6 +531,7 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
           <div class="menu" id="runmenu" hidden>
             <button data-act="run"><svg class="ic" aria-hidden="true"><use href="#i-zap"/></svg>Search every site and score the jobs</button>
             <button data-act="run-noscore"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg>Collect only, score later</button>
+            <button data-act="score"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg>Score waiting jobs</button>
             <button data-act="daily"><svg class="ic" aria-hidden="true"><use href="#i-sunrise"/></svg>Morning routine: search, digest, summary</button>
             <label for="onesite">Search one site</label>
             <select id="onesite"><option value="">Choose a site</option></select>
@@ -638,7 +639,7 @@ const VIEWS = {
   activity: ["Activity", "What the program is doing now, and past searches"],
   settings: ["Settings", "Setup, the morning routine, your templates and limits"],
 };
-const HOT = { run: ["found", "scored"], daily: ["found", "scored", "shortlisted"], add: ["found", "scored", "shortlisted"], contacts: ["shortlisted"], email: ["shortlisted"],
+const HOT = { score: ["scored", "shortlisted"], run: ["found", "scored"], daily: ["found", "scored", "shortlisted"], add: ["found", "scored", "shortlisted"], contacts: ["shortlisted"], email: ["shortlisted"],
               send: ["shortlisted", "emailed", "applied"], "gmail-drafts": ["shortlisted"], "cover-letter": ["shortlisted"], followups: ["due"] };
 const STATUS_C = { shortlisted: "c-paper", applied: "c-blue", interviewing: "c-amber", offer: "c-green", rejected: "c-red", skipped: "c-aside", withdrawn: "c-aside" };
 const COUNTRIES = [["UAE", /\b(uae|united arab emirates|dubai|abu dhabi|sharjah|ajman)\b/], ["Saudi Arabia", /\b(saudi|ksa|riyadh|jeddah|dammam|khobar)\b/], ["Qatar", /\b(qatar|doha)\b/],
@@ -717,7 +718,7 @@ function renderChrome() {
   if ($("#chips").dataset.k !== chips) { $("#chips").innerHTML = chips; $("#chips").dataset.k = chips; }
   const subs = {
     found: c.found_week ? `<i class="up">+${c.found_week.toLocaleString()}</i> new this week` : `from ${st.sources.length} sites`,
-    scored: "against your resume", shortlisted: `scoring ${st.shortlist_min_score} or more`,
+    scored: c.waiting ? `${c.waiting.toLocaleString()} waiting to be scored` : "against your resume", shortlisted: `scoring ${st.shortlist_min_score} or more`,
     emailed: st.sends ? `${st.sends.today} sent today${st.sends.cap ? ", limit " + st.sends.cap : ""}` : "none sent yet",
     applied: "in progress", due: c.due ? "due now" : `${st.follow_up_days} days after an email` };
   const hot = t && t.running ? HOT[t.action] || [] : [];
@@ -927,6 +928,8 @@ function nextSteps() {
   if (t && t.running) out.push(["blue", "refresh", `${t.label} is running`, "Its progress shows under the numbers above", "Show output", "v:activity"]);
   if (due) out.push(["amber", "clock", `${plural(due, "follow-up is", "follow-ups are")} due`, "No reply yet to an email you sent", "Open follow-ups", "v:followups"]);
   if (n) out.push(["green", "send", `${plural(n, "email is", "emails are")} ready to send`, "Draft and address are both in place", "Send ready emails", "send-all"]);
+  const w = (st.counts || {}).waiting || 0, cap = (st.search || {}).score_cap;
+  if (w && !(t && t.running)) out.push(["blue", "target", `${w.toLocaleString()} ${w === 1 ? "job is" : "jobs are"} waiting to be scored`, `Found by earlier searches${cap && w > cap ? `; up to ${cap} are scored at a time` : ""}`, "Score waiting jobs", "score"]);
   if (sl.length) out.push(["blue", "link", `${plural(sl.length, "shortlisted job", "shortlisted jobs")} to apply for`, "Open each posting, apply on its site, then say so", "Start applying", "apply-first"]);
   if (nd) out.push(["violet", "edit", `${plural(nd, "shortlisted job has", "shortlisted jobs have")} no email draft`, "Written from your template and resume", "Draft emails", "draft-all"]);
   if (na) out.push(["cyan", "at", `${plural(na, "job has", "jobs have")} no recruiter address`, "Looked up on each company's own site", "Look for addresses", "contacts-all"]);
@@ -936,7 +939,7 @@ function nextSteps() {
 }
 function renderWidgets() {
   const st = S.state, jobs = st.jobs, t = st.task;
-  const sig = JSON.stringify([jobs.map(r => [r.job_id, r.status, r.score, r.has_draft, !!r.contact_email, !!r.outreach_sent_at]), st.countries, st.due, t && [t.id, t.running], !!st.setup.profile]);
+  const sig = JSON.stringify([jobs.map(r => [r.job_id, r.status, r.score, r.has_draft, !!r.contact_email, !!r.outreach_sent_at]), st.countries, st.due, (st.counts || {}).waiting, t && [t.id, t.running], !!st.setup.profile]);
   if (sig === S.wsig) return;
   S.wsig = sig;
   const STAGES = [["Shortlisted", ["shortlisted"], "c-paper"], ["Applied", ["applied"], "c-blue"], ["Interviewing", ["interviewing"], "c-amber"], ["Offer", ["offer"], "c-green"], ["Set aside", ASIDE, "c-aside"]];
@@ -1052,6 +1055,7 @@ function renderDetail(keep) {
       ${http(j.url) ? `<a class="btn ${canApply ? "primary" : ""}" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer"${canApply ? " data-apply" : ""}>${ic("link")}${canApply ? "Apply on the job site" : "Open the posting"}</a>` : `<span class="tag c-slate">${isGeneral(j) ? "General application" : "From a pasted post"}: apply by email below</span>`}
       ${moves}
       <select id="setstatus" aria-label="Set another status"><option value="">Other status</option>${["shortlisted", "applied", "interviewing", "offer", "rejected", "withdrawn", "skipped"].filter(x => x !== s).map(x => `<option value="${x}">${STATUS_L[x]}</option>`).join("")}</select>
+      ${d.can_delete ? `<button class="btn ghost danger" data-act="delete">Delete entry</button>` : ""}
     </div>
     ${m ? `<div class="block"><h3>Why it matches</h3><p>${esc(m.summary)}</p>${chips(m.matched_skills, "c-green")}
       ${m.missing_skills.length ? `<p class="lbl">Asked for, not on your resume</p>${chips(m.missing_skills, "c-slate")}` : ""}
@@ -1208,6 +1212,10 @@ const NOT_READY = "No email is ready yet. A job needs a draft and an address fir
 const A = {
   run: () => startTask({ action: "run" }),
   "run-noscore": () => startTask({ action: "run", no_score: true }),
+  score: () => (S.state && S.state.counts && S.state.counts.waiting) ? startTask({ action: "score" }) : toast("No jobs are waiting to be scored"),
+  delete: async () => { const id = S.sel;
+    if (!await ask("Delete this entry?", "It is removed for good, with its draft and notes. This cannot be undone.", "Delete entry")) return;
+    try { toast((await api("/api/delete", { job_id: id })).message); await closeDrawer(true); await refresh(); staleMatches(); } catch (e) { fail(e); } },
   daily: () => startTask({ action: "daily" }),
   migrate: () => startTask({ action: "migrate" }),
   stop: async () => { if (await ask("Stop this task?", "What it has already saved is kept. You can start it again later.", "Stop the task")) api("/api/task/stop", {}).catch(fail); },
@@ -1285,6 +1293,7 @@ const A = {
 const go = x => x.startsWith("v:") ? showView(x.slice(2)) : A[x]();
 const PALETTE = [
   ["Find new jobs", "search every site and score", "run"], ["Collect jobs without scoring", "cheaper, scored next time", "run-noscore"],
+  ["Score waiting jobs", "found earlier, no new search", "score"],
   ["Run the morning routine", "search, digest, summary email", "daily"], ["Add a job from a post", "LinkedIn, WhatsApp, email", "add"], ["Add HR addresses", "general applications, no specific job", "hr"],
   ["Draft emails", "shortlisted jobs with no draft yet", "draft-all"], ["Look for addresses", "on each company's own site", "contacts-all"],
   ["Save drafts to Gmail", "review and send from Gmail", "gmail-all"], ["Send ready emails", "from your Gmail, CV attached", "send-all"],

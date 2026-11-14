@@ -37,6 +37,15 @@ class Browser(Protocol):
     def fetch(self, url: str, *, wait_ms: int = 2500) -> PageContent: ...
 
 
+class SiteRefused(RuntimeError):
+    """The site dropped the connection as soon as this browser asked for a page."""
+
+
+# Chromium's names for a connection the server cut before sending a page. Job sites do this to
+# automated browsers. Nothing here tries to get around it: the source fails, and says why.
+_REFUSALS = ("ERR_HTTP2_PROTOCOL_ERROR", "ERR_CONNECTION_RESET", "ERR_CONNECTION_CLOSED", "ERR_EMPTY_RESPONSE")
+
+
 class PlaywrightBrowser:
     """Wraps a Playwright page; used for both Browserbase (over CDP) and local Chromium."""
 
@@ -58,6 +67,10 @@ class PlaywrightBrowser:
         except Exception as e:  # noqa: BLE001
             if "net::ERR" in str(e):
                 self._await_error_page()
+                code = next((c for c in _REFUSALS if c in str(e)), None)
+                if code:
+                    raise SiteRefused(f"the site closed the connection when this browser asked for {url} ({code}). "
+                                      "Job sites often do this to automated browsers") from e
             raise
         try:
             self._page.wait_for_load_state("networkidle", timeout=10_000)

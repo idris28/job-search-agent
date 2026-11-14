@@ -165,6 +165,10 @@ Not in the diagram:
   drafts them from their own template, writing the email once for each country and reusing it.
 - `jsa send` delivers drafts that are already saved, without writing them again; the page uses it.
 - `jsa cover-letter` fills in the cover letter template for one job.
+- `jsa score` is part 1 without the collecting: `run_agent(collect=False)` takes the stored jobs
+  that pass the rule filters and were never scored (`waiting_jobs()`), and scores them under the
+  same cap and spending limits.
+- `jsa delete` removes a job the person added by hand, if it has not been emailed.
 - `jsa gaps`, `jsa progress` and `jsa dedupe` only read (or tidy) the database.
 - After `jsa run` and `jsa daily`, `notifier.py` sends jobs scoring `notify_min_score` or more to
   Telegram or email.

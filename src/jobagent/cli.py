@@ -121,6 +121,42 @@ def cmd_run(args, settings):
         browser.close()
 
 
+def cmd_score(args, settings):
+    """Score the stored jobs that were never scored, without reading any site again."""
+    from .pipeline import run_agent
+
+    cfg = AgentConfig.load(args.config)
+    llm = _llm(settings)
+    with _conn(settings) as conn:
+        s = run_agent(conn, cfg, llm, None, collect=False)
+        print(f"\nRun #{s.run_id}: {s.status}. {s.scored} scored, {s.shortlisted} shortlisted, {s.tokens} tokens.")
+        if s.stopped:
+            print(f"  ! Stopped early: {s.stopped}. The rest wait for the next time.")
+        rows = db.top_matches(conn, _profile_id(conn), run_id=s.run_id,
+                              min_score=cfg.matching.shortlist_min_score, limit=15)
+        if rows:
+            print("\nTop new matches (newest first):\n" + _matches_table(rows))
+        _notify_strong(settings, cfg, rows)
+
+
+def cmd_delete(args, settings):
+    """Remove a pasted post or a general application you added yourself."""
+    from .actions import ActionError, delete_added_job
+
+    with _conn(settings) as conn:
+        pid = _profile_id(conn)
+        job = db.get_job(conn, args.job_id)
+        if not job:
+            sys.exit(f"No job {args.job_id}")
+        if not args.yes and input(f"Delete #{job['id']} {job['title']}, {job['company']} for good? [y/N] ").strip().lower() != "y":
+            sys.exit("Nothing deleted.")
+        try:
+            delete_added_job(conn, pid, args.job_id)
+        except ActionError as e:
+            sys.exit(str(e))
+    print(f"Deleted #{args.job_id}.")
+
+
 def cmd_jobs(args, settings):
     with _conn(settings) as conn:
         rows = db.top_matches(conn, _profile_id(conn), min_score=args.min_score, limit=args.limit,
@@ -835,6 +871,15 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--source", help="only run the source with this name")
     r.add_argument("--no-score", action="store_true", help="collect only, skip LLM scoring")
     r.set_defaults(fn=cmd_run)
+
+    sc = sub.add_parser("score", help="score stored jobs that were never scored, without searching again")
+    sc.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    sc.set_defaults(fn=cmd_score)
+
+    dl = sub.add_parser("delete", help="remove a pasted post or a general application you added")
+    dl.add_argument("job_id", type=int)
+    dl.add_argument("--yes", action="store_true", help="do not ask first")
+    dl.set_defaults(fn=cmd_delete)
 
     j = sub.add_parser("jobs", help="list scored jobs, best first")
     j.add_argument("--min-score", type=int, default=70)

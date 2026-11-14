@@ -88,7 +88,7 @@ def test_state_job_detail_and_quick_changes(conn, page):
                                            "profile": st["setup"]["profile"]}
     assert st["setup"]["profile"]["name"] == "Alex"
     assert st["counts"] == {"found": 1, "found_week": 1, "scored": 1, "shortlisted": 1, "emailed": 0,
-                            "applied": 0, "due": 0}
+                            "applied": 0, "due": 0, "waiting": 0}
     assert st["countries"] == [{"country": "UAE", "jobs": 1}] and st["search"]["max_age_days"] == 30
     row = st["jobs"][0]
     assert row["title"] == "Java <Dev>" and row["has_draft"] and "outreach_body" not in row
@@ -197,6 +197,9 @@ def test_tasks_run_one_at_a_time_show_output_and_can_be_stopped(conn, page):
         page.wait()
         assert seen[-1] == argv
 
+    assert page.call("/api/task", {"action": "score"})[1]["task"]["label"] == "Score waiting jobs"
+    page.wait()
+    assert seen[-1] == ["score"]
     # A task carries the name of the button that starts it, so the page says one thing throughout.
     assert page.call("/api/task", {"action": "contacts"})[1]["task"]["label"] == "Look for addresses"
     page.wait()
@@ -299,3 +302,45 @@ def test_send_command_sends_saved_drafts_without_redrafting(conn, monkeypatch, t
     out = capsys.readouterr().out
     assert sent == [("hr@acme.ae", "My edited subject")] and "No email address is known" in out and "Sent 1 email(s)." in out
     assert db.get_application(conn, pid, a)["status"] == "applied"
+
+
+def test_only_an_entry_you_added_and_have_not_emailed_can_be_deleted(conn, page):
+    pid = db.save_profile(conn, "Alex", "resume", {})
+    source = db.upsert_source(conn, "greenhouse", "Acme", "acme", {})
+
+    def add(title, url, source_id=None):
+        job_id, _ = db.upsert_job(conn, JobPosting(title=title, company="Acme", url=url, location="Dubai, UAE"), source_id, None)
+        db.set_application_status(conn, pid, job_id, "shortlisted")
+        return job_id
+    pasted, general, emailed, from_site = (add("Java Developer", "pasted:1"), add("General application", "general:hr@acme.ae"),
+                                           add("Backend Developer", "pasted:2"), add("Java Engineer", "https://acme/jobs/1", source))
+    db.set_note(conn, pid, pasted, "remove me")
+    conn.execute("UPDATE applications SET outreach_sent_at = now() WHERE job_id = %s", (emailed,))
+
+    assert [page.call(f"/api/job?id={j}")[1]["can_delete"] for j in (pasted, general, emailed, from_site)] == [True, True, False, False]
+    assert "next search would bring it back" in page.call("/api/delete", {"job_id": from_site})[1]["error"]
+    assert "has been emailed" in page.call("/api/delete", {"job_id": emailed})[1]["error"]
+    assert page.call("/api/delete", {"job_id": 99999})[0] == 400
+
+    assert page.call("/api/delete", {"job_id": pasted})[1]["message"] == "Entry deleted."
+    assert page.call("/api/delete", {"job_id": general})[0] == 200
+    left = {r["id"] for r in conn.execute("SELECT id FROM jobs").fetchall()}
+    assert left == {emailed, from_site}
+    # Its application and history went with it, and nothing else was touched.
+    assert conn.execute("SELECT count(*) AS n FROM applications").fetchone()["n"] == 2
+    assert {r["job_id"] for r in page.call("/api/state")[1]["jobs"]} == {emailed, from_site}
+
+
+def test_the_page_counts_the_jobs_waiting_to_be_scored(conn, page):
+    pid = db.save_profile(conn, "Alex", "resume", {})
+    for n, title in enumerate(("Java Engineer", "Backend Engineer", "Designer")):
+        db.upsert_job(conn, JobPosting(title=title, company="Acme", url=f"https://acme/jobs/{n}", location="Dubai, UAE"), None, None)
+    assert page.call("/api/state")[1]["counts"]["waiting"] == 3  # the default settings have no title rule
+    scored, _ = db.upsert_job(conn, JobPosting(title="Java Engineer", company="Acme", url="https://acme/jobs/0", location="Dubai, UAE"), None, None)
+    db.save_match(conn, pid, scored, None, match(80), "m", "h")
+    page.call("/api/task", {"action": "rm -rf"})  # no task starts, so the count is still the remembered one
+    assert page.call("/api/state")[1]["counts"]["waiting"] == 3
+    page.server.runner.command = lambda argv: [sys.executable, "-c", "pass"]
+    page.call("/api/task", {"action": "score"})
+    page.wait()
+    assert page.call("/api/state")[1]["counts"]["waiting"] == 2  # counted again once a task has run

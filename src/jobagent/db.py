@@ -311,6 +311,28 @@ def get_job(conn, job_id: int) -> dict | None:
     return conn.execute("SELECT * FROM jobs WHERE id = %s", (job_id,)).fetchone()
 
 
+def delete_job(conn, job_id: int) -> None:
+    """Remove a job for good; its score, application and history go with it."""
+    conn.execute("DELETE FROM jobs WHERE id = %s", (job_id,))
+
+
+def unscored_jobs(conn, profile_id: int, seen_within_days: int, *, brief: bool = False) -> list[dict]:
+    """Jobs a search stored but never scored for this profile, still listed recently, newest first.
+
+    General applications are left out: they have no posting to score. `brief` cuts the description
+    to what the rule filters read, for counting many rows cheaply.
+    """
+    description = "left(j.description, 1200)" if brief else "j.description"
+    return conn.execute(
+        f"""SELECT j.id, j.title, j.company, j.url, j.location, j.remote_type, j.employment_type,
+                   j.salary_text, {description} AS description, j.posted_at, j.external_id
+            FROM jobs j
+            WHERE j.is_active AND j.url NOT LIKE 'general:%%'
+              AND j.last_seen_at >= now() - make_interval(days => %s)
+              AND NOT EXISTS (SELECT 1 FROM job_matches m WHERE m.job_id = j.id AND m.profile_id = %s)
+            ORDER BY j.posted_at DESC NULLS LAST, j.id DESC""", (seen_within_days, profile_id)).fetchall()
+
+
 # --- applications -----------------------------------------------------------
 
 

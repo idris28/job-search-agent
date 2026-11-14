@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 from datetime import date, datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
@@ -21,10 +22,11 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from . import db, scheduler
-from .actions import ActionError, add_hr_contacts, send_slots, send_stored_draft
+from .actions import ActionError, add_hr_contacts, can_delete, delete_added_job, send_slots, send_stored_draft
 from .config import AgentConfig
 from .contacts import _EMAIL_RE
 from .models import names_missing_company, unfilled_placeholders
+from .pipeline import waiting_jobs
 from .report import _paragraphs_html, digest_markdown
 
 MAX_LINES = 4000
@@ -146,6 +148,17 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
 
     # --- reading ----------------------------------------------------------------------
 
+    waiting = {"at": 0.0, "task": None, "n": 0}
+
+    def waiting_count(conn, pid: int, c: AgentConfig) -> int:
+        """How many stored jobs wait to be scored. Counting reads every unscored job, so the answer
+        is kept for two minutes, or until a task starts or ends."""
+        t = runner.task
+        key = (t["id"], t["running"]) if t else None
+        if key != waiting["task"] or time.monotonic() - waiting["at"] > 120:
+            waiting.update(at=time.monotonic(), task=key, n=len(waiting_jobs(conn, c, pid, brief=True)))
+        return waiting["n"]
+
     def state() -> dict:
         c = config()
         setup = {"database": "ok", "pending": [], "profile": None,
@@ -154,7 +167,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                "sends": None, "shortlist_min_score": c.matching.shortlist_min_score,
                "follow_up_days": c.outreach.follow_up_days,
                "sources": [s.name for s in c.sources if s.enabled], "countries": [],
-               "search": {"max_age_days": c.search.max_age_days, "min_salary_lpa": c.search.min_salary_lpa}}
+               "search": {"max_age_days": c.search.max_age_days, "min_salary_lpa": c.search.min_salary_lpa,
+                          "score_cap": c.matching.max_jobs_to_score}}
         try:
             conn = db.connect(url)
         except Exception as e:  # noqa: BLE001
@@ -174,6 +188,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             due = db.followups_due(conn, pid, c.outreach.follow_up_days)
             out["due"] = [r["job_id"] for r in due]
             out["counts"]["due"] = len(due)
+            out["counts"]["waiting"] = waiting_count(conn, pid, c)
             out["sends"] = {"today": db.sends_today(conn, pid), "cap": c.outreach.max_sends_per_day}
             out["countries"] = db.match_countries(conn, pid)
             for r in db.dashboard_rows(conn, pid):
@@ -199,7 +214,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             app["unfilled"] = unfilled_placeholders(draft)
             if names_missing_company(draft, job["company"]):
                 app["unfilled"].append(f'company name ("{job["company"]}" is not a real name)')
-        return {"job": job, "match": match, "application": app, "events": events, "due": due}
+        return {"job": job, "match": match, "application": app, "events": events, "due": due,
+                "can_delete": can_delete(job, app) is None}
 
     def matches(min_score: int) -> dict:
         with connect() as conn:
@@ -261,6 +277,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 label, argv = f"Search {body['source']}", argv + ["--source", body["source"]]
             if body.get("no_score"):
                 argv.append("--no-score")
+        elif action == "score":
+            label, argv = "Score waiting jobs", ["score"]
         elif action == "daily":
             label, argv = "Morning routine", ["daily"]
         elif action == "email":
@@ -388,6 +406,9 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             if path == "/api/followup-done":
                 db.mark_follow_up_sent(conn, pid, jid)
                 return {"message": f"#{jid} marked as followed up."}
+            if path == "/api/delete":
+                delete_added_job(conn, pid, jid)
+                return {"message": "Entry deleted."}
         raise ActionError("That action is not known.")
 
     # --- http -------------------------------------------------------------------------
@@ -495,7 +516,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 self._json({"message": "The page has stopped. Open Job Search again to start it."})
                 runner.stop()
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
-            elif path in ("/api/status", "/api/note", "/api/draft", "/api/send", "/api/followup-done", "/api/contact", "/api/hr-contacts",
+            elif path in ("/api/status", "/api/note", "/api/draft", "/api/send", "/api/followup-done", "/api/contact", "/api/hr-contacts", "/api/delete",
                           "/api/schedule", "/api/template"):
                 self._answer(lambda: change(path, body))
             else:
