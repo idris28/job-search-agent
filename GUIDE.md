@@ -73,19 +73,19 @@ the website; this table maps its buttons to commands:
 
 | On the page | What it does | Same as |
 |---|---|---|
-| **Find new jobs** (and the arrow next to it) | Searches every site, or one site, or collects without scoring; also runs the morning routine | `jsa run`, `jsa run --source`, `--no-score`, `jsa daily` |
+| **Find new jobs** (and the arrow next to it) | Searches every site, or one site, or collects without scoring; scores jobs left waiting; also runs the morning routine | `jsa run`, `jsa run --source`, `--no-score`, `jsa score`, `jsa daily` |
 | The six numbers across the top | How many jobs are at each stage; click one to see those jobs. While a task runs, a blue line moves under the numbers it is working on and a strip under them shows its latest message, with a Stop button | |
 | **Actions**, in the menu on the left | One-click actions from any screen: add a post, add HR addresses, draft, look for addresses, save drafts to Gmail, send, follow up, morning routine, digest. **Light** and **Dark** at the bottom switch the look | `jsa add`, `jsa add-contacts`, `jsa email`, `jsa contacts`, `jsa send`, `jsa followups`, `jsa daily`, `jsa digest` |
 | The filter bar and table | Filter by country, score, posting age and next step; search by name; click a column heading to sort; click a job to open it in a panel on the right | `jsa jobs` |
 | **Shortlist** | Draft emails, look for addresses, save drafts to Gmail, send the ready emails | `jsa email`, `jsa contacts`, `jsa send --gmail-drafts`, `jsa send` |
-| A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; an **Apply on the job site** button that opens the posting and asks afterwards whether you applied; buttons for applied, skipped, interview, offer, rejected | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa apply` |
+| A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; an **Apply on the job site** button that opens the posting and asks afterwards whether you applied; buttons for applied, skipped, interview, offer, rejected; **Send again** for an email that already went; **Delete entry** for something you added yourself | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa apply`, `jsa delete` |
 | **In progress**, **Follow-ups** | Applications under way (choose "Set aside" in the Stage filter for skipped and rejected jobs); follow-ups that are due, with a button to send them | `jsa applications`, `jsa followups` |
 | **All matches** | Every scored job, with the score filter and a digest download | `jsa jobs`, `jsa digest` |
 | **Add from a post** | Paste a LinkedIn post; it is read, scored and shortlisted | `jsa add` |
 | The panels beside and below the table | One mark for each job on your lists, coloured by stage; your top matches; where the jobs are by country; and the next steps worth taking, each with a button | |
 | **Insights** | Your week, the skills you miss most, which sites deliver | `jsa progress`, `jsa gaps` |
 | **Activity** | The full output of the running or last task, and past searches with the reason any was only partly finished | `jsa runs` |
-| **Settings** | Setup checklist, resume import, the morning routine, your three templates, duplicate jobs, a test notification, and **Stop Job Search** | `jsa profile import`, `jsa schedule`, `jsa dedupe`, `jsa notify-test`, `jsa migrate` |
+| **Settings** | Setup checklist, resume import, the morning routine, duplicate jobs, your three templates, what is searched and the limits (**Search and limits**), a switch for each job site (**Sites**), **Back up now**, a test notification, and **Stop Job Search** | `jsa profile import`, `jsa schedule`, `jsa dedupe`, `jsa backup`, `jsa notify-test`, `jsa migrate` |
 | **All actions** (Cmd-K) | A searchable list of every action | |
 
 Good to know:
@@ -93,7 +93,9 @@ Good to know:
 - One task runs at a time. **Stop** ends it; what it already saved is kept, and a stopped search is
   listed in Activity as Partly finished.
 - Sending always asks first. "Send ready emails" sends the drafts as they are saved, including your
-  edits; it does not write them again.
+  edits; it does not write them again. A job is emailed once; **Send again**, in one job's panel,
+  sends a second time on purpose.
+- Progress and changes reach every open tab by themselves; the page does not need reloading.
 - If the database needs an update after new features arrive, the page says so and offers one button.
 - The page answers only on this Mac. Keys and passwords stay in `.env`; the page never shows them.
 - The program keeps running after you close the tab. Stop it in Settings, or leave it.
@@ -147,7 +149,7 @@ Good to know:
 | `jsa email` | Drafts emails for your shortlisted jobs (up to 10, newest first) using `email_template.txt`. It checks each posting is still open, then writes a preview to `digests/emails-<date>.html`. Nothing is sent. |
 | `jsa email 343` | Drafts for one job. You can list several numbers. |
 | `jsa email --gmail-drafts` | Also saves each ready email into your Gmail Drafts with your CV attached, for you to review and send. |
-| `jsa email --send` | Sends each ready email from your Gmail with your CV attached, then marks the job as applied so it is never emailed again. |
+| `jsa email --send` | Sends each ready email from your Gmail with your CV attached, then marks the job as applied so it is not emailed again by itself. A second email on purpose goes from the website: **Send again** in that job's panel. |
 | `jsa email --no-browse` | Skips the live check of the posting (no browser use). |
 | `jsa email --limit 5` | Changes how many shortlisted jobs are drafted. |
 | `jsa contacts` | For shortlisted jobs with no address, searches each company's own website for a published application address. Uses AI web search. An address is kept only if it is really printed on that page. |
@@ -173,7 +175,7 @@ in `.env` (an app password from myaccount.google.com/apppasswords), and `outreac
 | `jsa apply` | Opens each shortlisted job in your normal browser, one at a time, and asks whether you applied. Answer `y` (yes), `n` (not now), `s` (skip this job) or `q` (quit). |
 | `jsa apply 94 96` | The same for specific jobs. |
 | `jsa apply --dry-run` | Lists the jobs and links without opening anything. |
-| `jsa status 343 applied --note "via referral"` | Sets a job's status yourself, with an optional note. |
+| `jsa status 343 applied --note "via referral"` | Sets a job's status yourself, with an optional note. The note becomes the job's Notes and is listed in its history. |
 | `jsa applications` | Lists every job you are tracking and its status. |
 | `jsa delete 343` | Removes a pasted post or a general application you added yourself, for good. It asks first (`--yes` skips the question). It refuses a job that came from a job site, or one already emailed: set those aside with `jsa status 343 skipped`. On the website: **Delete entry**. |
 | `jsa web` | Starts the page described in "Using it without the terminal" from a terminal instead of the Job Search app. Ctrl-C stops it. |
@@ -316,7 +318,8 @@ Adobe says "Computer Scientist", Salesforce says "Member of Technical Staff".
   why `jsa apply` opens the page in your own browser.
 - A site can also refuse to be read at all. Naukrigulf closes the connection to the browser on this
   Mac (it accepted Browserbase). The run then reports that site as not read and carries on with the
-  rest; set `enabled: false` on it in `config.yaml` to stop the report.
+  rest; switch the site off on the website (Settings, **Sites**), or set `enabled: false` on it in
+  `config.yaml`, to stop the report.
 - Most job board postings show no email address, so `--send` only covers the ones that do, plus
   posts you add with `jsa add`.
 - Only so many job pages per job board are opened in full each run (`max_detail_pages` on each

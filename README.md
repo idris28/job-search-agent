@@ -54,7 +54,9 @@ jsa profile import path/to/resume.pdf
 | `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` (optional) | sending emails, saving Gmail drafts, the morning summary | a Google app password: myaccount.google.com/apppasswords |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | phone notifications | a bot from @BotFather |
 
-The model is set only in `.env`; nothing is hard-coded. To switch, change `LLM_MODEL` (and the
+The main model is set only in `.env`; nothing is hard-coded. Two optional cheaper models, for
+reading job-site pages and for a quick first check of each job, are settings instead
+(`matching.reader_model`, `matching.prescreen_model`; see "Spending less on AI"). To switch, change `LLM_MODEL` (and the
 API key if you change provider). Claude calls use structured outputs and server-side refusal
 fallback, so a declined request is retried on a fallback model.
 
@@ -181,7 +183,9 @@ day and wait `outreach.send_pause_seconds` (20) between them.
 keyword appears in the job's title or description is attached instead of `resume_path`.
 
 **Spending limits.** `matching.max_tokens_per_run` and `matching.max_browser_minutes_per_run` stop a run
-when reached: remaining job boards are skipped and unscored jobs wait for the next run. The run is
+when reached: remaining job boards are skipped and unscored jobs wait for the next run. The token
+limit counts every model's tokens alike, so tokens of a cheaper model count in full although they
+cost less. The run is
 marked `partial` and says why. Claude calls mark the resume and template for prompt caching, so
 repeated calls in one run read them at a fraction of the price.
 
@@ -194,7 +198,8 @@ run it daily; `jsa schedule status` and `jsa schedule remove` manage it.
 
 **No terminal needed.** Double-click `Job Search.app` in the project folder, or run `jsa web`. A page
 opens on this Mac only (http://127.0.0.1:8765) where every command is a button: search, draft, find
-addresses, send, follow up, schedule the morning routine, import a resume, update the database. Slow
+addresses, send, follow up, schedule the morning routine, import a resume, update the database,
+change the search settings, switch a job site off, back up. Slow
 commands run as one background task at a time, with live progress and a Stop button. GUIDE.md has the
 full map of buttons to commands, WEBSITE_GUIDE.md explains how to use the website, and DESIGN.md
 records how the page should look and read. `jsa send` sends saved drafts as they are (the page uses it).
@@ -205,7 +210,8 @@ job boards. `search.max_age_days` (7 in the example) drops older postings, and l
 
 **Jobs from a post.** `jsa add` takes text you paste, such as a LinkedIn post asking for CVs by
 email (paste, then Ctrl-D, or pass a text file). It reads the role, company and email address,
-scores the job and shortlists it; `jsa email <id> --send` then emails that address.
+scores the job and shortlists it; `jsa email <id> --send` then emails that address. Pasting a post
+you added before updates that job; if its email has gone, the command says when and sends nothing.
 
 **Sending.** `jsa email --send` sends each ready email from your Gmail with the CV from
 `outreach.resume_path` attached, then marks the job applied so it is not emailed twice by accident (a deliberate second email goes

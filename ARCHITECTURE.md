@@ -39,9 +39,10 @@ sequenceDiagram
             Src->>Web: fetch(search page)
             Web-->>Src: page text and links
             Note over Web: If the session ends mid-run, a new one is opened and the page is retried
-            Src->>AI: extract_listings(page)
+            Src->>AI: extract_listings(page) - by the cheaper page-reading model when one is set
             AI-->>Src: jobs with title, link, location, posted age
-            Src->>Web: fetch(job page) for up to max_detail_pages unread jobs, newest first
+            Note over Src: A job stored by an earlier run keeps its stored text, so its page is not opened again
+            Src->>Web: fetch(job page) for up to max_detail_pages unread jobs that pass the rules, newest first
             Web-->>Src: full description
         else company career feed (Greenhouse, Lever, Ashby, Amazon, Microsoft, Workday)
             Src->>Feeds: HTTP GET the public feed
@@ -53,14 +54,20 @@ sequenceDiagram
             Pipe->>DB: upsert_job() - once per job, also across boards (match_key)
             Pipe->>Filt: reject_reason(job)
             Filt-->>Pipe: keep, or drop for location, title, bank, older than max_age_days
+            Note over Pipe: A job-board job whose own page was not read is stored but not scored yet
         end
     end
     Pipe->>DB: existing_match_hash() - skip jobs already scored
+    opt a cheaper model is set for a quick first check
+        Pipe->>AI: prescreen_job(cached profile, job)
+        AI-->>Pipe: clear misses are saved with a low score and skip the full scoring
+    end
     loop batches of 4 jobs, until done or the token limit is reached
         Pipe->>AI: score_job(cached profile, job)
         AI-->>Pipe: score 0-100, matched skills, gaps, red flags
         Pipe->>DB: save_match()
     end
+    Note over Pipe,AI: With batch scoring the same requests go as one batch at half price. Answers not back in time are collected by the next run
     Pipe->>DB: shortlist_many(score 75 or more), finish_run(counts, tokens, the reason if partial)
     Pipe-->>CLI: RunSummary
     CLI-->>User: top new matches, newest first

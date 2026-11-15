@@ -17,8 +17,8 @@ If the page says it lost contact with the program, double-click **Job Search** a
 
 ## Before your first search
 
-Open **Settings**. The **Setup** list shows what is ready (green tick) and what is missing (red
-cross).
+Open **Settings**. The **Setup** list has a dot beside each line: green for what is ready, red for
+what is missing, grey for something optional that is not set up.
 
 | Line | What it needs |
 |---|---|
@@ -49,7 +49,8 @@ cross).
 
 1. **Find new jobs.** Click the **Find new jobs** button. A blue line moves under the Found and Scored
    numbers while it works, and the strip under them shows progress. A full search takes several minutes.
-2. **Look at the shortlist.** Jobs scoring 75 or more land on **Shortlist**, newest first. Click a
+2. **Look at the shortlist.** Jobs scoring 75 or more land on **Shortlist**, newest first (75 is
+   the shortlist score; change it under Settings, **Search and limits**). Click a
    job to open it in a panel on the right and read why it matched.
 3. **Draft the emails.** Click **Draft emails**. One email is written per job from your template and
    resume. Open a job to read and edit its draft.
@@ -62,7 +63,7 @@ cross).
 6. **Apply on the site where there is no address.** Open the job and click **Apply on the job
    site**. The posting opens in a new tab; apply there. When you come back, the page asks "Did you
    apply?" Answer **Yes, I applied** and the job moves to In progress.
-7. **Follow up.** When an email has had no reply for the number of days set in `config.yaml` (the Follow-ups screen says how many), the job appears under **Follow-ups**
+7. **Follow up.** When an email has had no reply for the number of days set under Settings, **Search and limits** (the Follow-ups screen says how many), the job appears under **Follow-ups**
    and the menu shows a number beside it. Click **Send follow-ups**.
 
 The **Next steps** panel at the bottom of the page always shows which of these is waiting, with a
@@ -117,10 +118,10 @@ inboxes is rarely read and can get your Gmail account marked as spam.
 
 | Button | What it does |
 |---|---|
-| **Find new jobs** | Searches every site in `config.yaml`, drops jobs that do not fit your rules, scores the rest against your resume and shortlists the strong ones. |
+| **Find new jobs** | Searches every site that is switched on (Settings, **Sites**), drops jobs that do not fit your rules, scores the rest against your resume and shortlists the strong ones. A job from a job board is scored only after its own page was read, and only so many pages are opened per search, so on a long list some jobs wait for the next search. |
 | Arrow beside it, **Collect only, score later** | Gathers jobs without scoring them, which is the larger part of the AI cost. They are scored on the next full search. |
 | Arrow beside it, **Score waiting jobs** | Scores jobs that earlier searches found but did not score, without searching the sites again. A search scores only so many jobs at a time, so some are left waiting; the number shows under **Scored** (when it says "waiting to be read" instead, those are job-board jobs whose own page the next search will open before scoring them) and in Next steps. |
-| Arrow beside it, **Morning routine** | Search, then a digest file and one summary email to yourself. |
+| Arrow beside it, **Morning routine** | Search, then a digest file, one summary email to yourself, and a backup. |
 | Arrow beside it, **Search one site** | Searches just the site you pick. |
 | **Add from a post** | Paste a LinkedIn post, WhatsApp message or email that asks for CVs. The role, company and email address are read from it, and the job is scored and shortlisted. Click **Add the job** to start. |
 
@@ -131,7 +132,7 @@ Each screen shows its jobs in the same table.
 | To do this | Do this |
 |---|---|
 | Open a job | Click its row. |
-| Search by name | Type in **Search jobs**. It looks at the title, company and location. |
+| Search by name | Type in **Search jobs**. It looks at the title, company, location and email address. |
 | Filter | Use the four boxes above the table: country, score, how recently it was posted, and next step (or stage, or status, depending on the screen). |
 | Sort | Click a column heading. Click again to reverse, and a third time to go back to newest first. |
 | See more | Use the page buttons under the table. Eight jobs show per page. |
@@ -149,10 +150,10 @@ outside it. The arrows at the top, or the J and K keys, move to the next and pre
 | Top | Title, company, location, when it was posted, pay (stated or estimated) and the score. |
 | Buttons | **Apply on the job site** opens the posting in a new tab so you can apply there; when you return, the page asks whether you applied. The next buttons record what happened: **I applied**, **Skip**, **Got an interview**, **Got an offer**, **Rejected**. **Other status** has the rest. Once a job is applied, the first button reads **Open the posting**. **Delete entry** appears only on something you added yourself (a pasted post or an HR address) that has not been emailed; it removes it for good, with its draft and notes. A job from a job site has no Delete, because the next search would bring it back: use **Skip**. |
 | Why it matches | A short explanation, the skills you have, the skills asked for that are not on your resume, and anything to check before applying. |
-| Email to the recruiter | The email is shown as a sheet of paper. The **To** line holds the address it will go to. If the agent found none, type one you found yourself (on LinkedIn or in the posting) and click **Save address**; empty the line and save to remove it. Below it are the subject and the text. Edit either on the sheet, then **Save draft**. **Send email** sends it after asking you to confirm. **Write it again** replaces the draft with a fresh one. **Preview**, at the top right of the section, shows it as the recruiter will see it; **Edit** brings the text back. Once the email is sent, a round postmark with the date appears on the sheet. The follow-up text is underneath. |
+| Email to the recruiter | The email is shown as a sheet of paper. The **To** line holds the address it will go to. If the agent found none, type one you found yourself (on LinkedIn or in the posting) and click **Save address**, or click **Look for one** to have the agent search the company's own site; empty the line and save to remove it. Below it are the subject and the text. Edit either on the sheet, then **Save draft**. **Send email** sends it after asking you to confirm. **Write it again** replaces the draft with a fresh one. **Preview**, at the top right of the section, shows it as the recruiter will see it; **Edit** brings the text back. Once the email is sent, a round postmark with the date appears on the sheet and **Send again** takes the place of **Send email**. When no email can be sent, the line under the buttons says why. The follow-up text is underneath. |
 | Cover letter | **Write a cover letter** for sites that ask for one, then **Copy**. It follows your own letter in `cover_letter_template.txt`, filled in for this job. |
-| Notes | Anything you want to remember: the recruiter's name, what was said, the next step. Click **Save note**. |
-| History | Every status change with its date. |
+| Notes | Anything you want to remember: the recruiter's name, what was said, the next step. Click **Save note**. Nothing else changes your notes. |
+| History | Every status change and every email sent, with its date. |
 | Full job description | The original posting text. |
 
 A red label in the email section means the draft is not ready: a blank in your template was left
@@ -183,12 +184,12 @@ email and cover letter leave the name out: "applying for the Java Developer posi
 | Screen | What it shows | Buttons on it |
 |---|---|---|
 | **Shortlist** | Jobs worth acting on. The last column says what each one needs: no draft yet, no address yet, or ready to send. | Draft emails, Look for addresses, Save drafts to Gmail, Send ready emails |
-| **In progress** | Jobs you applied to, interviews and offers. Choose **Set aside** in the Stage filter to see jobs you skipped and rejections. | |
+| **In progress** | Jobs you applied to, interviews and offers. In the Stage filter, **Set aside** shows jobs you skipped and rejections, and **General applications** shows the HR addresses you wrote to. | |
 | **Follow-ups** | Emails with no reply after the number of days you set. | Send follow-ups |
 | **All matches** | Every job that was scored, not only the shortlist. Starts at score 70 or more; change the Score filter to see the rest. Open one and click **Add to shortlist** to act on it. | Download digest |
 | **Insights** | Your last seven days, the skills job postings ask for most that your resume lacks, and which sites deliver. | |
 | **Activity** | Everything the running or last task reported, and a list of past searches. When a search is only **Partly finished**, the Problem column says why: a spending limit was reached, some sites could not be read, or it was stopped. | |
-| **Settings** | Setup, the morning routine, your templates, duplicate jobs, limits, and stopping the program. | |
+| **Settings** | Setup, the morning routine, duplicate jobs, your templates, what is searched and the limits, the job sites, backups, and stopping the program. | |
 
 ## Sending emails
 
@@ -255,7 +256,7 @@ scoring the morning routine as a batch at half price.
 | Your templates, **Cover letter** | Edit the letter used by **Write a cover letter**. It works like the email template: text in [square brackets] is filled in for each job. Click **Save template**. |
 | Search and limits | Change what is searched for and the limits: title words, places, the oldest posting, the lowest salary, the shortlist score, the AI and browser budgets, emails a day, the follow-up wait. Click **Save settings**. Your changes are kept in `config.overrides.yaml`; `config.yaml` itself is never rewritten. A value that differs from the file is marked **changed**, and **Go back to config.yaml** drops your changes. Under Scoring are the three ways to spend less: **Cheaper model for a quick first check** and **Cheaper model for reading job-site pages** (for example `claude-haiku-5-5` in each), and **Score the morning routine as a batch**. |
 | Sites | One switch per job site. A site that is off is skipped by every search. A switch takes effect at once. Type in **Find a site** to narrow the list. |
-| Backups | **Back up now** copies the whole database into the `backups` folder. The morning routine also makes one each day, and the newest 7 are kept. The card shows when the last one was made. |
+| Backups | **Back up now** copies the whole database into the `backups` folder. The morning routine also makes one each day, and the newest 7 are kept. The card shows when the last one was made. Bringing a backup back is done from the terminal; `jsa backup` prints the command, and [GUIDE.md](GUIDE.md) has it. |
 | Close the program | **Stop Job Search**. |
 
 ## Shortcuts
@@ -278,6 +279,9 @@ scoring the morning routine as a batch at half price.
 | Double-clicking Job Search does nothing | Open `digests/web.log` in the project folder; the reason is at the end. |
 | A job's panel has no **Send email** button | Read the line under **Save draft**: it says what is missing, or that the email already went on the date in the round mark. |
 | An icon sits inside the **To** box, over the address | That icon comes from an extension in your browser, such as a mail or password helper, not from Job Search. The box keeps room at its end for it. To remove it, switch that extension off for `127.0.0.1`. |
+| "N waiting to be read" under **Scored** | Job-board jobs whose own page has not been opened yet. Each search reads some of them and scores them then; nothing needs doing. |
+| A search is **Partly finished** and says the scoring batch was still running | With batch scoring on, the answers were not back in time. The next search of any kind collects them, and those jobs are not scored twice. |
+| A warning that "the main model read it instead" | The cheaper model named under Settings could not read a job-site page, so the main model did. Check the model name under **Search and limits**; the search itself is complete. |
 | "No email is ready yet." | A job needs both a draft and an address. Use **Draft emails** and **Look for addresses** first, or type an address into the job's **To** box. |
 | "Found an address for 0 of 7 jobs" | Those companies publish no application address. Apply on the job sites, or add an address yourself. |
 | A task says "did not finish" | Click **Show output** to read why. A site blocking the search is the usual cause, and the other sites still complete. |

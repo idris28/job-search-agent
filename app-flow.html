@@ -50,18 +50,20 @@ flowchart TD
     B1 -->|"yes"| X3(["Source skipped, run marked partial"])
     B1 -->|"no"| K1{"Job board or<br/>company feed?"}
     K1 -->|"job board"| W1[["Browser: Browserbase or local<br/>fetch search page"]]
-    W1 --> A1[["AI model<br/>extract_listings: jobs, links, posted age"]]
-    A1 --> W2[["Browser<br/>fetch the newest job pages,<br/>up to max_detail_pages"]]
+    W1 --> A1[["AI model<br/>extract_listings: jobs, links, posted age<br/>(the cheaper page model when one is set)"]]
+    A1 --> W2[["Browser<br/>open job pages not read yet, newest first,<br/>up to max_detail_pages, each page once"]]
     K1 -->|"company feed"| FD[["Greenhouse, Lever, Ashby,<br/>Amazon, Microsoft, Workday<br/>HTTP feed, no browser"]]
     W2 --> DB2[("PostgreSQL<br/>upsert_job: once per job,<br/>also across boards")]
     FD --> DB2
     DB2 --> F{"reject_reason()<br/>location, title, bank, too old?"}
     F -->|"rejected"| X1(["Dropped, no AI cost"])
-    F -->|"kept"| H{"Already scored, or a second<br/>listing of a scored job?"}
+    F -->|"kept"| RD{"Job-board job whose<br/>own page was not read?"}
+    RD -->|"yes"| X5(["Stored, scored after a later run reads its page"])
+    RD -->|"no"| H{"Already scored, or a second<br/>listing of a scored job?"}
     H -->|"yes"| X2(["Skipped"])
     H -->|"no"| B2{"Token limit reached?"}
     B2 -->|"yes"| X4(["Left for the next run"])
-    B2 -->|"no"| A2[["AI model<br/>score_job: 0 to 100, skills, gaps<br/>profile sent as cached prefix"]]
+    B2 -->|"no"| A2[["AI model<br/>score_job: 0 to 100, skills, gaps<br/>profile sent as cached prefix<br/>(a cheaper model may rule out clear misses first)"]]
     A2 --> DB3[("PostgreSQL<br/>save_match")]
     DB3 --> S{"Score 75 or more?"}
     S -->|"yes"| DB4[("PostgreSQL<br/>shortlist_many")]
@@ -143,10 +145,10 @@ flowchart TD
     classDef ext fill:#f3eafa,stroke:#a57fd0,color:#1d2430;
     classDef io fill:#f1f3f6,stroke:#9aa6b6,color:#1d2430;
     class M,ENV,R1,R2,D1,E1,E2,E3,E5,L1,L2,FU1,DY1,DY2,WB1,WB2,WB4 step;
-    class MIG,P,B1,K1,F,H,B2,S,G,E4,K,CAP,FU2,L3,WB3 decision;
+    class MIG,P,B1,K1,F,RD,H,B2,S,G,E4,K,CAP,FU2,L3,WB3 decision;
     class DB1,DB2,DB3,DB4,DB5,DB6,DB7,DB8,DB9,DB10,DB11,DB12,DB13,DB14,DB15,DB16,Q1 db;
     class W1,W2,W3,A1,A2,A3,A4,A5,FD,GM1,GM2,GM3,GM4 ext;
-    class U,X0,X1,X2,X3,X4,O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14 io;
+    class U,X0,X1,X2,X3,X4,X5,O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14 io;
     </pre>
     <div id="error"></div>
     <div class="legend">
