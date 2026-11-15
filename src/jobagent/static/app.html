@@ -399,6 +399,12 @@ pre.out{margin:0;max-height:440px;overflow:auto;padding:16px;border:1px solid va
 .fld label.sw{min-height:36px;font-size:inherit;color:inherit}
 .fld .sw span{white-space:normal}
 .fld .sw .chg{display:inline;flex:none}
+.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(336px,100%),1fr));gap:8px 24px;margin-bottom:8px}
+.brow{display:flex;align-items:center;gap:8px;min-width:0;min-height:36px}
+.brow span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brow select{flex:none;width:auto;height:32px;padding:0 8px;border:1px solid var(--line-2);border-radius:var(--r-m);background:var(--s3)}
+.brow .chg{display:none}
+.brow.changed .chg{display:inline;flex:none}
 .sites{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:0 24px}
 .inline input[type=time]{height:36px;padding:0 8px;border:1px solid var(--line-2);border-radius:var(--r-m);background:var(--s3)}
 
@@ -1263,7 +1269,11 @@ function renderPage() {
       ${S.state.setup.database !== "ok" ? row(null, "Resume", "Shown once the database is working")
         : row(!!p, "Resume", p ? `${esc(p.name)}, imported ${esc(day(p.imported))}` : "Not imported yet", `<button class="btn sm" data-act="resume">${ic("upload")}${p ? "Import a newer one" : "Choose your resume"}</button>`)}
       ${row(g.ai.ready, "AI model", g.ai.ready ? `${esc(g.ai.model || "Default model")} (${esc(g.ai.provider)})` : "No API key in .env")}
-      ${row(g.browser.ready, "Browser for job sites", g.browser.ready ? esc(cap(g.browser.kind)) : "BROWSERBASE_API_KEY is missing in .env")}
+      ${row(g.browser.ready, "Browser for job sites", !g.browser.ready ? `BROWSERBASE_API_KEY is missing in .env; ${plural(g.browser.hosted.length, "job board needs", "job boards need")} it`
+        : !g.browser.boards ? "Not needed by the sites that are switched on"
+        : !g.browser.hosted.length ? "This Mac"
+        : g.browser.hosted.length === g.browser.boards ? "Browserbase"
+        : `Browserbase for ${esc(g.browser.hosted.join(", "))}; this Mac for the rest`)}
       ${row(g.gmail.ready, "Gmail", g.gmail.ready ? `Sends from ${esc(g.gmail.address)}` : "Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to .env to send from this page")}
       ${row(g.cv.found, "CV to attach", g.cv.found ? esc(g.cv.path) : g.cv.path ? `Not found: ${esc(g.cv.path)}` : "Set outreach.resume_path in config.yaml")}
       ${row(g.telegram ? true : null, "Phone notifications", g.telegram ? "Telegram is set up" : g.gmail.ready ? "Strong matches are emailed to you. Add Telegram keys to .env for phone alerts." : "Not set up", `<button class="btn sm" data-act="notify-test">${ic("bell")}Send a test</button>`)}
@@ -1285,6 +1295,11 @@ function renderPage() {
       <div class="acts" style="margin-top:20px"><button class="btn" data-act="cfg-save">Save settings</button>${changedFields ? `<button class="btn ghost" data-act="cfg-reset">Go back to ${esc(C.file)}</button>` : ""}</div>`}</section>
     ${C.unavailable ? "" : `<section class="card pad span2">${cardHead("Sites", `<span class="count" id="sitecount">${C.sites.filter(x => x.enabled).length} of ${C.sites.length} on</span><span class="grow"></span><label class="find">${ic("search")}<input id="sitefind" placeholder="Find a site" aria-label="Find a site" autocomplete="off"></label>`)}
       <p class="sub">A site that is off is skipped by every search. A switch takes effect at once.</p>
+      ${C.sites.some(x => x.uses_browser) ? `<h3 class="grp">Job boards, read with a browser</h3>
+      <p class="sub">Some job boards refuse the browser on this Mac and accept Browserbase. Choose Browserbase only for those, so its browser time is not spent on the rest. The company sites below need no browser.</p>
+      <div class="boards">${C.sites.filter(x => x.uses_browser).map(x => `<label class="brow${x.browser_changed ? " changed" : ""}"><span>${esc(x.name)}</span><em class="chg">changed</em>
+        <select data-browser="${esc(x.name)}" aria-label="Browser for ${esc(x.name)}">${[["", `Usual: ${g.browser.kind === "local" ? "this Mac" : "Browserbase"}`], ["local", "This Mac"], ["browserbase", "Browserbase"]].map(([v, l]) => `<option value="${v}"${x.browser === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>`).join("")}</div>
+      <h3 class="grp">On or off</h3>` : ""}
       <div class="sites">${C.sites.map(x => `<label class="sw${x.changed ? " changed" : ""}" data-name="${esc(x.name.toLowerCase())}"><input type="checkbox" data-site="${esc(x.name)}"${x.enabled ? " checked" : ""}><span>${esc(x.name)}</span><em class="chg">changed</em></label>`).join("")}</div></section>`}
     <section class="card pad">${cardHead("Backups")}<p class="sub">${g.backup.latest ? `Last backup ${esc(when(g.backup.latest.at))} (${size(g.backup.latest.size)}); ${plural(g.backup.latest.count, "copy is", "copies are")} kept in the <b>${esc(g.backup.folder)}</b> folder.` : "No backup yet."} ${g.backup.daily ? "The morning routine makes one each day." : ""} A backup holds every job, score, draft and application.</p>
       ${g.backup.tool ? `<button class="btn" data-act="backup">Back up now</button>` : `<p class="sub" style="margin:0">pg_dump, which comes with PostgreSQL, was not found, so no backup can be made from here</p>`}</section>
@@ -1467,6 +1482,10 @@ document.addEventListener("change", e => {
     toast(r.message); S.cfg = r; const now = r.sites.find(x => x.name === el.dataset.site);
     el.closest(".sw").classList.toggle("changed", now.changed); $("#sitecount").textContent = `${r.sites.filter(x => x.enabled).length} of ${r.sites.length} on`; refresh();
   }).catch(e => { el.checked = !el.checked; fail(e); });
+  if (el.dataset.browser !== undefined) return api("/api/config", { browsers: { [el.dataset.browser]: el.value } }).then(r => {
+    toast(r.message); S.cfg = r; el.closest(".brow").classList.toggle("changed", r.sites.find(x => x.name === el.dataset.browser).browser_changed);
+    api("/api/settings").then(g => { S.settings = g; }).catch(() => {});  // the Setup line names the boards on Browserbase
+  }).catch(e => { el.value = (S.cfg.sites.find(x => x.name === el.dataset.browser) || {}).browser || ""; fail(e); });
   if (el.dataset.cfg && el.type === "checkbox") S.formDirty = true;
   if (id === "setstatus" && el.value) change("/api/status", { job_id: S.sel, status: el.value });
   if (id === "resumefile" && el.files[0]) { const f = el.files[0];

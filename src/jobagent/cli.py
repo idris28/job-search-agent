@@ -105,13 +105,22 @@ def cmd_profile_show(args, settings):
     print(json.dumps(p["profile"], indent=2))
 
 
+def _browser_time(browser) -> str:
+    """How long the browsers ran, and how much of that was Browserbase, which is the paid part."""
+    total, hosted = browser.minutes_used, browser.minutes("browserbase")
+    if not total:
+        return ""
+    return f", {total:.1f} browser minutes" + (f" ({hosted:.1f} of them on Browserbase)" if 0 < hosted < total else
+                                               " (on Browserbase)" if hosted else "")
+
+
 def cmd_run(args, settings):
-    from .browser import LazyBrowser
+    from .browser import Browsers
     from .pipeline import run_agent
 
     cfg = AgentConfig.load(args.config)
     llm = _llm(settings)
-    browser = LazyBrowser(settings)
+    browser = Browsers(settings)
     try:
         with _conn(settings) as conn:
             s = run_agent(conn, cfg, llm, browser, only_source=args.source,
@@ -124,7 +133,7 @@ def cmd_run(args, settings):
                   + (f"{s.unread} waiting for their page to be read, " if s.unread else "") +
                   f"{s.shortlisted} shortlisted, {s.tokens} tokens"
                   + (f" ({llm.cache_read_tokens:,} read from cache)" if getattr(llm, "cache_read_tokens", 0) else "")
-                  + (f", {browser.minutes_used:.1f} browser minutes" if browser.minutes_used else "") + ".")
+                  + _browser_time(browser) + ".")
             if s.stopped:
                 print(f"  ! Stopped early: {s.stopped}. Raise the limit in config.yaml or run again later.")
             for name, err in s.source_errors.items():
@@ -251,7 +260,7 @@ def cmd_email(args, settings):
     """Check live postings, research each company, draft recruiter emails. Never sends."""
     from datetime import date
 
-    from .browser import LazyBrowser
+    from .browser import Browsers
     from .models import (GENERAL_URL, JobPosting, company_named, names_missing_company,
                          unfilled_placeholders)
     from .report import emails_html
@@ -278,7 +287,9 @@ def cmd_email(args, settings):
     stand_in, stand_in_short = "Zentrovia Holdings", "Zentrovia"
     roles = ", ".join(cfg.search.roles) or "software engineer"
     llm = _llm(settings)
-    browser = None if args.no_browse else LazyBrowser(settings)
+    browser = None if args.no_browse else Browsers(settings)
+    # A posting is checked with the browser its job board is read with, when that board names one.
+    board_browser = {s.name: s.browser for s in cfg.sources}
     items: list[dict] = []
     md = [f"# Recruiter emails ({date.today():%Y-%m-%d})",
           "_Drafts only. Review, edit, and send them yourself._", ""]
@@ -308,7 +319,9 @@ def cmd_email(args, settings):
                 if browser and job["url"].startswith("http"):  # pasted posts have no page
                     print("  checking live posting...")
                     try:
-                        live = browser.fetch(job["url"], wait_ms=1500).text
+                        board = conn.execute("SELECT name FROM sources WHERE id = %s", (job["source_id"],)).fetchone() \
+                            if job.get("source_id") else None
+                        live = browser.of(board_browser.get(board["name"] if board else "", "")).fetch(job["url"], wait_ms=1500).text
                     except Exception as ex:  # noqa: BLE001
                         print(f"  ! could not open posting: {str(ex).splitlines()[0]}")
                 country = country_of(job["location"])
@@ -524,12 +537,12 @@ def cmd_daily(args, settings):
     from datetime import date
 
     from . import mailer
-    from .browser import LazyBrowser
+    from .browser import Browsers
     from .pipeline import run_agent
     from .report import _paragraphs_html
 
     cfg = AgentConfig.load(args.config)
-    llm, browser = _llm(settings), LazyBrowser(settings)
+    llm, browser = _llm(settings), Browsers(settings)
     try:
         with _conn(settings) as conn:
             s = run_agent(conn, cfg, llm, browser, prescreen=_screen(settings, cfg), reader=_reader(settings, cfg),

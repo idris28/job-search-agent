@@ -50,7 +50,7 @@ jsa profile import path/to/resume.pdf
 | `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | the key for your provider | console.anthropic.com → API Keys, or platform.openai.com/api-keys |
 | `DATABASE_URL` | everything | e.g. `postgresql://localhost/jobagent` (Homebrew) |
 | `BROWSERBASE_API_KEY` (+ optional `BROWSERBASE_PROJECT_ID`) | `generic` sources, unless the browser is local | browserbase.com → Settings |
-| `JOBAGENT_BROWSER=local` (optional) | open job pages in Chromium on this machine instead of Browserbase; no Browserbase key is needed | |
+| `JOBAGENT_BROWSER=local` (optional) | open job pages in Chromium on this machine instead of Browserbase; no Browserbase key is needed, unless a job board names Browserbase for itself (see "A browser per job board") | |
 | `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` (optional) | sending emails, saving Gmail drafts, the morning summary | a Google app password: myaccount.google.com/apppasswords |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | phone notifications | a bot from @BotFather |
 
@@ -160,6 +160,14 @@ summarises the week and shows which sources deliver. `jsa dedupe [--apply]` merg
   within the hour. The run waits up to `matching.batch_wait_minutes` (120). If the answers are not
   back by then the run ends as `partial`, and the next run of any kind stores them. Jobs in a batch
   that is still running are not scored a second time.
+
+**A browser per job board.** `JOBAGENT_BROWSER` names the usual browser. A `generic` source can
+name its own with `browser: browserbase` or `browser: local` (in `config.yaml`, or under Settings,
+**Sites**, on the website). Some boards refuse the browser on this machine and accept Browserbase,
+so this keeps Browserbase time for just those boards: a browser is started only when a board that
+names it is read, and the run's summary says how many of its browser minutes were on Browserbase.
+If Browserbase will not start a browser, for example because its time is used up, those boards
+are reported as not read and the run carries on.
 
 **Backups.** `jsa backup` writes the whole database to `backups/jobagent-<date-time>.dump` and, when
 the folder is a git repository, the code's history to `backups/code-<date-time>.bundle`. The newest

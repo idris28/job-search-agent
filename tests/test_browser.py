@@ -168,3 +168,59 @@ def test_a_site_that_drops_the_connection_is_reported_as_refusing_the_browser():
     assert str(e.value) == ("the site closed the connection when this browser asked for https://x/jobs "
                             "(ERR_HTTP2_PROTOCOL_ERROR). Job sites often do this to automated browsers")
     assert page.url.startswith("chrome-error://")  # the next fetch on this page is still safe
+
+
+class Counted:
+    """Stands in for a lazy browser: remembers which kind it is and what it was asked for."""
+
+    def __init__(self, settings):
+        self.kind, self.asked, self.closed, self.minutes_used, self.sessions_opened = settings.browser, [], False, 0.0, 0
+
+    def fetch(self, url, *, wait_ms=2500):
+        self.asked.append(url)
+        self.minutes_used += 1.5
+        self.sessions_opened = 1
+        return PageContent(url, self.kind, "", [])
+
+    def close(self):
+        self.closed = True
+
+
+def test_each_job_board_gets_the_browser_it_names_and_none_is_opened_unasked():
+    made = []
+    browsers = bmod.Browsers(Settings(browser="local"), make=lambda s: made.append(Counted(s)) or made[-1])
+    assert made == [] and browsers.minutes_used == 0  # nothing starts until a board needs it
+
+    assert browsers.of("").fetch("https://cutshort/jobs").title == "local"  # a board that names none: the one in .env
+    assert browsers.fetch("https://hirist/jobs").title == "local"
+    assert [b.kind for b in made] == ["local"]  # still no Browserbase session, so none of its time is spent
+
+    assert browsers.of("browserbase").fetch("https://naukri/jobs").title == "browserbase"
+    assert browsers.of("browserbase") is browsers.of("browserbase") and [b.kind for b in made] == ["local", "browserbase"]
+    assert (browsers.minutes("browserbase"), browsers.minutes("local"), browsers.minutes_used) == (1.5, 3.0, 4.5)
+    assert browsers.sessions_opened == 2
+    browsers.close()
+    assert all(b.closed for b in made)
+
+    # With Browserbase as the usual browser, a board can still name this Mac.
+    made.clear()
+    usual_hosted = bmod.Browsers(Settings(browser="browserbase"), make=lambda s: made.append(Counted(s)) or made[-1])
+    assert usual_hosted.of("").kind == "browserbase" and usual_hosted.of("local").kind == "local"
+
+
+def test_browserbase_that_will_not_start_says_so_in_plain_words(monkeypatch):
+    import sys
+    import types
+
+    class Sessions:
+        def create(self, **kw):
+            raise RuntimeError("Error code: 402 - {'message': 'Browser minutes limit reached'}\nmore detail")
+
+    fake = types.ModuleType("browserbase")
+    fake.Browserbase = lambda api_key: types.SimpleNamespace(sessions=Sessions())
+    monkeypatch.setitem(sys.modules, "browserbase", fake)
+    with pytest.raises(bmod.BrowserUnavailable) as e:
+        with bmod.open_browser(Settings(browser="browserbase", browserbase_api_key="k")):
+            pass
+    assert str(e.value) == ("Browserbase would not start a browser (Error code: 402 - {'message': 'Browser minutes limit reached'}). "
+                            "Its browser time for this month may be used up")

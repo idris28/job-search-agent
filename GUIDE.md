@@ -252,7 +252,7 @@ commands here too.
 | `matching.reader_model` | A cheaper AI model for reading job-site pages into lists of jobs (none, so off). Scoring and emails keep the main model. For Claude: `claude-haiku-5-5`. |
 | `matching.batch_scoring`, `batch_wait_minutes` | Score the morning routine as one batch at half price (off), and how long a search waits for the answers (120 minutes). |
 | `backup.daily`, `backup.keep`, `backup.folder` | Back up after the morning routine (on), how many backups are kept (7), and the folder they go to (`backups`). |
-| `sources` | Job boards and company career pages to search. On the website each one has a switch under Settings, **Sites**. |
+| `sources` | Job boards and company career pages to search. On the website each one has a switch under Settings, **Sites**. A job board can also name its browser there (`browser: browserbase` or `browser: local` in the file), so Browserbase time is spent only on the boards that refuse the browser on this Mac. |
 
 ## Notifications
 
@@ -272,7 +272,9 @@ page. Treat an estimate as a rough guide, not a fact; it never lowers a score on
 - **AI model calls** (Claude): `jsa contacts`, the "add a job" form on the web page, `jsa daily`, `jsa run` (reading pages and scoring), `jsa score`, `jsa email`, `jsa add`,
   `jsa cover-letter` and `jsa profile import`.
 - **Browserbase time**: `jsa daily`, `jsa run`, and the live posting check in `jsa email`. None of it
-  is used when `.env` has `JOBAGENT_BROWSER=local`: the pages open in Chromium on this Mac.
+  is used when `.env` has `JOBAGENT_BROWSER=local`: the pages open in Chromium on this Mac. A job
+  board set to Browserbase under Settings, **Sites**, still uses Browserbase time, and only that
+  board does; the search summary says how many browser minutes were on Browserbase.
 
 Three settings lower the AI cost of a search, and all are off until you switch them on. A cheaper
 model can read the job-site pages (`matching.reader_model`) and can rule out the clear misses before
@@ -321,7 +323,7 @@ Adobe says "Computer Scientist", Salesforce says "Member of Technical Staff".
   this Mac was refused by Naukri, Naukrigulf, Foundit Gulf and Instahyre; Naukri had been read
   through Browserbase three days earlier. The agent does not try to get past a refusal. The run
   reports that site as not read, spends no AI call on it, and carries on with the rest; switch the site off on the website (Settings, **Sites**), or set `enabled: false` on it in
-  `config.yaml`, to stop the report.
+  `config.yaml`, to stop the report. Or give just that board Browserbase, in the same place.
 - Most job board postings show no email address, so `--send` only covers the ones that do, plus
   posts you add with `jsa add`.
 - Only so many job pages per job board are opened in full each run (`max_detail_pages` on each

@@ -135,3 +135,45 @@ def test_without_a_settings_file_the_page_says_so(conn):
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_a_job_board_can_name_the_browser_it_is_read_with(conn, cfg_file):
+    assert [s.browser for s in AgentConfig.load(cfg_file).sources] == ["", ""]  # none named: the one in .env reads them all
+    info = write_settings(cfg_file, browsers={"Naukrigulf": "browserbase"})
+    board = info["sites"][1]
+    assert (board["uses_browser"], board["browser"], board["browser_changed"], board["enabled"]) == (True, "browserbase", True, False)
+    assert info["sites"][0]["uses_browser"] is False and info["changed"] == 1
+    assert [s.browser for s in AgentConfig.load(cfg_file).sources] == ["", "browserbase"]
+
+    # The switch and the browser of one site are kept side by side, and each can go back on its own.
+    write_settings(cfg_file, sites={"Naukrigulf": True})
+    chosen = AgentConfig.load(cfg_file).sources[1]
+    assert (chosen.enabled, chosen.browser) == (True, "browserbase")
+    write_settings(cfg_file, browsers={"Naukrigulf": ""})
+    chosen = AgentConfig.load(cfg_file).sources[1]
+    assert (chosen.enabled, chosen.browser) == (True, "") and "browser" not in overrides_path(cfg_file).read_text()
+    write_settings(cfg_file, sites={"Naukrigulf": None})
+    assert not overrides_path(cfg_file).exists() and cfg_file.read_text() == CONFIG
+
+    for browsers, said in (({"Acme": "browserbase"}, "Acme is read without a browser, so there is none to choose."),
+                           ({"Naukrigulf": "firefox"}, "Naukrigulf: choose the browser on this Mac or Browserbase."),
+                           ({"Nowhere": "local"}, "There is no site called 'Nowhere' in config.yaml.")):
+        with pytest.raises(ConfigError) as e:
+            write_settings(cfg_file, browsers=browsers)
+        assert str(e.value) == said
+    assert not overrides_path(cfg_file).exists()
+
+    server = serve(str(cfg_file))
+    try:
+        assert call(server, "/api/settings")[1]["browser"] == {"kind": "browserbase", "hosted": [], "boards": 0, "key": False, "ready": True}
+        code, r = call(server, "/api/config", {"browsers": {"Naukrigulf": "local"}})
+        assert code == 200 and r["message"] == "Naukrigulf is read with the browser on this Mac."
+        code, r = call(server, "/api/config", {"browsers": {"Naukrigulf": "browserbase"}, "sites": {"Naukrigulf": True}})
+        assert code == 200 and r["sites"][1]["browser"] == "browserbase"
+        # Browserbase is named but there is no key: Setup says so.
+        assert call(server, "/api/settings")[1]["browser"] == {"kind": "browserbase", "hosted": ["Naukrigulf"], "boards": 1, "key": False, "ready": False}
+        assert call(server, "/api/config", {"browsers": {"Acme": "local"}})[1]["error"] == "Acme is read without a browser, so there is none to choose."
+        assert call(server, "/api/config", {"browsers": ["Naukrigulf"]})[0] == 400
+    finally:
+        server.shutdown()
+        server.server_close()

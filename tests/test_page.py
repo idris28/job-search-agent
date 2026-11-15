@@ -53,9 +53,9 @@ def chromium():
 class Site:
     """The program running on the test database, and one browser tab open on it."""
 
-    def __init__(self, browser, folder, *, width=1440, height=900):
+    def __init__(self, browser, folder, *, width=1440, height=900, config=CONFIG):
         self.config = folder / "config.yaml"
-        self.config.write_text(CONFIG)
+        self.config.write_text(config)
         self.server = web.serve(Settings(database_url=TEST_DB), AgentConfig.load(self.config), 0, config_path=str(self.config))
         self.server.runner.command = lambda argv: [sys.executable, "-u", "-c", SLOW if argv[0] == "daily" else QUICK]
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
@@ -456,6 +456,40 @@ def test_settings_are_changed_on_the_page_and_kept_beside_the_file(conn, open_si
         backup.click()
         expect(page.locator("#live b")).to_have_text("Back up now: done")
     assert site.refusals() == 1
+
+
+def test_a_job_board_is_given_its_own_browser_under_sites(conn, open_site):
+    seed(conn, 1)
+    boards = ("  - {kind: generic, name: Naukri, urls: ['https://example.com/naukri']}\n"
+              "  - {kind: generic, name: Cutshort, urls: ['https://example.com/cutshort']}\n")
+    site = open_site(config=CONFIG + boards)  # this test copy's usual browser is Browserbase, with no key
+    page = site.page
+    setup = page.locator('.check:has(b:text-is("Browser for job sites"))')
+    site.show("settings")
+    expect(page.locator("select[data-browser]")).to_have_count(2)  # the two company sites need no browser, so offer no choice
+    expect(setup).to_contain_text("BROWSERBASE_API_KEY is missing in .env; 2 job boards need it")
+    naukri, cutshort = page.locator('select[data-browser="Naukri"]'), page.locator('select[data-browser="Cutshort"]')
+    expect(naukri).to_have_value("")
+    expect(naukri.locator("option").first).to_have_text("Usual: Browserbase")
+
+    cutshort.select_option("local")
+    site.toast("Cutshort is read with the browser on this Mac")
+    expect(page.locator(".brow", has=cutshort)).to_have_class(re.compile(r"\bchanged\b"))
+    expect(page.locator(".brow", has=naukri)).not_to_have_class(re.compile(r"\bchanged\b"))
+    assert [s.browser for s in AgentConfig.load(site.config).sources] == ["", "", "", "local"]
+    naukri.select_option("local")
+    site.toast("Naukri is read with the browser on this Mac")
+
+    site.show("activity")
+    site.show("settings")  # Setup now says where the boards are read
+    expect(setup).to_contain_text("This Mac")
+    expect(page.locator('select[data-browser="Cutshort"]')).to_have_value("local")
+    page.locator('select[data-browser="Naukri"]').select_option("browserbase")
+    site.toast("Naukri is read with Browserbase")
+    site.show("activity")
+    site.show("settings")
+    expect(setup).to_contain_text("BROWSERBASE_API_KEY is missing in .env; 1 job board needs it")
+    assert site.sideways() <= 0 and site.refusals() == 0
 
 
 def test_a_change_made_elsewhere_reaches_an_open_page_at_once(conn, open_site):

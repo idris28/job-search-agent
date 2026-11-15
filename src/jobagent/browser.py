@@ -38,6 +38,10 @@ class Browser(Protocol):
     def fetch(self, url: str, *, wait_ms: int = 2500) -> PageContent: ...
 
 
+class BrowserUnavailable(RuntimeError):
+    """The hosted browser could not be started, for example because its time is used up."""
+
+
 class SiteRefused(RuntimeError):
     """The site would not serve this browser: it dropped the connection, or answered with
     "Access Denied" or a bot check where the page should be."""
@@ -134,7 +138,11 @@ def open_browser(settings: Settings) -> Iterator[Browser]:
         # Project ID is optional: Browserbase uses the API key's project when it is omitted.
         params = ({"project_id": settings.browserbase_project_id}
                   if settings.browserbase_project_id else {})
-        session = bb.sessions.create(**params)
+        try:
+            session = bb.sessions.create(**params)
+        except Exception as e:  # noqa: BLE001 - whatever the service answered, say it plainly
+            raise BrowserUnavailable(f"Browserbase would not start a browser ({str(e).splitlines()[0][:160]}). "
+                                     "Its browser time for this month may be used up") from e
         log.info("Browserbase session %s (replay: https://browserbase.com/sessions/%s)",
                  session.id, session.id)
         browser = pw.chromium.connect_over_cdp(session.connect_url)
@@ -197,3 +205,41 @@ class LazyBrowser:
             self._opened_at = None
         if cm is not None:
             cm.__exit__(None, None, None)
+
+
+class Browsers:
+    """The browsers of one search. Each job board names the one it is read with: "local" for
+    Chromium on this machine, "browserbase" for a hosted one. A board that names none gets the
+    one set in .env. Each is opened only when a board first needs it, so a search whose boards
+    all read locally never starts a Browserbase session, and Browserbase time is spent only on
+    the boards that name it."""
+
+    def __init__(self, settings: Settings, make=None):
+        self._settings = settings
+        self._make = make or LazyBrowser
+        self._by_kind: dict[str, LazyBrowser] = {}
+
+    def of(self, kind: str = "") -> LazyBrowser:
+        kind = kind or self._settings.browser
+        if kind not in self._by_kind:
+            self._by_kind[kind] = self._make(self._settings.model_copy(update={"browser": kind}))
+        return self._by_kind[kind]
+
+    def fetch(self, url: str, *, wait_ms: int = 2500) -> PageContent:
+        """For callers that name no board: the browser set in .env."""
+        return self.of().fetch(url, wait_ms=wait_ms)
+
+    def minutes(self, kind: str) -> float:
+        return self._by_kind[kind].minutes_used if kind in self._by_kind else 0.0
+
+    @property
+    def minutes_used(self) -> float:
+        return sum(b.minutes_used for b in self._by_kind.values())
+
+    @property
+    def sessions_opened(self) -> int:
+        return sum(b.sessions_opened for b in self._by_kind.values())
+
+    def close(self) -> None:
+        for b in self._by_kind.values():
+            b.close()

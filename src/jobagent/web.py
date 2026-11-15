@@ -284,6 +284,14 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             return {"days": days, "gap_jobs": total, "gaps": gaps, "progress": db.progress(conn, pid, 7),
                     "waiting": len(db.shortlisted_job_ids(conn, pid, 100000)), "runs": db.settled_runs(conn, 15)}
 
+    def browser_info(c: AgentConfig) -> dict:
+        """Which browser reads the job boards: the usual one from .env, and the boards that name
+        Browserbase for themselves. Ready means every browser in use can start."""
+        boards = [s for s in c.sources if s.enabled and s.kind == "generic"]
+        hosted = [s.name for s in boards if (s.browser or settings.browser) == "browserbase"]
+        return {"kind": settings.browser, "hosted": hosted, "boards": len(boards),
+                "key": bool(settings.browserbase_api_key), "ready": not hosted or bool(settings.browserbase_api_key)}
+
     def settings_info() -> dict:
         c = config()
         o = c.outreach
@@ -292,8 +300,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         info = {
             "ai": {"provider": settings.resolved_llm_provider(), "model": settings.llm_model,
                    "ready": bool(settings.anthropic_api_key or settings.openai_api_key)},
-            "browser": {"kind": settings.browser, "ready": settings.browser == "local"
-                        or bool(settings.browserbase_api_key)},
+            "browser": browser_info(c),
             "gmail": {"address": settings.gmail_address,
                       "ready": bool(settings.gmail_address and settings.gmail_app_password)},
             "telegram": bool(settings.telegram_bot_token and settings.telegram_chat_id),
@@ -414,16 +421,19 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             raise ActionError(str(e)) from e
 
     def save_page_settings(body: dict) -> dict:
-        values, sites = body.get("values", {}), body.get("sites", {})
-        values, sites = ({} if values is None else values), ({} if sites is None else sites)
-        if not isinstance(values, dict) or not isinstance(sites, dict):
+        values, sites, browsers = body.get("values", {}), body.get("sites", {}), body.get("browsers", {})
+        values, sites, browsers = ({} if values is None else values), ({} if sites is None else sites), ({} if browsers is None else browsers)
+        if not isinstance(values, dict) or not isinstance(sites, dict) or not isinstance(browsers, dict):
             raise ValueError
         try:
-            info = write_settings(settings_file(), values, sites)
+            info = write_settings(settings_file(), values, sites, browsers)
         except ConfigError as e:
             raise ActionError(str(e)) from e
         waiting.update(at=0.0)  # the rules may have changed, so count the waiting jobs again
-        if len(sites) == 1 and not values:
+        if len(browsers) == 1 and not values and not sites:
+            (name, kind), = browsers.items()
+            message = f"{name} is read with " + {"browserbase": "Browserbase", "local": "the browser on this Mac"}.get(kind, "the usual browser") + "."
+        elif len(sites) == 1 and not values:
             (name, on), = sites.items()
             state = "back to what config.yaml says" if on is None else "switched on" if on else "switched off"
             message = f"{name} is {state}."

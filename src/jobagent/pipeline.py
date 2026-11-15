@@ -152,7 +152,8 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
                 continue
             source_id = db.upsert_source(conn, scfg.kind, scfg.name, scfg.identity_url,
                                          scfg.model_dump(mode="json"))
-            ctx = SourceContext(http=http, browser=browser, llm=page_llm,
+            # A job board may name its own browser; the others are read with the one set in .env.
+            ctx = SourceContext(http=http, browser=browser.of(scfg.browser) if hasattr(browser, "of") else browser, llm=page_llm,
                                 log=lambda m, sid=source_id: event(m, source_id=sid),
                                 prefs=cfg.search)
             # A job board's list gives a title, a company and a place. The job's own page is opened

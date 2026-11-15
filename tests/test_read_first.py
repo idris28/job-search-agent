@@ -170,3 +170,27 @@ def test_the_page_says_how_many_jobs_wait_to_be_read(conn):
         assert (counts["unread"], counts["waiting"], counts["scored"]) == (2, 0, 1)
     finally:
         page.close()
+
+
+def test_a_search_reads_each_board_with_the_browser_that_board_names(conn):
+    db.save_profile(conn, "Alex", "resume", {})
+    other = "https://other.example.com/java-jobs"
+    two = AgentConfig(search=SearchPrefs(locations=["Dubai"], include_title_keywords=["java"]), matching=MatchingPrefs(shortlist_min_score=75),
+                      sources=[SourceConfig(kind="generic", name="Board", urls=[BOARD], max_detail_pages=1, browser="browserbase"),
+                               SourceConfig(kind="generic", name="Other", urls=[other], max_detail_pages=0)])
+
+    class Router:
+        """Hands out one stand-in browser per kind, as the real one does."""
+
+        def __init__(self):
+            self.by_kind = {"browserbase": board(), "": FakeBrowser({other: PageContent(other, "Jobs", "none today", [])})}
+            self.minutes_used = 0.0
+
+        def of(self, kind=""):
+            return self.by_kind[kind]
+
+    router = Router()
+    s = run_agent(conn, two, FakeLLM(listings=LISTED), router, http=mock_http({}))
+    assert router.by_kind["browserbase"].visited == [BOARD, LINKS[0]["href"]]  # only the board that named it
+    assert router.by_kind[""].visited == [other]
+    assert s.status == "succeeded" and s.scored == 1

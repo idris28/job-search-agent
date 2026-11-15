@@ -204,6 +204,10 @@ class SourceConfig(BaseModel):
     company: str | None = None  # display name override
     max_detail_pages: int = 20
     enabled: bool = True
+    # Job boards only: the browser this board is read with. "browserbase" for a hosted browser,
+    # "local" for Chromium on this machine, empty for whichever JOBAGENT_BROWSER names in .env.
+    # Some boards refuse the local browser, so Browserbase time can be kept for just those.
+    browser: Literal["", "local", "browserbase"] = ""
     extra: dict[str, Any] = Field(default_factory=dict)
 
     @property
@@ -298,9 +302,8 @@ def _merged(base: dict, over: dict) -> dict:
             out[section] = {**(base.get(section) or {}), **over[section]}
     switches = over.get("sources") or {}
     if switches:
-        out["sources"] = [{**s, "enabled": switches[s["name"]]["enabled"]}
-                          if isinstance(s, dict) and "enabled" in (switches.get(s.get("name")) or {}) else s
-                          for s in base.get("sources") or []]
+        out["sources"] = [{**s, **{k: v for k, v in (switches.get(s.get("name")) or {}).items() if k in ("enabled", "browser")}}
+                          if isinstance(s, dict) else s for s in base.get("sources") or []]
     return out
 
 
@@ -349,15 +352,18 @@ def read_settings(path: str | Path) -> dict:
         value, in_file = getattr(getattr(now, section), name), getattr(getattr(plain, section), name)
         fields.append({"key": key, "group": group, "kind": kind.rstrip("?"), "optional": kind.endswith("?"),
                        "label": label, "hint": hint, "value": value, "file_value": in_file, "changed": value != in_file})
-    sites = [{"name": s.name, "kind": s.kind, "enabled": s.enabled, "changed": s.enabled != p.enabled}
+    sites = [{"name": s.name, "kind": s.kind, "enabled": s.enabled, "changed": s.enabled != p.enabled,
+              "uses_browser": s.kind == "generic", "browser": s.browser, "browser_changed": s.browser != p.browser}
              for s, p in zip(now.sources, plain.sources)]
     return {"file": Path(path).name, "overrides_file": overrides_path(path).name, "fields": fields, "sites": sites,
-            "changed": sum(f["changed"] for f in fields) + sum(s["changed"] for s in sites)}
+            "changed": sum(f["changed"] for f in fields) + sum(s["changed"] + s["browser_changed"] for s in sites)}
 
 
-def write_settings(path: str | Path, values: dict | None = None, sites: dict | None = None) -> dict:
+def write_settings(path: str | Path, values: dict | None = None, sites: dict | None = None,
+                   browsers: dict | None = None) -> dict:
     """Store settings changed on the page. A value of None, or one equal to config.yaml's, removes
-    the override. Nothing is written unless the result is a valid configuration."""
+    the override. `sites` switches a site on or off; `browsers` names the browser a job board is
+    read with. Nothing is written unless the result is a valid configuration."""
     base, over = _read_both(path)
     plain = AgentConfig.model_validate(base)
     over = {k: dict(v) if isinstance(v, dict) else v for k, v in over.items()}
@@ -371,17 +377,32 @@ def write_settings(path: str | Path, values: dict | None = None, sites: dict | N
             chosen.pop(name, None)
         else:
             chosen[name] = value
-    known = {s.name: s.enabled for s in plain.sources}
+    known = {s.name: s for s in plain.sources}
+    switches = over["sources"] = {k: dict(v) for k, v in (over.get("sources") or {}).items() if isinstance(v, dict)}
+
+    def choose(name: str, what: str, value) -> None:
+        entry = switches.setdefault(name, {})
+        if value is None or value == getattr(known[name], what):
+            entry.pop(what, None)
+        else:
+            entry[what] = value
+        if not entry:
+            del switches[name]
+
     for name, on in (sites or {}).items():
         if name not in known:
             raise ConfigError(f"There is no site called {name!r} in {Path(path).name}.")
         if on is not None and not isinstance(on, bool):
             raise ConfigError(f"{name}: choose on or off.")
-        switches = over.setdefault("sources", {})
-        if on is None or on == known[name]:
-            switches.pop(name, None)
-        else:
-            switches[name] = {"enabled": on}
+        choose(name, "enabled", on)
+    for name, kind in (browsers or {}).items():
+        if name not in known:
+            raise ConfigError(f"There is no site called {name!r} in {Path(path).name}.")
+        if known[name].kind != "generic":
+            raise ConfigError(f"{name} is read without a browser, so there is none to choose.")
+        if kind not in (None, "", "local", "browserbase"):
+            raise ConfigError(f"{name}: choose the browser on this Mac or Browserbase.")
+        choose(name, "browser", kind)
     over = {k: v for k, v in over.items() if v}
     try:
         AgentConfig.model_validate(_merged(base, over))

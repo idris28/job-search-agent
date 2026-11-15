@@ -114,7 +114,9 @@ outreach:
 # Job board searches (kind: generic) open in a browser. By default that is Browserbase, which needs
 # BROWSERBASE_API_KEY (BROWSERBASE_PROJECT_ID is optional); with JOBAGENT_BROWSER=local in .env it is
 # Chromium on this machine, which needs no key. Each search page is read by the LLM, then up to max_detail_pages job
-# pages are opened per run for full descriptions. A job is scored only after its own page was read,
+# pages are opened per run for full descriptions. A board can name its own browser with
+# `browser: browserbase` (or `browser: local`), whatever JOBAGENT_BROWSER says: some boards refuse
+# the local browser, and this keeps Browserbase time for just those. A job is scored only after its own page was read,
 # and a page is opened once; the rest wait for the next run. Some boards use bot protection; check `jsa runs` and
 # disable a source that keeps failing.
 sources:
