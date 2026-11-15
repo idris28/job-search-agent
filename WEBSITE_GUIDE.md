@@ -2,7 +2,8 @@
 
 The website is the job search agent with buttons instead of typed commands. It runs on your Mac
 only; nobody else can open it. This guide explains every part of the screen and how to use it day
-to day. For the typed commands behind each button, see [GUIDE.md](GUIDE.md).
+to day. For the typed commands behind each button, see [GUIDE.md](GUIDE.md). A picture of every
+screen and function is in [screenshots/README.md](screenshots/README.md).
 
 ## Opening and closing it
 

@@ -318,5 +318,6 @@ src/jobagent/
 |---|---|
 | `GUIDE.md` | every `jsa` command, and which button on the website does the same |
 | `WEBSITE_GUIDE.md` | using the website, screen by screen |
+| `screenshots/README.md` | the website in pictures: one for each screen and function, taken on a demo copy with made-up jobs |
 | `ARCHITECTURE.md` | how the parts fit together; `app-flow.html` and `architecture-live.html` are the same as pictures |
 | `DESIGN.md` | how the website looks and reads: colours, type, spacing, wording |
