@@ -316,9 +316,11 @@ Adobe says "Computer Scientist", Salesforce says "Member of Technical Staff".
 
 - Job sites block automated browsers, so the agent cannot log in or click Apply for you. That is
   why `jsa apply` opens the page in your own browser.
-- A site can also refuse to be read at all. Naukrigulf closes the connection to the browser on this
-  Mac (it accepted Browserbase). The run then reports that site as not read and carries on with the
-  rest; switch the site off on the website (Settings, **Sites**), or set `enabled: false` on it in
+- A site can also refuse to be read at all. It closes the connection, answers "Access Denied", or
+  shows a "verify you are not a bot" check where the page should be. On 15 Nov 2026 the browser on
+  this Mac was refused by Naukri, Naukrigulf, Foundit Gulf and Instahyre; Naukri had been read
+  through Browserbase three days earlier. The agent does not try to get past a refusal. The run
+  reports that site as not read, spends no AI call on it, and carries on with the rest; switch the site off on the website (Settings, **Sites**), or set `enabled: false` on it in
   `config.yaml`, to stop the report.
 - Most job board postings show no email address, so `--send` only covers the ones that do, plus
   posts you add with `jsa add`.

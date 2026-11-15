@@ -111,6 +111,34 @@ def test_pages_go_to_jobs_the_rules_would_keep_and_a_page_that_fails_is_tried_ag
     assert opened(again) == [2] and llm.scored_titles == ["Java Developer", "Java Backend Developer"] and s.unread == 0
 
 
+def test_a_board_that_refuses_the_browser_is_reported_and_not_read_as_empty(conn):
+    from jobagent.browser import SiteRefused
+
+    db.save_profile(conn, "Alex", "resume", {})
+    refused = SiteRefused(f'the site refused this browser when it asked for {BOARD} (error 403, "Access Denied"). '
+                          "Job sites often do this to automated browsers")
+
+    class Counting(FakeLLM):
+        pages_read = 0
+
+        def extract_listings(self, text, links, url):
+            Counting.pages_read += 1
+            return super().extract_listings(text, links, url)
+
+    s = run_agent(conn, cfg(), Counting(listings=LISTED), FakeBrowser({BOARD: refused}), http=mock_http({}))
+    assert Counting.pages_read == 0  # no AI call is spent on a page that was never served
+    assert (s.status, s.found, s.source_errors) == ("partial", 0, {"Board": str(refused)})
+    assert db.list_runs(conn)[0]["error"] == "1 site could not be read: Board"
+
+    # Refused on a job's own page: the board is asked for no more pages in this search.
+    listing_only = FakeBrowser({BOARD: PageContent(BOARD, "Jobs", "jobs", LINKS), LINKS[0]["href"]: refused, LINKS[1]["href"]: job_page(1),
+                                LINKS[2]["href"]: job_page(2)})
+    s = run_agent(conn, cfg(read_per_search=3), FakeLLM(listings=LISTED), listing_only, http=mock_http({}))
+    assert opened(listing_only) == [1] and (s.status, s.scored, s.unread) == ("succeeded", 0, 3)
+    said = [r["message"] for r in conn.execute("SELECT message FROM run_events ORDER BY id").fetchall()]
+    assert any(m.startswith("Board: the site refused this browser") and m.endswith("No more job pages are asked for in this search") for m in said)
+
+
 def test_a_board_set_to_read_no_job_pages_is_scored_on_what_its_list_gives(conn):
     db.save_profile(conn, "Alex", "resume", {})
     llm, browser = FakeLLM(listings=LISTED), board(pages=())

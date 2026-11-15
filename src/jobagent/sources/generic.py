@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..browser import SiteRefused
 from ..config import ConfigError, SourceConfig
 from ..filters import reject_reason
 from ..models import JobPosting
@@ -62,6 +63,9 @@ class GenericSource(Source):
                 job.posted_at = job.posted_at or parse_posted(detail.text[:1500])
                 job.remote_type = (job.remote_type if job.remote_type != "unknown"
                                    else guess_remote_type(detail.text[:3000]))
+            except SiteRefused as e:  # asking again would only be refused again
+                ctx.log(f"{self.cfg.name}: {e}. No more job pages are asked for in this search")
+                break
             except Exception as e:  # noqa: BLE001
                 ctx.log(f"{self.cfg.name}: detail fetch failed for {job.url}: {e}")
             if job.is_read and job.url not in seen:

@@ -6,6 +6,7 @@ Adapters only see `Browser.fetch(url) -> PageContent`, so they don't care which 
 from __future__ import annotations
 
 import logging
+import re
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -38,12 +39,36 @@ class Browser(Protocol):
 
 
 class SiteRefused(RuntimeError):
-    """The site dropped the connection as soon as this browser asked for a page."""
+    """The site would not serve this browser: it dropped the connection, or answered with
+    "Access Denied" or a bot check where the page should be."""
 
 
 # Chromium's names for a connection the server cut before sending a page. Job sites do this to
 # automated browsers. Nothing here tries to get around it: the source fails, and says why.
 _REFUSALS = ("ERR_HTTP2_PROTOCOL_ERROR", "ERR_CONNECTION_RESET", "ERR_CONNECTION_CLOSED", "ERR_EMPTY_RESPONSE")
+
+
+# What a page says when it is a bot check and not the page that was asked for.
+_BOT_CHECK = re.compile(r"access denied|verif(y|ies|ying) (that )?you are (a )?human|verif(y|ies|ying) you are not a (ro)?bot|are you a robot|"
+                        r"i'?m not a robot|just a moment|unusual traffic|request (was )?blocked|pardon our interruption", re.I)
+
+
+def refusal(status: int | None, headers: dict | None, title: str, text: str, links: int) -> str | None:
+    """Why this answer is a refusal and not the page that was asked for, or None when it is a page.
+
+    Job sites answer an automated browser with "Access Denied" (error 403), with a "verify you
+    are not a bot" check, or with a page that holds only such a check. Read as a page, any of
+    these looks like a site with no jobs, which is wrong: the site was never read.
+    """
+    said = _BOT_CHECK.search(f"{title}\n{text[:2000]}")
+    if (headers or {}).get("cf-mitigated") == "challenge":
+        return 'a "verify you are not a bot" check'
+    if status in (401, 403, 429):
+        named = title.strip() or (said.group(0) if said else "")
+        return f"error {status}" + (f', "{named[:60]}"' if named else "")
+    if said and links < 5 and len(text) < 1500:  # a check served with an ordinary answer
+        return f'a bot check: "{said.group(0).lower()}"'
+    return None
 
 
 class PlaywrightBrowser:
@@ -63,7 +88,7 @@ class PlaywrightBrowser:
 
     def fetch(self, url: str, *, wait_ms: int = 2500) -> PageContent:
         try:
-            self._page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+            response = self._page.goto(url, wait_until="domcontentloaded", timeout=45_000)
         except Exception as e:  # noqa: BLE001
             if "net::ERR" in str(e):
                 self._await_error_page()
@@ -79,6 +104,11 @@ class PlaywrightBrowser:
         if wait_ms:
             self._page.wait_for_timeout(wait_ms)
         data = self._page.evaluate(_EXTRACT_JS)
+        why = refusal(getattr(response, "status", None), getattr(response, "headers", None),
+                      data["title"], data["text"], len(data["links"]))
+        if why:
+            raise SiteRefused(f"the site refused this browser when it asked for {url} ({why}). "
+                              "Job sites often do this to automated browsers")
         return PageContent(url=self._page.url, title=data["title"], text=data["text"],
                            links=data["links"])
 

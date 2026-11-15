@@ -256,5 +256,9 @@ Not in the diagram:
   and laid over it whenever any command loads the settings.
 - **The page is tested in a real browser.** `tests/test_page.py` opens it in Chromium against a
   throwaway database, with a stand-in for the `jsa` commands.
+- **A site that refuses is reported, never read as empty.** A closed connection, an "Access
+  Denied" answer or a bot check raises `SiteRefused` in `browser.py` before any AI call. The run
+  names the site as not read, and a board that refuses a job page is asked for no more pages in
+  that run. Nothing tries to get past a refusal.
 - **The agent never logs in to job sites.** They block automated browsers, so applying on a site
   is done by you in your own browser.
