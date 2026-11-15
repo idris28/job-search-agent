@@ -144,6 +144,22 @@ class MatchResult(BaseModel):
         "company and city in local currency, e.g. '18-26 LPA (estimate)'. Null if you cannot judge."))
 
 
+class ApplicationAnswers(BaseModel):
+    """Short answers to what a job site's application form usually asks, for the person to paste."""
+
+    why_this_role: str = Field(description="2-3 sentences on why this role interests the candidate, naming something the posting says")
+    why_you: str = Field(description="2-3 sentences on why the candidate fits, from resume facts that match the posting")
+    about_you: str = Field(description="A 3-4 sentence introduction of the candidate, for this role")
+    key_skills: str = Field(description="6-10 skills the posting asks for that the resume shows, separated by commas")
+    experience: str = Field(description="One line per main skill the posting asks for, as 'Skill: N years', only where the "
+                                        "resume makes the number clear; empty when it does not")
+
+
+# The answers in the order the page shows them, with the name of each.
+ANSWER_NAMES = [("why_this_role", "Why this role"), ("why_you", "Why you"), ("about_you", "About you"),
+                ("key_skills", "Key skills"), ("experience", "Experience")]
+
+
 class Prescreen(BaseModel):
     """A cheaper model's quick look at a job, before the full scoring."""
 

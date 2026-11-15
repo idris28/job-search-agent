@@ -22,7 +22,8 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from . import db, scheduler
-from .actions import ActionError, add_hr_contacts, can_delete, delete_added_job, send_slots, send_stored_draft
+from .actions import (ActionError, add_hr_contacts, applicant_details, can_delete, delete_added_job, send_slots,
+                      send_stored_draft)
 from .backup import find_pg_dump, latest_backup
 from .config import AgentConfig, ConfigError, read_settings, write_settings
 from .contacts import _EMAIL_RE
@@ -36,7 +37,7 @@ MAX_UPLOAD = 10 * 1024 * 1024
 
 # Every action the page can start as a task.
 TASKS = ("migrate", "run", "score", "daily", "email", "contacts", "send", "gmail-drafts", "followups",
-         "cover-letter", "dedupe", "notify-test", "add", "backup")
+         "cover-letter", "answers", "dedupe", "notify-test", "add", "backup")
 
 
 class Feed:
@@ -263,6 +264,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             events = db.application_events(conn, app["id"]) if app else []
             match = db.get_match(conn, pid, job_id)
             due = any(r["job_id"] == job_id for r in db.followups_due(conn, pid, config().outreach.follow_up_days))
+            details = applicant_details(db.active_profile(conn), config().outreach)
         if app:
             app = {k: v for k, v in app.items() if k not in ("company_research", "review_notes")}
             app["body_html"] = _paragraphs_html(app["outreach_body"])
@@ -271,7 +273,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             if names_missing_company(draft, job["company"]):
                 app["unfilled"].append(f'company name ("{job["company"]}" is not a real name)')
         return {"job": job, "match": match, "application": app, "events": events, "due": due,
-                "can_delete": can_delete(job, app) is None}
+                "can_delete": can_delete(job, app) is None,
+                "details": details}
 
     def matches(min_score: int) -> dict:
         with connect() as conn:
@@ -373,6 +376,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             label, argv = "Send follow-ups", ["followups", "--send"]
         elif action == "cover-letter" and len(ids) == 1:
             label, argv = f"Write a cover letter for #{ids[0]}", ["cover-letter", ids[0]]
+        elif action == "answers" and len(ids) == 1:
+            label, argv = f"Write application answers for #{ids[0]}", ["answers", ids[0]]
         elif action == "dedupe":
             label, argv = "Merge duplicate jobs", ["dedupe", "--apply"]
         elif action == "backup":

@@ -108,6 +108,7 @@ jsa score --batch                # the same as one batch: half the price, answer
 jsa jobs --min-score 75          # best matches across all runs
 jsa show 42 --full               # one job, with matched skills, gaps, red flags
 jsa cover-letter 42              # draft, saved on the application record
+jsa answers 42                   # short answers for the site's application form, to paste in yourself
 jsa email                        # recruiter emails for your top shortlisted jobs
 jsa email 94 96                  # ...or for specific jobs; --no-browse skips the live check
 jsa status 42 applied --note "via referral"
@@ -237,6 +238,14 @@ because job sites block automated browsers (Bayt and Google both refused one in 
 **General applications.** `jsa add-contacts` (or "Add HR addresses" on the website) puts HR addresses
 that have no posting on the shortlist. Their emails are drafted from `general_email_template.txt`
 and sent under the same daily limit as any other.
+
+**Application answers.** `jsa answers <id>` (or **Write the answers** in a job's panel) writes
+short answers to what a job site's form usually asks: why this role, why you, an introduction, key
+skills, and years per skill where the resume makes them clear. They are written from the resume
+and the posting only, and saved with the job. The panel shows them with a **Copy** button each,
+next to your own details (name, email, phone, LinkedIn, when you can join, current and expected
+salary, from `outreach` in the settings). You paste them into the site's form in your own
+browser; the program fills in and submits nothing.
 
 **Cover letters.** `jsa cover-letter <id>` fills in `cover_letter_template.txt` for the job, the same
 way as the email template below; remove the file or set `outreach.cover_letter_template_file: ""`

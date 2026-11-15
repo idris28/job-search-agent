@@ -128,6 +128,11 @@ class ResumeVariant(BaseModel):
 
 class OutreachPrefs(BaseModel):
     notice_period: str = ""      # e.g. "60 days, negotiable"; omitted from emails when empty
+    # Shown in a job's panel with a Copy button, for pasting into a site's application form.
+    # Left out when empty. They are never sent anywhere by the program.
+    phone: str = ""
+    current_salary: str = ""     # as you would type it, e.g. "18 LPA"
+    expected_salary: str = ""
     resume_filename: str = ""    # e.g. "Alex_Morgan_Java_Engineer.pdf"
     email: str = ""              # contact email for the sign-off; the resume's when empty
     linkedin_url: str = ""       # shown in emails as a clickable "LinkedIn" link
@@ -270,6 +275,11 @@ EDITABLE: dict[str, tuple[str, str, str, str, float | None, float | None]] = {
     "outreach.send_pause_seconds": ("Emails", "int", "Seconds between emails", "", 0, 3600),
     "outreach.follow_up_days": ("Emails", "int", "Follow up after, in days", "", 1, 90),
     "outreach.notice_period": ("Emails", "text", "When you can join", "Used in emails, for example: immediately.", None, None),
+    "outreach.email": ("Your details", "text", "Email", "In the sign-off of emails; your resume's when empty.", None, None),
+    "outreach.linkedin_url": ("Your details", "text", "LinkedIn link", "", None, None),
+    "outreach.phone": ("Your details", "text", "Phone", "Shown in a job's panel to copy into a site's application form.", None, None),
+    "outreach.current_salary": ("Your details", "text", "Current salary", "For application forms, as you would type it. Never sent by the program.", None, None),
+    "outreach.expected_salary": ("Your details", "text", "Expected salary", "", None, None),
     "backup.daily": ("Backups", "bool", "Back up after the morning routine", "", None, None),
     "backup.keep": ("Backups", "int", "Backups kept", "", 1, 365),
 }

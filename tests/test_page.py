@@ -61,6 +61,7 @@ class Site:
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.base = f"http://127.0.0.1:{self.server.server_address[1]}"
         self.context = browser.new_context(viewport={"width": width, "height": height})
+        self.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=self.base)
         # Nothing outside this Mac is fetched (the page asks for its fonts): the tests work offline.
         self.context.route(lambda url: not url.startswith(self.base), lambda route: route.fulfill(status=200, content_type="text/css", body=""))
         self.page = self.context.new_page()
@@ -336,6 +337,37 @@ def test_a_job_panel_says_why_an_email_cannot_be_sent(conn, open_site):
     expect(why).to_have_text("Marked skipped, so this email is not sent. Set the status to Shortlisted to send it.")
     expect(panel.locator('[data-act="send-again"]')).to_have_count(0)  # never sent, so nothing to send again
     assert site.refusals() == 1
+
+
+def test_answers_for_an_application_form_are_written_shown_and_copied(conn, open_site):
+    pid, ids = seed(conn, 2)
+    site = open_site(config=CONFIG + "outreach:\n  phone: '+00 00000 00000'\n  expected_salary: 24 LPA\n")
+    page, panel = site.page, site.page.locator("#detail")
+    block = panel.locator('.block:has(h3:text-is("Answers for the application form"))')
+    copied = lambda: page.evaluate("navigator.clipboard.readText()")  # noqa: E731
+
+    page.locator(f'tr.row[data-job="{ids[0]}"]').click()
+    expect(block).to_contain_text("You paste them in; nothing is submitted for you")
+    # Your own details, each a button that copies its value.
+    expect(block.locator(".fact span")).to_have_text(["Name", "Phone", "Expected salary"])
+    block.locator(".fact", has_text="Expected salary").click()
+    site.toast("Expected salary copied")
+    assert copied() == "24 LPA"
+
+    block.locator('[data-act="answers"]').click()  # the stand-in task; the real one asks the AI model
+    expect(page.locator("#live b")).to_contain_text(f"Write application answers for #{ids[0]}")
+    expect(page.locator("#live b")).to_contain_text("done")
+
+    db.save_answers(conn, pid, ids[0], {"why_this_role": "The posting asks for Java services, which is my work.", "why_you": "Six years of Java.",
+                                        "about_you": "I am a backend engineer.", "key_skills": "Java, Spring Boot", "experience": ""})
+    page.keyboard.press("Escape")
+    page.locator(f'tr.row[data-job="{ids[0]}"]').click()
+    expect(block.locator(".qh span")).to_have_text(["Why this role", "Why you", "About you", "Key skills"])  # an empty answer is not shown
+    block.locator(".qa", has_text="Key skills").locator('[data-act="copy-answer"]').click()
+    site.toast("Key skills copied")
+    assert copied() == "Java, Spring Boot"
+    expect(block.locator('[data-act="answers"]')).to_have_text("Write them again")
+    assert site.sideways() <= 0 and site.refusals() == 0
 
 
 def test_hr_addresses_are_added_listed_and_can_be_deleted(conn, open_site):

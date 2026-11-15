@@ -37,6 +37,19 @@ def add_pasted_job(conn, llm, cfg, text: str, url: str | None = None):
     return job_id, is_new, found, m
 
 
+def applicant_details(profile: dict | None, outreach) -> list[list[str]]:
+    """What an application form asks about the person, as [name, value] pairs to copy: from the
+    resume profile and from the settings. Anything not known is left out."""
+    p = (profile or {}).get("profile") or {}
+    years = p.get("years_experience")
+    rows = [("Name", (profile or {}).get("name") or p.get("name")), ("Email", outreach.email), ("Phone", outreach.phone),
+            ("LinkedIn", outreach.linkedin_url), ("Where you are", p.get("current_location")),
+            ("Total experience", f"{years:g} years" if isinstance(years, (int, float)) and years else ""),
+            ("When you can join", outreach.notice_period), ("Current salary", outreach.current_salary),
+            ("Expected salary", outreach.expected_salary)]
+    return [[name, str(value).strip()] for name, value in rows if value and str(value).strip()]
+
+
 def can_delete(job: dict, application: dict | None) -> str | None:
     """None when this entry may be deleted, otherwise why not."""
     if job["source_id"] is not None:

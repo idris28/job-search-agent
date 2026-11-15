@@ -430,6 +430,13 @@ def save_cover_letter(conn, profile_id: int, job_id: int, text: str) -> None:
     )
 
 
+def save_answers(conn, profile_id: int, job_id: int, answers: dict) -> None:
+    """Keep the application-form answers written for one job."""
+    set_application_status_if_missing(conn, profile_id, job_id)
+    conn.execute("UPDATE applications SET answers = %s, updated_at = now() WHERE profile_id = %s AND job_id = %s",
+                 (Jsonb(answers), profile_id, job_id))
+
+
 def set_application_status_if_missing(conn, profile_id: int, job_id: int,
                                       note: str | None = None) -> bool:
     exists = conn.execute(

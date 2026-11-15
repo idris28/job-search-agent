@@ -303,6 +303,17 @@ body.reading .drawer{transform:none;visibility:visible}
 .block p{margin:0 0 12px;max-width:68ch;color:var(--t2)}
 .block .acts{margin-top:4px}
 .lbl{margin-bottom:8px!important;font-size:13px;color:var(--t3)}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:8px;margin-bottom:16px}
+.fact{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 8px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--s3);text-align:left;cursor:pointer}
+.fact span{grid-column:1;font-size:12px;line-height:16px;color:var(--t3)}
+.fact b{grid-column:1;font-weight:400;font-size:13px;line-height:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fact .ic{grid-column:2;grid-row:1/3;width:14px;height:14px;color:var(--t3)}
+.fact:hover{border-color:var(--line-2)}
+.fact:hover .ic{color:var(--t1)}
+.qa{margin-bottom:16px}
+.qh{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px}
+.qh span{font-size:13px;color:var(--t2)}
+.qa p{margin:0;max-width:none}
 .chipsl{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 16px;padding:0;list-style:none}
 .chipsl .tag{padding:2px 8px;border-radius:var(--r-s);background:var(--s3);color:var(--t1);white-space:normal}
 .chipsl .tag::before{display:none}
@@ -668,7 +679,7 @@ const VIEWS = {
   settings: ["Settings", "Setup, the morning routine, your templates and limits"],
 };
 const HOT = { score: ["scored", "shortlisted"], run: ["found", "scored"], daily: ["found", "scored", "shortlisted"], add: ["found", "scored", "shortlisted"], contacts: ["shortlisted"], email: ["shortlisted"],
-              send: ["shortlisted", "emailed", "applied"], "gmail-drafts": ["shortlisted"], "cover-letter": ["shortlisted"], followups: ["due"] };
+              send: ["shortlisted", "emailed", "applied"], "gmail-drafts": ["shortlisted"], "cover-letter": ["shortlisted"], answers: ["shortlisted"], followups: ["due"] };
 const STATUS_C = { shortlisted: "c-paper", applied: "c-blue", interviewing: "c-amber", offer: "c-green", rejected: "c-red", skipped: "c-aside", withdrawn: "c-aside" };
 const COUNTRIES = [["UAE", /\b(uae|united arab emirates|dubai|abu dhabi|sharjah|ajman)\b/], ["Saudi Arabia", /\b(saudi|ksa|riyadh|jeddah|dammam|khobar)\b/], ["Qatar", /\b(qatar|doha)\b/],
   ["India", /\b(india|ahmedabad|gandhinagar|bengaluru|bangalore|pune|hyderabad|mumbai|chennai|gurugram|gurgaon|noida|delhi|kolkata)\b/]];
@@ -722,6 +733,7 @@ const size = n => n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const tidy = s => { s = String(s ?? "").trim(); return /[.!?]\s/.test(s) ? s : s.replace(/\.$/, ""); };  // a one-sentence message carries no full stop
 const cap = s => s ? s[0].toUpperCase() + s.slice(1) : "";
+const ANSWERS = [["why_this_role", "Why this role"], ["why_you", "Why you"], ["about_you", "About you"], ["key_skills", "Key skills"], ["experience", "Experience"]];
 const STATUS_L = { shortlisted: "Shortlisted", applied: "Applied", interviewing: "Interviewing", offer: "Offer", rejected: "Rejected", skipped: "Skipped", withdrawn: "Withdrawn" };
 const RUN_L = { succeeded: "Finished", partial: "Partly finished", failed: "Failed", running: "Running" };
 // Mirrors company_named() in models.py: a posting that gives no real company name.
@@ -1146,6 +1158,11 @@ function renderDetail(keep) {
     <div class="block"><h3>Email to the recruiter${seg}</h3>${mail}</div>
     <div class="block"><h3>Cover letter</h3>${a && a.cover_letter ? `<div class="mail desc">${esc(a.cover_letter)}</div><div class="acts"><button class="btn sm" data-act="copy-cover">${ic("copy")}Copy</button><button class="btn sm ghost" data-act="cover">Write it again</button></div>`
       : `<p>For sites that ask for one</p><button class="btn" data-act="cover">Write a cover letter</button>`}</div>
+    <div class="block"><h3>Answers for the application form</h3>
+      ${(d.details || []).length ? `<div class="facts">${d.details.map(([l, v], i) => `<button class="fact" data-act="copy-detail" data-to="${i}" aria-label="Copy ${esc(l)}"><span>${esc(l)}</span><b>${esc(v)}</b>${ic("copy")}</button>`).join("")}</div>` : ""}
+      ${a && a.answers ? ANSWERS.filter(([k]) => a.answers[k]).map(([k, l]) => `<div class="qa"><div class="qh"><span>${l}</span><button class="btn sm ghost" data-act="copy-answer" data-to="${k}">${ic("copy")}Copy</button></div><p class="desc">${esc(a.answers[k])}</p></div>`).join("")
+          + `<div class="acts"><button class="btn sm ghost" data-act="answers">Write them again</button></div>`
+        : `<p>Short answers to what a site's form asks, written from your resume and this posting. You paste them in; nothing is submitted for you</p><button class="btn" data-act="answers">Write the answers</button>`}</div>
     <div class="block"><h3>Notes</h3><textarea class="field short" id="note" aria-label="Notes" placeholder="Recruiter name, what was said, next step">${esc(a ? a.notes : "")}</textarea>
       <button class="btn" data-act="save-note">Save note</button></div>
     ${d.events.length ? `<div class="block"><h3>History</h3><ul class="history">${d.events.map(e => `<li>${esc(when(e.created_at))}: <b>${esc(STATUS_L[e.to_status] || cap(e.to_status))}</b>${e.note ? ", " + esc(e.note) : ""}</li>`).join("")}</ul></div>` : ""}
@@ -1363,6 +1380,9 @@ const A = {
   "contacts-one": () => startTask({ action: "contacts", job_ids: [S.sel] }),
   cover: () => startTask({ action: "cover-letter", job_ids: [S.sel] }),
   "copy-cover": () => navigator.clipboard.writeText(S.detail.application.cover_letter).then(() => toast("Cover letter copied")),
+  answers: () => startTask({ action: "answers", job_ids: [S.sel] }),
+  "copy-answer": b => navigator.clipboard.writeText(S.detail.application.answers[b.dataset.to]).then(() => toast(`${ANSWERS.find(([k]) => k === b.dataset.to)[1]} copied`)),
+  "copy-detail": b => { const [l, v] = S.detail.details[+b.dataset.to]; navigator.clipboard.writeText(v).then(() => toast(`${l} copied`)); },
   sheet: b => { S.preview = b.dataset.to === "preview";
     $("#sheet").classList.toggle("preview", S.preview);
     $$("[data-act=sheet]").forEach(x => x.setAttribute("aria-pressed", String((x.dataset.to === "preview") === S.preview)));

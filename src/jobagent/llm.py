@@ -10,7 +10,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from .config import OutreachPrefs, SearchPrefs
-from .models import (CandidateProfile, ExtractedListings, JobPosting, MatchResult,
+from .models import (ApplicationAnswers, CandidateProfile, ExtractedListings, JobPosting, MatchResult,
                      PastedJob, Prescreen, RecruiterEmail, RecruiterReview, TemplateEmail)
 
 T = TypeVar("T", bound=BaseModel)
@@ -52,6 +52,21 @@ Return every individual job posting on the page: its title, absolute URL (from t
 company if shown, location if shown, and how long ago it was posted if shown (the wording on
 the page, such as "2 days ago"). Skip navigation, category, and filter links. If the page
 has no job postings, return an empty list."""
+
+APPLICATION_ANSWERS_INSTRUCTIONS = """You write short answers for the questions a job site's
+application form asks, for this candidate and this job. The candidate pastes each one into the
+form, so each must read well on its own.
+
+Rules:
+- Use only facts that are in the RESUME. Never invent an employer, a number, a skill or a year.
+- Use the JOB POSTING to choose what to mention. Name what the posting asks for, in its words.
+- First person, plain words, no greeting, no sign-off, no exclamation marks, and no claim that
+  cannot be checked ("passionate", "world-class", "proven track record").
+- If the posting does not name the company ("Unknown", "Confidential"), write no company name.
+- why_this_role, why_you: 40 to 70 words each. about_you: 60 to 90 words.
+- key_skills: only skills that are in both the posting and the resume, separated by commas.
+- experience: one line per main skill the posting asks for, as "Skill: N years", only where the
+  resume makes N clear. Leave a skill out rather than guess. An empty string when none is clear."""
 
 COVER_LETTER_INSTRUCTIONS = """Write a concise, specific cover letter (under 250 words) for this
 candidate and job. Lead with the strongest 2-3 relevant achievements from the resume, mapped to the
@@ -357,6 +372,12 @@ class BaseLLM:
             f"TEMPLATE:\n{template}\n\nRESUME:\n{resume_text}\n\nJOB POSTING:\n{job_text}"
             f"\n\nOUTREACH PREFERENCES:\n{json.dumps(prefs) if prefs else '(none)'}"
             f"\n\nTODAY'S DATE: {date.today():%d %B %Y}")
+
+    def application_answers(self, resume_text: str, job_text: str) -> ApplicationAnswers:
+        """Short answers for a job site's application form, from the resume and the posting."""
+        resume = f"RESUME:\n{resume_text}\n\n"  # the same for every job, so sent as a cached prefix
+        return self._parse(APPLICATION_ANSWERS_INSTRUCTIONS, f"JOB POSTING:\n{job_text}", ApplicationAnswers,
+                           cached_prefix=resume)
 
 
 class OpenAILLM(BaseLLM):

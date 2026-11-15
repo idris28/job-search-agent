@@ -182,83 +182,89 @@ For sites that ask for one. Copy puts it on the clipboard; Write it again makes 
 
 ![Cover letter](28-job-cover-letter.png)
 
+### Answers for the application form
+
+Your own details and short answers written for this job, each with a Copy button, to paste into the site's form yourself. Nothing is submitted for you.
+
+![Answers for the application form](29-job-application-answers.png)
+
 ### Notes, history and the full job description
 
 Your own notes, every status change and email with its date, and the original posting text.
 
-![Notes, history and the full job description](29-job-description.png)
+![Notes, history and the full job description](30-job-description.png)
 
 ### Send email asks first
 
 The question names the address. Only Send email in this box sends it.
 
-![Send email asks first](30-send-email-question.png)
+![Send email asks first](31-send-email-question.png)
 
 ### A job with no draft yet
 
 Draft the email writes one from your template and resume.
 
-![A job with no draft yet](31-job-no-draft.png)
+![A job with no draft yet](32-job-no-draft.png)
 
 ### A draft with no address
 
 The line under the buttons says why there is no Send email. Type an address and Save address, or Look for one.
 
-![A draft with no address](32-job-no-address.png)
+![A draft with no address](33-job-no-address.png)
 
 ### A job you applied to
 
 Once a job is applied, the buttons record what happened next: Got an interview, Rejected, and later Got an offer.
 
-![A job you applied to](33-job-top-applied.png)
+![A job you applied to](34-job-top-applied.png)
 
 ### An email that already went
 
 The round mark is the day it was sent. Send again writes to the same address once more, after asking.
 
-![An email that already went](34-job-email-sent.png)
+![An email that already went](35-job-email-sent.png)
 
 ### Send again asks first
 
 It names the day the first email went and the address. Send ready emails never writes to the same job twice; only this does.
 
-![Send again asks first](35-send-again-question.png)
+![Send again asks first](36-send-again-question.png)
 
 ### A follow-up that is due
 
 The stored follow-up text sits under the email. I followed up myself records one you sent by hand.
 
-![A follow-up that is due](36-job-follow-up-due.png)
+![A follow-up that is due](37-job-follow-up-due.png)
 
 ### Notes and history
 
 Notes are yours alone. History lists every status change and email with its date.
 
-![Notes and history](37-job-notes-history.png)
+![Notes and history](38-job-notes-history.png)
 
 ### A message after an action
 
 A short message at the bottom right confirms what was done, or says what went wrong and what to do.
 
-![A message after an action](38-message.png)
+![A message after an action](39-message.png)
 
 ### Leaving with unsaved changes
 
 The page asks before it throws away something you typed.
 
-![Leaving with unsaved changes](39-unsaved-changes-question.png)
+![Leaving with unsaved changes](40-unsaved-changes-question.png)
 
 ### After Apply on the job site
 
 The posting opens in a new tab. When you come back, the page asks whether you applied, and Yes moves the job to In progress.
 
-![After Apply on the job site](40-did-you-apply.png)
+![After Apply on the job site](41-did-you-apply.png)
 
 ### Delete entry
 
 Only something you added yourself, and have not emailed, can be deleted. It asks first.
 
-![Delete entry](41-delete-entry-question.png)
+![Delete entry](42-delete-entry-question.png)
 
 ## Sending emails
 
@@ -266,13 +272,13 @@ Only something you added yourself, and have not emailed, can be deleted. It asks
 
 Sends every email that has both a draft and an address, after asking, within the daily limit.
 
-![Send ready emails](42-send-ready-emails-question.png)
+![Send ready emails](43-send-ready-emails-question.png)
 
 ### The Shortlist buttons
 
 Draft emails, Look for addresses, Save drafts to Gmail and Send ready emails, each with how many jobs it applies to.
 
-![The Shortlist buttons](43-shortlist-toolbar.png)
+![The Shortlist buttons](44-shortlist-toolbar.png)
 
 ## The other screens
 
@@ -280,43 +286,43 @@ Draft emails, Look for addresses, Save drafts to Gmail and Send ready emails, ea
 
 Jobs you applied to, interviews and offers. The round mark at the end of a row is the day you emailed.
 
-![In progress](44-in-progress.png)
+![In progress](45-in-progress.png)
 
 ### In progress: General applications
 
 The HR addresses you wrote to, each with its address and the day.
 
-![In progress: General applications](45-in-progress-general.png)
+![In progress: General applications](46-in-progress-general.png)
 
 ### In progress: Set aside
 
 Jobs you skipped and rejections.
 
-![In progress: Set aside](46-in-progress-set-aside.png)
+![In progress: Set aside](47-in-progress-set-aside.png)
 
 ### Follow-ups
 
 Emails with no reply after the number of days you set.
 
-![Follow-ups](47-follow-ups.png)
+![Follow-ups](48-follow-ups.png)
 
 ### Send follow-ups
 
 The stored follow-up text goes to each recruiter who has not replied, after asking.
 
-![Send follow-ups](48-send-follow-ups-question.png)
+![Send follow-ups](49-send-follow-ups-question.png)
 
 ### All matches
 
 Every scored job, not only the shortlist. Download digest saves the best ones as a file.
 
-![All matches](49-all-matches.png)
+![All matches](50-all-matches.png)
 
 ### Insights
 
 Your last seven days, the skills postings ask for most that your resume lacks, and which sites deliver.
 
-![Insights](50-insights.png)
+![Insights](51-insights.png)
 
 ## Settings
 
@@ -324,61 +330,61 @@ Your last seven days, the skills postings ask for most that your resume lacks, a
 
 Setup, the morning routine, duplicate jobs, your templates, what is searched and the limits, the job sites, backups, and stopping the program.
 
-![Settings, the whole screen](51-settings.png)
+![Settings, the whole screen](52-settings.png)
 
 ### Setup
 
 A green dot for what is ready, red for what is missing, grey for something optional. Keys and passwords stay in the .env file and are never shown.
 
-![Setup](52-settings-setup.png)
+![Setup](53-settings-setup.png)
 
 ### Every morning
 
 Pick a time and click Run every morning; the Mac then runs the morning routine daily while it is awake.
 
-![Every morning](53-settings-every-morning.png)
+![Every morning](54-settings-every-morning.png)
 
 ### Duplicate jobs
 
 If the same job is stored twice, Merge folds the copies together and keeps your score and status.
 
-![Duplicate jobs](54-settings-duplicate-jobs.png)
+![Duplicate jobs](55-settings-duplicate-jobs.png)
 
 ### Your templates: Email
 
 The wording used for every recruiter email. Text in [square brackets] is filled in for each job.
 
-![Your templates: Email](55-settings-templates-email.png)
+![Your templates: Email](56-settings-templates-email.png)
 
 ### Your templates: Cover letter
 
 The buttons at the top right switch between the email, general email and cover letter templates.
 
-![Your templates: Cover letter](56-settings-templates-cover-letter.png)
+![Your templates: Cover letter](57-settings-templates-cover-letter.png)
 
 ### Search and limits
 
 What is searched for and the limits. A value that differs from config.yaml is marked changed; Go back to config.yaml drops your changes.
 
-![Search and limits](57-settings-search-and-limits.png)
+![Search and limits](58-settings-search-and-limits.png)
 
 ### Sites
 
-One switch per job site. A site that is off is skipped by every search, and a switch takes effect at once.
+A job board can be given its own browser, so Browserbase time goes only to the boards that refuse the browser on this Mac. Below, one switch per job site: a site that is off is skipped by every search.
 
-![Sites](58-settings-sites.png)
+![Sites](59-settings-sites.png)
 
 ### Backups
 
 Back up now copies the whole database into the backups folder. The morning routine also makes one each day.
 
-![Backups](59-settings-backups.png)
+![Backups](60-settings-backups.png)
 
 ### Stop Job Search
 
 Stops the program completely, after asking. Double-click Job Search to start it again.
 
-![Stop Job Search](60-stop-job-search-question.png)
+![Stop Job Search](61-stop-job-search-question.png)
 
 ## On a narrow window
 
@@ -386,19 +392,19 @@ Stops the program completely, after asking. Double-click Job Search to start it 
 
 The same screens on a phone-sized window.
 
-![A narrow window](61-narrow-shortlist.png)
+![A narrow window](62-narrow-shortlist.png)
 
 ### The menu on a narrow window
 
 It opens from the button with three lines at the top left.
 
-![The menu on a narrow window](62-narrow-menu.png)
+![The menu on a narrow window](63-narrow-menu.png)
 
 ### A job on a narrow window
 
 The panel fills the window.
 
-![A job on a narrow window](63-narrow-job.png)
+![A job on a narrow window](64-narrow-job.png)
 
 ## When something is missing
 
@@ -406,16 +412,16 @@ The panel fills the window.
 
 With no resume imported, the page says so at the top and offers the button. Nothing else starts until then.
 
-![Before the first search](64-first-run-no-resume.png)
+![Before the first search](65-first-run-no-resume.png)
 
 ### After an update of the program
 
 When new features need a change to the database, a bar at the top offers Update the database.
 
-![After an update of the program](65-database-needs-an-update.png)
+![After an update of the program](66-database-needs-an-update.png)
 
 ### When PostgreSQL is not running
 
 The page says the database is not answering. Start PostgreSQL, then reload.
 
-![When PostgreSQL is not running](66-database-not-answering.png)
+![When PostgreSQL is not running](67-database-not-answering.png)

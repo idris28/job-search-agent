@@ -82,6 +82,9 @@ backup:
 # Recruiter emails (`jsa email`)
 outreach:
   notice_period: ""        # e.g. "60 days, negotiable"; left out of emails when empty
+  phone: ""                # the next three are only shown in a job's panel, with a Copy button,
+  current_salary: ""       # for pasting into a site's application form; the program sends
+  expected_salary: ""      # them nowhere. Left out when empty.
   resume_filename: "Alex_Morgan_Java_Engineer.pdf"
   email: ""                # contact email in the sign-off; the resume's when empty
   linkedin_url: ""         # shown in emails as a clickable "LinkedIn" link

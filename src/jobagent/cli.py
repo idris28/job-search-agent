@@ -256,6 +256,25 @@ def cmd_cover_letter(args, settings):
     print("\n(Draft saved to the application record. Review and edit before sending.)")
 
 
+def cmd_answers(args, settings):
+    """Write short answers for a job site's application form. The person pastes them in; the
+    program submits nothing."""
+    from .models import ANSWER_NAMES, JobPosting
+
+    with _conn(settings) as conn:
+        p = db.active_profile(conn)
+        job = db.get_job(conn, args.job_id)
+        if not p or not job:
+            sys.exit("Need an imported profile and a valid job id.")
+        posting = JobPosting(**{k: job[k] for k in ("title", "company", "url", "location", "remote_type", "description")})
+        answers = _llm(settings).application_answers(p["resume_text"], posting.as_prompt_text()).model_dump()
+        db.save_answers(conn, p["id"], args.job_id, answers)
+    for key, name in ANSWER_NAMES:
+        if answers.get(key):
+            print(f"\n{name}:\n{answers[key]}")
+    print(f"\n(Saved with job #{args.job_id}. Read each one before you paste it into the site's form.)")
+
+
 def cmd_email(args, settings):
     """Check live postings, research each company, draft recruiter emails. Never sends."""
     from datetime import date
@@ -980,6 +999,10 @@ def build_parser() -> argparse.ArgumentParser:
     st.set_defaults(fn=cmd_status)
 
     sub.add_parser("applications", help="list tracked applications").set_defaults(fn=cmd_applications)
+
+    an = sub.add_parser("answers", help="write short answers for a job site's application form")
+    an.add_argument("job_id", type=int)
+    an.set_defaults(fn=cmd_answers)
 
     cl = sub.add_parser("cover-letter", help="draft a cover letter for a job")
     cl.add_argument("job_id", type=int)

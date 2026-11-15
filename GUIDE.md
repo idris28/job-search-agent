@@ -78,7 +78,7 @@ the website; this table maps its buttons to commands:
 | **Actions**, in the menu on the left | One-click actions from any screen: add a post, add HR addresses, draft, look for addresses, save drafts to Gmail, send, follow up, morning routine, digest. **Light** and **Dark** at the bottom switch the look | `jsa add`, `jsa add-contacts`, `jsa email`, `jsa contacts`, `jsa send`, `jsa followups`, `jsa daily`, `jsa digest` |
 | The filter bar and table | Filter by country, score, posting age and next step; search by name; click a column heading to sort; click a job to open it in a panel on the right | `jsa jobs` |
 | **Shortlist** | Draft emails, look for addresses, save drafts to Gmail, send the ready emails | `jsa email`, `jsa contacts`, `jsa send --gmail-drafts`, `jsa send` |
-| A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; an **Apply on the job site** button that opens the posting and asks afterwards whether you applied; buttons for applied, skipped, interview, offer, rejected; **Send again** for an email that already went; **Delete entry** for something you added yourself | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa apply`, `jsa delete` |
+| A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; an **Apply on the job site** button that opens the posting and asks afterwards whether you applied; buttons for applied, skipped, interview, offer, rejected; ready-to-paste answers for the site's application form; **Send again** for an email that already went; **Delete entry** for something you added yourself | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa answers`, `jsa apply`, `jsa delete` |
 | **In progress**, **Follow-ups** | Applications under way (choose "Set aside" in the Stage filter for skipped and rejected jobs); follow-ups that are due, with a button to send them | `jsa applications`, `jsa followups` |
 | **All matches** | Every scored job, with the score filter and a digest download | `jsa jobs`, `jsa digest` |
 | **Add from a post** | Paste a LinkedIn post; it is read, scored and shortlisted | `jsa add` |
@@ -155,6 +155,7 @@ Good to know:
 | `jsa contacts` | For shortlisted jobs with no address, searches each company's own website for a published application address. Uses AI web search. An address is kept only if it is really printed on that page. |
 | `jsa contacts 343` | The same for specific jobs. |
 | `jsa email --general` | Also uses a general inbox (such as `info@`) found by `jsa contacts`. Without it, general inboxes are never emailed. |
+| `jsa answers 343` | Writes short answers for the job site's application form (why this role, why you, an introduction, key skills) from your resume and the posting, and saves them with the job. You paste them into the form yourself; nothing is submitted. Uses one AI call. On the website: **Write the answers** in the job's panel. |
 | `jsa cover-letter 343` | Writes a cover letter for one job and saves it with the application. It fills in your own letter from `cover_letter_template.txt` (text in [square brackets] is replaced for the job); without that file it writes a short built-in letter. |
 | `jsa followups` | Lists emails sent `outreach.follow_up_days` or more days ago that have had no follow-up. |
 | `jsa followups --send` | Sends the stored follow-up email for each one that is due. |
@@ -239,6 +240,7 @@ commands here too.
 | `search.min_salary_lpa` | Lowest salary you accept, in lakhs a year (none). Jobs stating less are dropped; jobs that don't state pay are kept. |
 | `search.exclude_company_keywords`, `exclude_industries` | Companies and industries to leave out (banking). |
 | `matching.shortlist_min_score` | Score at which a job is shortlisted (75). |
+| `outreach.phone`, `outreach.current_salary`, `outreach.expected_salary` | Your phone and salary figures (none). They are only shown in a job's panel, with a Copy button, for pasting into a site's application form; the program sends them nowhere. On the website: Settings, **Search and limits**, **Your details**. |
 | `outreach.notice_period` | When you can join; shown in emails. |
 | `outreach.email`, `outreach.linkedin_url` | Contact details in the email sign-off. |
 | `outreach.resume_path` | The CV file attached to emails. |
@@ -270,7 +272,7 @@ page. Treat an estimate as a rough guide, not a fact; it never lowers a score on
 ## What costs money
 
 - **AI model calls** (Claude): `jsa contacts`, the "add a job" form on the web page, `jsa daily`, `jsa run` (reading pages and scoring), `jsa score`, `jsa email`, `jsa add`,
-  `jsa cover-letter` and `jsa profile import`.
+  `jsa cover-letter`, `jsa answers` and `jsa profile import`.
 - **Browserbase time**: `jsa daily`, `jsa run`, and the live posting check in `jsa email`. None of it
   is used when `.env` has `JOBAGENT_BROWSER=local`: the pages open in Chromium on this Mac. A job
   board set to Browserbase under Settings, **Sites**, still uses Browserbase time, and only that
