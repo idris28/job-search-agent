@@ -10,7 +10,8 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from .config import OutreachPrefs, SearchPrefs
-from .models import (ApplicationAnswers, CandidateProfile, ExtractedListings, JobPosting, MatchResult,
+from .models import (ApplicationAnswers, CandidateProfile, ExtractedListings, InterviewPrep, JobPosting, MatchResult,
+                     TailoredResume,
                      PastedJob, Prescreen, RecruiterEmail, RecruiterReview, TemplateEmail)
 
 T = TypeVar("T", bound=BaseModel)
@@ -67,6 +68,48 @@ Rules:
 - key_skills: only skills that are in both the posting and the resume, separated by commas.
 - experience: one line per main skill the posting asks for, as "Skill: N years", only where the
   resume makes N clear. Leave a skill out rather than guess. An empty string when none is clear."""
+
+TAILORED_RESUME_INSTRUCTIONS = """You arrange a candidate's RESUME for one JOB POSTING. The result
+is the resume the candidate sends for this job. It holds the same facts as the RESUME, chosen and
+ordered for what this posting asks for.
+
+Rules:
+- Use only facts that are in the RESUME. Never add an employer, a job title, a date, a number, a
+  skill, a tool, a degree or a certificate that is not there, and never raise a number.
+- experience: every job in the RESUME, latest first, with the employer, the job title, the dates
+  and the place written exactly as the RESUME writes them.
+- bullets: 3 to 6 for each job, fewer for old or short ones. Choose the lines this posting cares
+  about and put them first. You may shorten a line, and you may use the posting's word for
+  something only where the RESUME plainly shows that same thing. Each line starts with a verb
+  and keeps the figures the RESUME gives for it.
+- skills: only skills the RESUME names, written as the RESUME writes them, the ones the posting
+  asks for first. Leave out a skill the posting asks for when the RESUME does not name it.
+- headline: the candidate's own latest job title and total years of experience, as the RESUME
+  shows them. Not the posting's title.
+- summary: 50 to 70 words, without "I", on the experience in the RESUME that this posting asks
+  for. No claim that cannot be checked ("passionate", "results-driven", "proven track record")
+  and no company name from the posting.
+- education and other: as the RESUME writes them.
+- Plain words, no exclamation marks."""
+
+INTERVIEW_PREP_INSTRUCTIONS = """You help a candidate get ready for an interview for one job. You
+are given the candidate's RESUME and the JOB POSTING, and sometimes the skills the posting asks
+for that the resume was judged to lack.
+
+Rules:
+- technical: questions a working interviewer for this role would ask about the skills and tools
+  the posting names, from the basics they would check to one or two harder ones. Ask about what
+  the posting asks for, not about everything in the resume.
+- experience: questions about the candidate's own past work that this posting makes likely (a
+  project, a hard problem, working with a team, why they want to move), in plain words.
+- points: for each question, 2 to 4 short points the candidate can make. Each point is a fact
+  from the RESUME (a project, a tool, a figure) or, for a question on something the RESUME does
+  not show, an honest way to answer ("Have not used X in production; the closest is Y").
+  Never invent a project, an employer or a figure.
+- ask_them: questions about this role and team that the posting leaves open. Not about pay.
+- revise: the topics to read up on first, the most important first: what the posting asks for
+  that the RESUME shows little or nothing of. Name the topic and, in a few words, what to cover.
+- Plain words, no exclamation marks, no greeting."""
 
 COVER_LETTER_INSTRUCTIONS = """Write a concise, specific cover letter (under 250 words) for this
 candidate and job. Lead with the strongest 2-3 relevant achievements from the resume, mapped to the
@@ -253,6 +296,10 @@ class BaseLLM:
     def __init__(self) -> None:
         self._tokens = 0
         self.cache_read_tokens = 0  # input tokens served from the provider's prompt cache
+        # Tokens by kind (input, output, cache_read, cache_write), so a cost can be worked out;
+        # those of requests answered as a batch are kept apart, since a batch is charged at half.
+        self.usage: dict[str, int] = {}
+        self.batch_usage: dict[str, int] = {}
         self._lock = threading.Lock()
 
     @property
@@ -262,6 +309,13 @@ class BaseLLM:
     def _add_tokens(self, n: int) -> None:
         with self._lock:
             self._tokens += n or 0
+
+    def _add_usage(self, *, batch: bool = False, **kinds: int) -> None:
+        with self._lock:
+            into = self.batch_usage if batch else self.usage
+            for kind, n in kinds.items():
+                into[kind] = into.get(kind, 0) + (n or 0)
+            self._tokens += sum(n or 0 for n in kinds.values())
 
     def _parse(self, instructions: str, user_input: str, schema: type[T], *,
                cached_prefix: str = "") -> T:
@@ -379,6 +433,18 @@ class BaseLLM:
         return self._parse(APPLICATION_ANSWERS_INSTRUCTIONS, f"JOB POSTING:\n{job_text}", ApplicationAnswers,
                            cached_prefix=resume)
 
+    def tailored_resume(self, resume_text: str, job_text: str) -> TailoredResume:
+        """The resume arranged for one job: the same facts, what the posting asks for first.
+        What comes back is checked against the resume before it is used (tailor.check)."""
+        return self._parse(TAILORED_RESUME_INSTRUCTIONS, f"JOB POSTING:\n{job_text}", TailoredResume,
+                           cached_prefix=f"RESUME:\n{resume_text}\n\n")
+
+    def interview_prep(self, resume_text: str, job_text: str, missing_skills: list[str] | None = None) -> InterviewPrep:
+        """Likely questions for one job with points for each answer, questions to ask, and what to revise."""
+        lacking = f"\n\nSKILLS THE RESUME WAS JUDGED TO LACK:\n{', '.join(missing_skills)}" if missing_skills else ""
+        return self._parse(INTERVIEW_PREP_INSTRUCTIONS, f"JOB POSTING:\n{job_text}{lacking}", InterviewPrep,
+                           cached_prefix=f"RESUME:\n{resume_text}\n\n")
+
 
 class OpenAILLM(BaseLLM):
     def __init__(self, api_key: str, model: str, *, client=None):
@@ -393,7 +459,11 @@ class OpenAILLM(BaseLLM):
     def _count(self, resp) -> None:
         usage = getattr(resp, "usage", None)
         if usage is not None:
-            self._add_tokens(getattr(usage, "total_tokens", 0))
+            spent_in, spent_out = getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None)
+            if spent_in is None and spent_out is None:
+                self._add_tokens(getattr(usage, "total_tokens", 0))
+            else:
+                self._add_usage(input=spent_in, output=spent_out)
 
     def _parse(self, instructions: str, user_input: str, schema: type[T], *,
                cached_prefix: str = "") -> T:

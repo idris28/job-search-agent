@@ -38,12 +38,12 @@ class ClaudeLLM(BaseLLM):
             fallbacks="default",
         )
 
-    def _count(self, resp) -> None:
+    def _count(self, resp, *, batch: bool = False) -> None:
         u = getattr(resp, "usage", None)
         if u is not None:
             read = getattr(u, "cache_read_input_tokens", 0) or 0
             written = getattr(u, "cache_creation_input_tokens", 0) or 0
-            self._add_tokens((u.input_tokens or 0) + (u.output_tokens or 0) + read + written)
+            self._add_usage(batch=batch, input=u.input_tokens, output=u.output_tokens, cache_read=read, cache_write=written)
             with self._lock:
                 self.cache_read_tokens += read
 
@@ -109,7 +109,7 @@ class ClaudeLLM(BaseLLM):
                                                    + (f": {error.message}" if error is not None else ""))
                 continue
             try:
-                self._count(result.message)
+                self._count(result.message, batch=True)
                 self._check(result.message)
                 text = next(b.text for b in result.message.content if b.type == "text")
                 match = MatchResult.model_validate_json(text)

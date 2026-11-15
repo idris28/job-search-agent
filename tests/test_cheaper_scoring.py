@@ -370,3 +370,17 @@ def test_the_page_reader_is_a_setting_and_runs_on_its_own_model(tmp_path):
     found = claude(handler, model="claude-haiku-5-5").extract_listings("Senior Java Engineer", BOARD_LINKS, BOARD)
     assert [x.title for x in found.listings] == ["Senior Java Engineer"]
     assert seen["body"]["model"] == "claude-haiku-5-5" and BOARD in seen["body"]["messages"][0]["content"]
+
+
+def test_an_ordinary_search_can_send_its_scoring_as_a_batch_and_end_at_once(conn, monkeypatch):
+    monkeypatch.setattr(pipeline, "BATCH_POLL_SECONDS", 0)
+    pid = db.save_profile(conn, "Alex", "resume", {})
+    llm = BatchLLM(scores={"Senior Java Engineer": 90}, ready=False)
+    s = run_agent(conn, make_cfg(), llm, FakeBrowser({}), http=mock_http(JOBS), only_source="Acme", batch=True, leave_batch=True)
+    # It does not wait, and it is not a search that went wrong.
+    assert (s.status, s.scored, s.batched, s.stopped) == ("succeeded", 0, 3, "") and len(llm.sent) == 1
+    assert len(db.pending_batches(conn)) == 1 and db.top_matches(conn, pid, min_score=0) == []
+
+    llm.ready = True  # later: Score waiting jobs, or the next search, stores the answers
+    s2 = run_agent(conn, make_cfg(), llm, None, collect=False)
+    assert (s2.scored, s2.shortlisted, s2.batched) == (3, 1, 0) and db.pending_batches(conn) == [] and llm.one_by_one == []

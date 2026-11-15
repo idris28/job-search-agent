@@ -10,6 +10,7 @@ from pathlib import Path
 from . import db, mailer
 from .models import GENERAL_TITLE, GENERAL_URL, JobPosting
 from .report import _paragraphs_html
+from .tailor import tailored_file
 
 
 class ActionError(Exception):
@@ -153,10 +154,12 @@ def stored_draft_message(conn, settings, outreach, profile_id: int, job_id: int,
         raise ActionError(f"Only a general inbox ({app['contact_email']}) was found, so it was not sent.")
     if not (settings.gmail_address and settings.gmail_app_password):
         raise ActionError("Gmail is not set up: add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to .env.")
-    name, path = outreach.resume_for(f"{job['title']} {job['description'] or ''}")
-    cv = Path(path).expanduser() if path else None
-    if cv is not None and not cv.is_file():
-        cv = None
+    cv = tailored_file(app)  # the CV written for this job, when the person asked for it to go with the email
+    if cv is None:
+        name, path = outreach.resume_for(f"{job['title']} {job['description'] or ''}")
+        cv = Path(path).expanduser() if path else None
+        if cv is not None and not cv.is_file():
+            cv = None
     if cv is None and need_cv:
         raise ActionError(f"The CV file for '{name}' was not found. Set outreach.resume_path.")
     msg = mailer.build_message(settings.gmail_address, app["contact_email"], app["outreach_subject"],

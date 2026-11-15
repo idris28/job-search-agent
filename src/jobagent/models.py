@@ -155,6 +155,41 @@ class ApplicationAnswers(BaseModel):
                                         "resume makes the number clear; empty when it does not")
 
 
+class ResumeJob(BaseModel):
+    """One job the candidate held, as the resume gives it."""
+
+    employer: str = Field(description="The employer's name exactly as the resume writes it")
+    title: str = Field(description="The job title exactly as the resume writes it")
+    dates: str = Field(description="The dates exactly as the resume writes them, e.g. 'Mar 2019 - Present'")
+    location: str = Field(description="Where the job was, as the resume writes it; empty when it does not say")
+    bullets: list[str] = Field(description="3-6 lines on the work done there, the ones this posting asks about first")
+
+
+class TailoredResume(BaseModel):
+    """The candidate's resume arranged for one job posting: the same facts, in the order that job cares about."""
+
+    headline: str = Field(description="The candidate's own latest job title and total years of experience, as the resume shows them")
+    summary: str = Field(description="50-70 words on the experience in the resume that this posting asks for")
+    skills: list[str] = Field(description="At most 18 skills the resume names, the ones the posting asks for first")
+    experience: list[ResumeJob] = Field(description="Every job in the resume, latest first")
+    education: list[str] = Field(description="Each degree or course as the resume writes it")
+    other: list[str] = Field(description="Certificates, awards and languages as the resume writes them; empty when it has none")
+
+
+class PrepQuestion(BaseModel):
+    question: str = Field(description="A question an interviewer for this job is likely to ask")
+    points: list[str] = Field(description="2-4 short points to make in the answer, each from the resume")
+
+
+class InterviewPrep(BaseModel):
+    """What to get ready before an interview for one job."""
+
+    technical: list[PrepQuestion] = Field(description="6-8 questions on the skills and tools the posting asks for")
+    experience: list[PrepQuestion] = Field(description="4-5 questions about past work and working with others")
+    ask_them: list[str] = Field(description="4-5 questions the candidate can ask the interviewer about this role")
+    revise: list[str] = Field(description="Up to 6 topics to revise first: what the posting asks for that the resume shows little of")
+
+
 # The answers in the order the page shows them, with the name of each.
 ANSWER_NAMES = [("why_this_role", "Why this role"), ("why_you", "Why you"), ("about_you", "About you"),
                 ("key_skills", "Key skills"), ("experience", "Experience")]

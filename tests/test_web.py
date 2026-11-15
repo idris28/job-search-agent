@@ -88,7 +88,7 @@ def test_state_job_detail_and_quick_changes(conn, page):
                                            "profile": st["setup"]["profile"]}
     assert st["setup"]["profile"]["name"] == "Alex"
     assert st["counts"] == {"found": 1, "found_week": 1, "scored": 1, "shortlisted": 1, "emailed": 0,
-                            "applied": 0, "due": 0, "waiting": 0, "unread": 0}
+                            "applied": 0, "due": 0, "waiting": 0, "unread": 0, "batch": 0}
     assert st["countries"] == [{"country": "UAE", "jobs": 1}] and st["search"]["max_age_days"] == 30
     row = st["jobs"][0]
     assert row["title"] == "Java <Dev>" and row["has_draft"] and "outreach_body" not in row
@@ -403,3 +403,18 @@ def test_the_page_counts_the_jobs_waiting_to_be_scored(conn, page):
     page.call("/api/task", {"action": "score"})
     page.wait()
     assert page.call("/api/state")[1]["counts"]["waiting"] == 2  # counted again once a task has run
+
+
+def test_the_page_comes_with_its_stylesheet_and_scripts_and_only_those(conn, page):
+    html = urllib.request.urlopen(page.base + "/").read().decode()
+    names = sorted(web.STATIC)
+    assert all(f'"/static/{name}"' in html for name in names) and len(names) == 7
+    for name in names:
+        with urllib.request.urlopen(f"{page.base}/static/{name}") as r:
+            body = r.read().decode()
+            assert r.headers["Content-Type"] == web.STATIC[name] and r.headers["Cache-Control"] == "no-store" and len(body) > 2000
+            assert page.server.token not in body and "__TOKEN__" not in body  # the key is in the page only, never in a file beside it
+    for other in ("app.html", "../web.py", "..%2Fweb.py", "nothing.js", ""):
+        with pytest.raises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen(f"{page.base}/static/{other}")
+        assert e.value.code == 404

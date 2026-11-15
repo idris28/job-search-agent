@@ -63,6 +63,9 @@ matching:
   max_jobs_to_score: 100    # cost cap per run
   notify_min_score: 85      # message you about new jobs scoring this or more (0 = off)
   max_tokens_per_run: 600000        # stop a run after this many AI tokens (0 = no limit)
+  max_cost_per_run: 0               # stop a run once its AI calls have cost about this many US dollars (0 = no limit)
+  # prices:                         # your own prices, in US dollars per million tokens, for a model
+  #   some-model: [2.0, 10.0, 0.1]  # the built-in list does not know: [input, output, cache read]
   max_browser_minutes_per_run: 30   # stop collecting after this much browser time (0 = no limit)
   concurrency: 4
   # Three ways to spend less on AI. All are off as written here.
@@ -71,6 +74,7 @@ matching:
   reader_model: ""          # a cheaper model for reading job-site pages into lists of jobs,
                             # e.g. claude-haiku-5-5; scoring and emails keep the main model
   batch_scoring: false      # `jsa daily` sends its scoring as one batch: half price, answered later (Claude only)
+  batch_searches: false     # `jsa run` does the same and ends at once; the next run stores the scores
   batch_wait_minutes: 120   # how long a run waits for a batch; after that the next run picks the answers up
 
 # Backups (`jsa backup`, and the end of `jsa daily`)
@@ -96,6 +100,9 @@ outreach:
       path: ""             # e.g. ~/Documents/My_CV_Java_AI.pdf
       keywords: [llm, genai, generative ai, machine learning, ai/ml, agentic, langchain, rag]
   follow_up_days: 6        # a follow-up is due this many days after an email was sent
+  check_replies: false     # look in Gmail for answers to your emails (`jsa replies`, and each morning).
+                           # Read-only: sender, date and subject line, never the text
+  tailored_folder: resumes # where `jsa cv` keeps the CV it writes for one job
   max_sends_per_day: 10    # `jsa email --send` stops at this many emails a day (0 = no limit)
   send_pause_seconds: 20   # wait between sent emails
   research: true           # web-search what recruiters in each country look for (Claude only)

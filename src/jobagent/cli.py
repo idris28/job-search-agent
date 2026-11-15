@@ -105,6 +105,14 @@ def cmd_profile_show(args, settings):
     print(json.dumps(p["profile"], indent=2))
 
 
+def _spent(s) -> str:
+    """The tokens of a search and, where the prices are known, about what they cost."""
+    from . import costs
+
+    money = costs.in_words(s.usage)
+    return f"{s.tokens:,} tokens" + (f", {money}" if money else "")
+
+
 def _browser_time(browser) -> str:
     """How long the browsers ran, and how much of that was Browserbase, which is the paid part."""
     total, hosted = browser.minutes_used, browser.minutes("browserbase")
@@ -125,13 +133,14 @@ def cmd_run(args, settings):
         with _conn(settings) as conn:
             s = run_agent(conn, cfg, llm, browser, only_source=args.source,
                           score=not args.no_score, prescreen=_screen(settings, cfg),
-                          reader=_reader(settings, cfg))
+                          reader=_reader(settings, cfg), batch=cfg.matching.batch_searches, leave_batch=True)
             print(f"\nRun #{s.run_id}: {s.status}. {s.found} jobs found, {s.new} new, "
                   f"{s.filtered} filtered out, {s.scored} scored "
                   + (f"and {s.screened_out} ruled out by the quick check " if s.screened_out else "") +
                   f"({s.skipped_unchanged} unchanged, not re-scored), "
-                  + (f"{s.unread} waiting for their page to be read, " if s.unread else "") +
-                  f"{s.shortlisted} shortlisted, {s.tokens} tokens"
+                  + (f"{s.unread} waiting for their page to be read, " if s.unread else "")
+                  + (f"{s.batched} sent for scoring as a batch, " if s.batched else "") +
+                  f"{s.shortlisted} shortlisted, {_spent(s)}"
                   + (f" ({llm.cache_read_tokens:,} read from cache)" if getattr(llm, "cache_read_tokens", 0) else "")
                   + _browser_time(browser) + ".")
             if s.stopped:
@@ -157,7 +166,7 @@ def cmd_score(args, settings):
         s = run_agent(conn, cfg, llm, None, collect=False, prescreen=_screen(settings, cfg), batch=args.batch)
         print(f"\nRun #{s.run_id}: {s.status}. {s.scored} scored, "
               + (f"{s.screened_out} ruled out by the quick check, " if s.screened_out else "")
-              + f"{s.shortlisted} shortlisted, {s.tokens} tokens.")
+              + f"{s.shortlisted} shortlisted, {_spent(s)}.")
         if s.stopped:
             print(f"  ! Stopped early: {s.stopped}. The rest wait for the next time.")
         rows = db.top_matches(conn, _profile_id(conn), run_id=s.run_id,
@@ -273,6 +282,71 @@ def cmd_answers(args, settings):
         if answers.get(key):
             print(f"\n{name}:\n{answers[key]}")
     print(f"\n(Saved with job #{args.job_id}. Read each one before you paste it into the site's form.)")
+
+
+def _job_for_writing(conn, job_id: int):
+    """(profile, the job's text for the model, the job) for a command that writes something for one job."""
+    from .models import JobPosting
+
+    p, job = db.active_profile(conn), db.get_job(conn, job_id)
+    if not p or not job:
+        sys.exit("Need an imported profile and a valid job id.")
+    posting = JobPosting(**{k: job[k] for k in ("title", "company", "url", "location", "remote_type", "description")})
+    return p, posting.as_prompt_text(), job
+
+
+def cmd_cv(args, settings):
+    """Write a CV for one job from the resume: the same facts, with what the posting asks for
+    first. It is checked against the resume, saved as a PDF, and attached to nothing until the
+    person switches that on."""
+    from datetime import datetime, timezone
+
+    from . import tailor
+    from .actions import applicant_details
+
+    cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+    with _conn(settings) as conn:
+        p, text, job = _job_for_writing(conn, args.job_id)
+        cv, notes = tailor.check(_llm(settings).tailored_resume(p["resume_text"], text), p["resume_text"],
+                                 (p.get("profile") or {}).get("years_experience"))
+        if not cv["experience"]:
+            sys.exit("The CV was not written: none of its jobs could be matched to your resume. Try again.")
+        details = dict(applicant_details(p, cfg.outreach))
+        name = details.get("Name") or "Resume"
+        contact = [v for v in (details.get("Email") or settings.gmail_address, details.get("Phone"), details.get("LinkedIn"),
+                               details.get("Where you are")) if v]
+        file = tailor.file_for(cfg.outreach.tailored_folder, args.job_id, name, cfg.outreach.resume_filename)
+        tailor.write_pdf(tailor.page_html(name, contact, cv), file)
+        db.save_tailored_cv(conn, p["id"], args.job_id, {"cv": cv, "notes": notes, "file": str(file), "attach": False,
+                                                         "written_at": datetime.now(timezone.utc).isoformat()})
+    print(f"CV for #{args.job_id} ({job['title']}): {file}")
+    for note in notes:
+        print(f"  ! {note}")
+    print("(Read it before you use it. This job's email carries your usual CV until you switch on "
+          "\"Attach it to this job's email\" in the job's panel.)")
+
+
+def cmd_prep(args, settings):
+    """Write interview preparation for one job: likely questions with points for each answer,
+    questions to ask, and what to revise first."""
+    with _conn(settings) as conn:
+        p, text, job = _job_for_writing(conn, args.job_id)
+        match = db.get_match(conn, p["id"], args.job_id)
+        prep = _llm(settings).interview_prep(p["resume_text"], text, (match or {}).get("missing_skills") or []).model_dump()
+        db.save_prep(conn, p["id"], args.job_id, prep)
+    print(f"Interview preparation for #{args.job_id} ({job['title']})")
+    for heading, key in (("Technical questions", "technical"), ("About your work", "experience")):
+        print(f"\n{heading}:")
+        for q in prep[key]:
+            print(f"- {q['question']}")
+            for point in q["points"]:
+                print(f"    {point}")
+    for heading, key in (("Questions to ask them", "ask_them"), ("Revise first", "revise")):
+        if prep[key]:
+            print(f"\n{heading}:")
+            for line in prep[key]:
+                print(f"- {line}")
+    print(f"\n(Saved with job #{args.job_id}.)")
 
 
 def cmd_email(args, settings):
@@ -450,10 +524,14 @@ def _deliver(items, settings, outreach, *, send: bool, general: bool = False) ->
 
     from . import mailer
     from .report import email_body_html
+    from .tailor import tailored_file
 
     settings.require("gmail_address", "gmail_app_password")
 
-    def cv_for(it) -> tuple[str, Path | None]:
+    def cv_for(conn, pid, it) -> tuple[str, Path | None]:
+        made = tailored_file(db.get_application(conn, pid, it["job"]["id"]))
+        if made is not None:  # the person asked for this job's email to carry the CV written for it
+            return "written for this job", made
         name, path = outreach.resume_for(f"{it['job']['title']} {it['job']['description'] or ''}")
         cv = Path(path).expanduser() if path else None
         if cv is not None and not cv.is_file():
@@ -481,7 +559,7 @@ def _deliver(items, settings, outreach, *, send: bool, general: bool = False) ->
                 ready.append(it)
         built = []
         for it in ready:
-            name, cv = cv_for(it)
+            name, cv = cv_for(conn, pid, it)
             if send and cv is None:
                 raise ConfigError("Set outreach.resume_path before sending: the emails say the CV is attached.")
             built.append((it, name, cv, mailer.build_message(
@@ -551,6 +629,41 @@ def cmd_followups(args, settings):
             print(f"  sent follow-up: #{r['job_id']} to {r['contact_email']}")
 
 
+_REPLY_WORDS = {"reply": "reply", "automatic": "automatic reply", "bounced": "not delivered"}
+
+
+def _check_replies(conn, settings, pid) -> list[str]:
+    """Look in the Gmail inbox for answers to the emails that were sent, record them, and say what
+    was found. Read-only: see replies.py."""
+    from . import replies
+
+    waiting = db.awaiting_reply(conn, pid)
+    if not waiting:
+        return ["No emailed job is waiting for a reply."]
+    found = replies.find_replies(settings.gmail_address, settings.gmail_app_password, waiting)
+    db.save_replies(conn, pid, [r["job_id"] for r in waiting], found)
+    lines = [f"Looked in Gmail for answers to {len(waiting)} email(s): {sum(r['kind'] == 'reply' for r in found.values())} replied, "
+             f"{sum(r['kind'] == 'bounced' for r in found.values())} not delivered."]
+    for row in waiting:
+        r = found.get(row["job_id"])
+        if r:
+            lines.append(f"  {_REPLY_WORDS[r['kind']]}: #{row['job_id']} {row['title']} at {row['company']} "
+                         f"({row['contact_email']}, {r['at']:%d %b}): \"{r['subject']}\"")
+    return lines
+
+
+def cmd_replies(args, settings):
+    """Look in Gmail for answers to the emails that were sent. Only when it is switched on."""
+    cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+    if not cfg.outreach.check_replies:
+        sys.exit('Looking in Gmail for replies is switched off. Switch on "Look in Gmail for replies" under Settings on the page '
+                 "(outreach.check_replies).")
+    settings.require("gmail_address", "gmail_app_password")
+    with _conn(settings) as conn:
+        print("\n".join(_check_replies(conn, settings, _profile_id(conn))))
+    print("(A job that was answered, or whose address refused the email, gets no follow-up. Read the reply in Gmail.)")
+
+
 def cmd_daily(args, settings):
     """The morning job: search, write the digest, list follow-ups, and email yourself one summary."""
     from datetime import date
@@ -568,6 +681,11 @@ def cmd_daily(args, settings):
                           batch=cfg.matching.batch_scoring)
             pid = _profile_id(conn)
             new = db.top_matches(conn, pid, run_id=s.run_id, min_score=cfg.matching.shortlist_min_score, limit=20)
+            if cfg.outreach.check_replies and settings.gmail_address and settings.gmail_app_password:
+                try:  # before the follow-ups are listed, so an answered email is not followed up
+                    print("\n".join(_check_replies(conn, settings, pid)))
+                except Exception as e:  # noqa: BLE001 - a mailbox that does not answer must not fail the morning routine
+                    print(f"Replies were not checked: {str(e).splitlines()[0] if str(e) else type(e).__name__}")
             due = db.followups_due(conn, pid, cfg.outreach.follow_up_days)
             waiting = len(db.shortlisted_job_ids(conn, pid, 1000))
     finally:
@@ -577,7 +695,7 @@ def cmd_daily(args, settings):
     digest = Path(f"digests/{date.today():%Y-%m-%d}.md")
     digest.write_text(digest_markdown(new, title=f"New matches {date.today():%d %b %Y}"), encoding="utf-8")
     lines = [f"Run #{s.run_id}: {s.status}. {s.found} jobs found, {s.new} new, {s.scored} scored, "
-             f"{s.shortlisted} shortlisted, {s.tokens:,} tokens."]
+             f"{s.shortlisted} shortlisted, {_spent(s)}."]
     lines += [f"Stopped early: {s.stopped}."] if s.stopped else []
     lines += [f"Site problem: {name}: {str(err).splitlines()[0]}" for name, err in s.source_errors.items()]
     lines += ["", f"New strong matches ({len(new)}):"] + [
@@ -944,7 +1062,7 @@ def cmd_runs(args, settings):
         rows = db.settled_runs(conn, args.limit)
     cols = [("id", "Run", 5), ("status", "Status", 10), ("started_at", "Started", 19),
             ("jobs_found", "Found", 6), ("jobs_new", "New", 5), ("jobs_scored", "Scored", 6),
-            ("tokens_used", "Tokens", 8), ("error", "Error", 30)]
+            ("tokens_used", "Tokens", 8), ("cost_usd", "Cost $", 7), ("error", "Error", 30)]
     print(table(rows, cols) if rows else "No runs yet.")
 
 
@@ -1004,6 +1122,14 @@ def build_parser() -> argparse.ArgumentParser:
     an.add_argument("job_id", type=int)
     an.set_defaults(fn=cmd_answers)
 
+    cv = sub.add_parser("cv", help="write a CV for one job from your resume, as a PDF")
+    cv.add_argument("job_id", type=int)
+    cv.set_defaults(fn=cmd_cv)
+
+    pr = sub.add_parser("prep", help="write interview preparation for one job")
+    pr.add_argument("job_id", type=int)
+    pr.set_defaults(fn=cmd_prep)
+
     cl = sub.add_parser("cover-letter", help="draft a cover letter for a job")
     cl.add_argument("job_id", type=int)
     cl.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
@@ -1036,6 +1162,10 @@ def build_parser() -> argparse.ArgumentParser:
     ad.add_argument("--url", help="link to the post, if you have one")
     ad.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
     ad.set_defaults(fn=cmd_add)
+
+    rp = sub.add_parser("replies", help="look in Gmail for answers to the emails you sent (off unless switched on)")
+    rp.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    rp.set_defaults(fn=cmd_replies)
 
     fu = sub.add_parser("followups", help="list follow-ups that are due; --send sends them")
     fu.add_argument("--send", action="store_true", help="send the due follow-ups from your Gmail")

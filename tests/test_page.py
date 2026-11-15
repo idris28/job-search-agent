@@ -9,6 +9,7 @@ import json
 import re
 import sys
 import threading
+import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
@@ -370,6 +371,156 @@ def test_answers_for_an_application_form_are_written_shown_and_copied(conn, open
     assert site.sideways() <= 0 and site.refusals() == 0
 
 
+def test_a_cv_for_one_job_is_written_opened_attached_and_removed(conn, open_site, tmp_path):
+    pid, ids = seed(conn, 2)
+    site = open_site()
+    page, block = site.page, site.page.locator("#detail #cvblock")
+    reopen = lambda: (page.keyboard.press("Escape"), page.locator(f'tr.row[data-job="{ids[0]}"]').click())  # noqa: E731
+
+    page.locator(f'tr.row[data-job="{ids[0]}"]').click()
+    expect(block).to_contain_text("Nothing is added that your resume does not say")
+    block.locator('[data-act="cv"]').click()  # the stand-in task; the real one asks the AI model and prints the PDF
+    expect(page.locator("#live b")).to_contain_text(f"Write a CV for #{ids[0]}")
+    expect(page.locator("#live b")).to_contain_text("done")
+
+    file = tmp_path / "resumes" / f"job-{ids[0]}" / "Alex_Morgan_Resume.pdf"
+    file.parent.mkdir(parents=True)
+    file.write_bytes(b"%PDF-1.4 stand-in")
+    db.save_tailored_cv(conn, pid, ids[0], {"cv": {}, "notes": ["Left out, because your resume does not name it: Kubernetes"], "file": str(file),
+                                            "attach": False, "written_at": datetime.now(timezone.utc).isoformat()})
+    reopen()
+    expect(block).to_contain_text("Alex_Morgan_Resume.pdf, written")
+    expect(block.locator(".cvnotes li")).to_have_text(["Left out, because your resume does not name it: Kubernetes"])
+    expect(block.locator("#cvattach")).not_to_be_checked()  # the usual CV goes with the email until this is switched on
+    with page.expect_popup():
+        block.locator('[data-act="cv-open"]').click()
+    page.wait_for_function("id => performance.getEntriesByType('resource').some(e => e.name.endsWith('/api/cv?id=' + id))", arg=ids[0])
+    assert all("token=" not in asked for asked in site.asked if asked.startswith("/api/cv"))  # the key is not put in the link
+
+    block.locator("#cvattach").check()
+    site.toast("This job's email now carries the CV written for it")
+    expect(block.locator("#cvattach")).to_be_checked()
+    assert db.get_application(conn, pid, ids[0])["tailored_cv"]["attach"] is True
+
+    block.locator('[data-act="cv-remove"]').click()
+    site.confirm("Remove the CV written for this job?", "Remove")
+    site.toast("The CV written for this job is removed")
+    expect(block.locator('[data-act="cv"]')).to_have_text("Write a CV for this job")
+    assert not file.exists() and db.get_application(conn, pid, ids[0])["tailored_cv"] is None
+
+    db.save_tailored_cv(conn, pid, ids[0], {"cv": {}, "notes": [], "file": str(file), "attach": True, "written_at": datetime.now(timezone.utc).isoformat()})
+    reopen()  # the file was moved or deleted by hand
+    expect(block).to_contain_text("Alex_Morgan_Resume.pdf is no longer in the resumes folder")
+    assert site.sideways() <= 0 and site.refusals() == 0
+
+
+def test_interview_preparation_is_written_and_shown_with_its_answers_folded(conn, open_site):
+    pid, ids = seed(conn, 1)
+    site = open_site()
+    page, block = site.page, site.page.locator("#detail #prepblock")
+    page.locator(f'tr.row[data-job="{ids[0]}"]').click()
+    expect(block).to_contain_text("what to revise first")
+    block.locator('[data-act="prep"]').click()
+    expect(page.locator("#live b")).to_contain_text(f"Prepare for the interview for #{ids[0]}")
+    expect(page.locator("#live b")).to_contain_text("done")
+
+    db.save_prep(conn, pid, ids[0], {
+        "technical": [{"question": "How does Spring Boot decide which beans to create?", "points": ["Auto-configuration and conditions", "The payment service"]}],
+        "experience": [{"question": "Tell me about a service you made faster.", "points": ["Settlement run cut from 4 hours to 35 minutes"]}],
+        "ask_them": ["How is the team split between new work and support?"], "revise": ["Kafka: consumer groups and offsets"]})
+    page.keyboard.press("Escape")
+    page.locator(f'tr.row[data-job="{ids[0]}"]').click()
+    expect(block.locator("h4")).to_have_text(["Revise first", "Technical questions", "About your work", "Questions to ask them"])
+    expect(block.locator(".plist li")).to_have_text(["Kafka: consumer groups and offsets", "How is the team split between new work and support?"])
+    first = block.locator("details.pq").first
+    expect(first.locator("li").first).to_be_hidden()  # try the answer yourself before you look
+    first.locator("summary").click()
+    expect(first.locator("li")).to_have_text(["Auto-configuration and conditions", "The payment service"])
+    block.locator('[data-act="prep"]').click()
+    site.confirm("Write the preparation again?", "Write it again")
+    expect(page.locator("#live b")).to_contain_text("done")
+    assert site.sideways() <= 0 and site.refusals() == 0
+
+
+def test_a_job_is_brought_over_from_your_own_browser_and_added_only_when_you_say(conn, open_site):
+    seed(conn, 1)
+    site = open_site()
+    page = site.page
+    site.show("settings")
+    link = page.locator("#clipper")
+    code = link.get_attribute("href")
+    assert code.startswith("javascript:") and f"'{site.base}/#clip='" in code
+    link.click()  # on this page it only says what to do with it
+    site.toast("Drag this button to your bookmarks bar")
+    assert page.url == site.base + "/"
+
+    # A job page in the person's own browser, and the bookmark clicked on it with the post selected.
+    post = "https://jobs.example.com/post/41"
+    other = site.context.new_page()
+    other.route(post, lambda route: route.fulfill(content_type="text/html", body="<title>Java Engineer at Acme</title><nav>Home Jobs</nav>"
+                                                  "<p id=post>We need a Java engineer in Dubai. Write to careers@acme.example</p>"))
+    other.goto(post)
+    other.evaluate("getSelection().selectAllChildren(document.querySelector('#post'))")
+    with site.context.expect_page() as opened:
+        other.evaluate(code[len("javascript:"):])
+    brought = opened.value
+    box = brought.locator("#adddlg")
+    expect(box).to_be_visible()
+    expect(brought.locator("#addtext")).to_have_value("Page title: Java Engineer at Acme\n\nWe need a Java engineer in Dubai. Write to careers@acme.example")
+    expect(brought.locator("#addurl")).to_have_value(post)
+    assert brought.url == site.base + "/"  # the post's text is taken out of the address
+    expect(brought.locator(".toast").filter(has_text="Post brought over from your browser")).to_be_visible()
+    assert db.list_runs(conn) == [] and conn.execute("SELECT count(*) AS n FROM jobs").fetchone()["n"] == 1  # nothing was added yet
+    box.locator('[data-act="add-go"]').click()
+    expect(brought.locator("#live b")).to_contain_text("Add a job from a post")
+
+    # With nothing selected the whole page's text comes over; a page with no text is refused.
+    page.goto(site.base + "/#clip=" + urllib.parse.quote(json.dumps({"u": "javascript:alert(1)", "h": "", "t": "Whole page text"})))
+    expect(page.locator("#addtext")).to_have_value("Whole page text")
+    expect(page.locator("#addurl")).to_have_value("")  # only a web link is kept as the link
+    page.goto(site.base + "/")
+    page.evaluate("location.hash = '#clip=' + encodeURIComponent(JSON.stringify({u: 'https://x.example', h: 'Empty', t: '  '}))")
+    site.toast("That page gave no text", bad=True)
+    expect(page.locator("#adddlg")).to_be_hidden()
+    assert site.sideways() <= 0 and site.refusals() == 0
+
+
+def test_a_reply_found_in_gmail_shows_on_the_job_and_the_check_is_offered_only_when_switched_on(conn, open_site):
+    pid, ids = seed(conn, 3)
+    for jid in ids:
+        draft(conn, pid, jid)
+        db.set_application_status(conn, pid, jid, "applied")
+        db.mark_outreach_sent(conn, pid, jid)
+    at = datetime.now(timezone.utc)
+    db.save_replies(conn, pid, ids, {ids[0]: {"kind": "reply", "at": at, "subject": "Re: Java Engineer"},
+                                     ids[1]: {"kind": "bounced", "at": at, "subject": "Delivery Status Notification (Failure)"}})
+    site = open_site()
+    page = site.page
+    steps = page.locator("#next")
+    expect(steps).to_contain_text("1 recruiter has replied")
+    expect(steps).to_contain_text("1 email was not delivered")
+    site.show("progress")
+    expect(page.locator(f'tr.row[data-job="{ids[0]}"] .tag')).to_have_text("Replied")
+    expect(page.locator(f'tr.row[data-job="{ids[1]}"] .tag')).to_have_text("Not delivered")
+    expect(page.locator(f'tr.row[data-job="{ids[2]}"] .tag')).to_have_text("Applied")
+    expect(page.locator('[data-act="replies"]')).to_have_count(0)  # switched off: the page does not offer to look in Gmail
+    page.locator(f'tr.row[data-job="{ids[0]}"]').click()
+    expect(page.locator("#replyline")).to_contain_text('with the subject "Re: Java Engineer". Read it in Gmail, then set the status')
+    expect(page.locator("#nosend")).to_contain_text("a reply came, so it gets no follow-up")
+    page.keyboard.press("Escape")
+    page.locator(f'tr.row[data-job="{ids[1]}"]').click()
+    expect(page.locator("#replyline")).to_contain_text("careers@acme.example refused the email")
+    page.keyboard.press("Escape")
+
+    on = open_site(config=CONFIG + "outreach:\n  check_replies: true\n")
+    on.show("progress")
+    on.page.locator('[data-act="replies"]').click()
+    expect(on.page.locator("#live b")).to_contain_text("Check for replies")
+    on.show("settings")
+    expect(on.page.locator('.fld:has-text("Look in Gmail for replies") input')).to_be_checked()
+    assert site.sideways() <= 0 and site.refusals() == 0 and on.refusals() == 0
+
+
 def test_hr_addresses_are_added_listed_and_can_be_deleted(conn, open_site):
     seed(conn, 2)
     site = open_site()
@@ -521,6 +672,44 @@ def test_a_job_board_is_given_its_own_browser_under_sites(conn, open_site):
     site.show("activity")
     site.show("settings")
     expect(setup).to_contain_text("BROWSERBASE_API_KEY is missing in .env; 1 job board needs it")
+    assert site.sideways() <= 0 and site.refusals() == 0
+
+
+def test_sites_with_a_problem_are_marked_listed_and_switched_off_together(conn, open_site):
+    from test_site_health import searches
+
+    seed(conn, 1)
+    searches(conn, [{"Alpha": 4, "Beta": "the site refused this browser (error 403)", "Gamma": 0}] * 3)
+    site = open_site(config=CONFIG + "  - {kind: greenhouse, name: Gamma, board: gamma}\n")
+    page = site.page
+    site.show("settings")
+    only = page.locator('[data-act="sites-ill"]')
+    expect(only).to_have_text("Sites with a problem (2)")
+    row = lambda name: page.locator(f'.sites .sw:has(input[data-site="{name}"])')  # noqa: E731
+    expect(row("Alpha").locator(".ill")).to_have_count(0)
+    expect(row("Beta").locator(".ill.bad")).to_have_text("failed")
+    expect(row("Beta").locator(".ill")).to_have_attribute("title", re.compile(r"Its last search failed: the site refused this browser \(error 403\)\. It has listed no job"))
+    expect(row("Gamma").locator(".ill")).to_have_text("no jobs")
+    expect(row("Gamma").locator(".ill")).to_have_attribute("title", re.compile("No job in its last 3 searches"))
+
+    only.click()
+    expect(page.locator(".sites .sw:visible input")).to_have_count(2)
+    expect(page.locator("#illbar")).to_contain_text("have failed, or have listed no job in their last three searches")
+    only.click()
+    expect(page.locator(".sites .sw:visible input")).to_have_count(3)
+    expect(page.locator("#illbar")).to_be_hidden()
+
+    row("Gamma").locator("input").uncheck()  # one switched off by hand leaves the list
+    site.toast("Gamma")
+    expect(only).to_have_text("Sites with a problem (1)")
+    only.click()
+    expect(page.locator(".sites .sw:visible input")).to_have_count(1)
+    page.locator('[data-act="sites-ill-off"]').click()
+    site.confirm("Switch off 1 site?", "Switch off 1 site")
+    site.toast("1 site is switched off")
+    expect(page.locator('[data-act="sites-ill"]')).to_have_count(0)
+    expect(page.locator("#sitecount")).to_have_text("1 of 3 on")
+    assert [s.enabled for s in AgentConfig.load(site.config).sources] == [True, False, False]
     assert site.sideways() <= 0 and site.refusals() == 0
 
 

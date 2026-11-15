@@ -8,4 +8,5 @@ digests/
 .vscode/
 .DS_Store
 backups/
+resumes/
 config.overrides.yaml

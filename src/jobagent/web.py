@@ -37,7 +37,7 @@ MAX_UPLOAD = 10 * 1024 * 1024
 
 # Every action the page can start as a task.
 TASKS = ("migrate", "run", "score", "daily", "email", "contacts", "send", "gmail-drafts", "followups",
-         "cover-letter", "answers", "dedupe", "notify-test", "add", "backup")
+         "replies", "cover-letter", "answers", "cv", "prep", "dedupe", "notify-test", "add", "backup")
 
 
 class Feed:
@@ -162,9 +162,20 @@ def _template_info(file: str) -> dict:
     return {"file": file, "found": found, "text": p.read_text(encoding="utf-8") if found else ""}
 
 
+# The page is app.html with its stylesheet and scripts beside it. Only these names are served,
+# and each is read again on every request, so an edit shows on the next reload.
+STATIC = {"app.css": "text/css; charset=utf-8",
+          **{name: "text/javascript; charset=utf-8" for name in ("base.js", "chrome.js", "lists.js", "drawer.js", "pages.js", "actions.js")}}
+
+
+def _static(name: str) -> bytes:
+    return resources.files("jobagent").joinpath("static", name).read_bytes()
+
+
 def _page(token: str) -> bytes:
-    text = resources.files("jobagent").joinpath("static", "app.html").read_text(encoding="utf-8")
-    return text.replace("__TOKEN__", token).encode("utf-8")
+    """The page itself. The key it must send with every request is written into it here, so the
+    stylesheet and the scripts hold nothing secret."""
+    return _static("app.html").decode("utf-8").replace("__TOKEN__", token).encode("utf-8")
 
 
 def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
@@ -203,18 +214,20 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
 
     # --- reading ----------------------------------------------------------------------
 
-    waiting = {"at": 0.0, "task": None, "n": 0, "unread": 0}
+    waiting = {"at": 0.0, "task": None, "n": 0, "unread": 0, "batch": 0}
 
-    def waiting_count(conn, pid: int, c: AgentConfig) -> tuple[int, int]:
-        """How many stored jobs wait to be scored, and how many job-board jobs wait for their own
-        page to be opened first. Counting reads every such job, so the answer is kept for two
-        minutes, or until a task starts or ends."""
+    def waiting_count(conn, pid: int, c: AgentConfig) -> tuple[int, int, int]:
+        """How many stored jobs wait to be scored, how many job-board jobs wait for their own page
+        to be opened first, and how many are with the AI service in a scoring batch. Counting
+        reads every such job, so the answer is kept for two minutes, or until a task starts or ends."""
         t = runner.task
         key = (t["id"], t["running"]) if t else None
         if key != waiting["task"] or time.monotonic() - waiting["at"] > 120:
-            waiting.update(at=time.monotonic(), task=key, n=len(waiting_jobs(conn, c, pid, brief=True)),
-                           unread=unread_jobs(conn, c))
-        return waiting["n"], waiting["unread"]
+            sent = {job_id for b in db.pending_batches(conn) for job_id, _ in b["data"]["jobs"].values()}
+            unscored = [job_id for job_id, _ in waiting_jobs(conn, c, pid, brief=True)]
+            waiting.update(at=time.monotonic(), task=key, n=sum(1 for j in unscored if j not in sent),
+                           unread=unread_jobs(conn, c), batch=sum(1 for j in unscored if j in sent))
+        return waiting["n"], waiting["unread"], waiting["batch"]
 
     def state() -> dict:
         c = config()
@@ -222,7 +235,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                  "gmail": bool(settings.gmail_address and settings.gmail_app_password)}
         out = {"setup": setup, "task": runner.snapshot(), "jobs": [], "due": [], "counts": None,
                "sends": None, "shortlist_min_score": c.matching.shortlist_min_score,
-               "follow_up_days": c.outreach.follow_up_days,
+               "follow_up_days": c.outreach.follow_up_days, "check_replies": c.outreach.check_replies,
                "sources": [s.name for s in c.sources if s.enabled], "countries": [],
                "search": {"max_age_days": c.search.max_age_days, "min_salary_lpa": c.search.min_salary_lpa,
                           "score_cap": c.matching.max_jobs_to_score}}
@@ -245,7 +258,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             due = db.followups_due(conn, pid, c.outreach.follow_up_days)
             out["due"] = [r["job_id"] for r in due]
             out["counts"]["due"] = len(due)
-            out["counts"]["waiting"], out["counts"]["unread"] = waiting_count(conn, pid, c)
+            out["counts"]["waiting"], out["counts"]["unread"], out["counts"]["batch"] = waiting_count(conn, pid, c)
             out["sends"] = {"today": db.sends_today(conn, pid), "cap": c.outreach.max_sends_per_day}
             out["countries"] = db.match_countries(conn, pid)
             for r in db.dashboard_rows(conn, pid):
@@ -267,6 +280,9 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             details = applicant_details(db.active_profile(conn), config().outreach)
         if app:
             app = {k: v for k, v in app.items() if k not in ("company_research", "review_notes")}
+            made = app.pop("tailored_cv", None)  # the page needs to know about the file, not its whole text
+            app["cv"] = made and {"name": Path(made["file"]).name, "found": Path(made["file"]).is_file(), "attach": bool(made.get("attach")),
+                                  "notes": made.get("notes") or [], "written_at": made.get("written_at")}
             app["body_html"] = _paragraphs_html(app["outreach_body"])
             draft = f"{app['outreach_subject'] or ''}\n{app['outreach_body'] or ''}\n{app['follow_up_body'] or ''}"
             app["unfilled"] = unfilled_placeholders(draft)
@@ -275,6 +291,15 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         return {"job": job, "match": match, "application": app, "events": events, "due": due,
                 "can_delete": can_delete(job, app) is None,
                 "details": details}
+
+    def written_cv(job_id: int) -> Path:
+        """The PDF written for one job."""
+        with connect() as conn:
+            app = db.get_application(conn, profile_id(conn), job_id)
+        made = (app or {}).get("tailored_cv") or {}
+        if not made.get("file") or not Path(made["file"]).is_file():
+            raise ActionError("There is no CV written for this job. Write one first.")
+        return Path(made["file"])
 
     def matches(min_score: int) -> dict:
         with connect() as conn:
@@ -374,10 +399,18 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 + (["--general"] if body.get("general") else [])
         elif action == "followups":
             label, argv = "Send follow-ups", ["followups", "--send"]
+        elif action == "replies":
+            if not config().outreach.check_replies:
+                raise ActionError('Looking in Gmail for replies is switched off. Switch it on under Settings, Search and limits.')
+            label, argv = "Check for replies", ["replies"]
         elif action == "cover-letter" and len(ids) == 1:
             label, argv = f"Write a cover letter for #{ids[0]}", ["cover-letter", ids[0]]
         elif action == "answers" and len(ids) == 1:
             label, argv = f"Write application answers for #{ids[0]}", ["answers", ids[0]]
+        elif action == "cv" and len(ids) == 1:
+            label, argv = f"Write a CV for #{ids[0]}", ["cv", ids[0]]
+        elif action == "prep" and len(ids) == 1:
+            label, argv = f"Prepare for the interview for #{ids[0]}", ["prep", ids[0]]
         elif action == "dedupe":
             label, argv = "Merge duplicate jobs", ["dedupe", "--apply"]
         elif action == "backup":
@@ -419,9 +452,20 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             raise ActionError("Settings cannot be changed here: no config.yaml was found where the page was started.")
         return config_path
 
+    def with_health(info: dict) -> dict:
+        """Add to each site how it has done in recent searches, when the database can say."""
+        try:
+            with connect() as conn:
+                health = db.site_health(conn)
+        except ActionError:
+            health = {}
+        for site in info["sites"]:
+            site["health"] = health.get(site["name"])
+        return info
+
     def page_settings() -> dict:
         try:
-            return read_settings(settings_file())
+            return with_health(read_settings(settings_file()))
         except ConfigError as e:
             raise ActionError(str(e)) from e
 
@@ -445,7 +489,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         else:
             n = info["changed"]
             message = "Settings saved." + (f" {n} differ{'s' if n == 1 else ''} from {info['file']}." if n else f" All match {info['file']}.")
-        return {**info, "message": message}
+        return {**with_health(info), "message": message}
 
     # --- quick changes ----------------------------------------------------------------
 
@@ -498,6 +542,24 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                     raise ActionError("That status is not known.")
                 db.set_application_status(conn, pid, jid, body["status"], "set on the web page", history_only=True)
                 return {"message": f"#{jid} marked {body['status']}."}
+            if path == "/api/cv":
+                made = (db.get_application(conn, pid, jid) or {}).get("tailored_cv")
+                if not made:
+                    raise ActionError("There is no CV written for this job. Write one first.")
+                file = Path(made["file"])
+                if body.get("remove"):
+                    if file.is_file() and file.parent.name == f"job-{jid}":  # only ever a file this program wrote
+                        file.unlink()
+                        if not any(file.parent.iterdir()):
+                            file.parent.rmdir()
+                    db.save_tailored_cv(conn, pid, jid, None)
+                    return {"message": "The CV written for this job is removed. Its email carries your usual CV."}
+                attach = bool(body.get("attach"))
+                if attach and not file.is_file():
+                    raise ActionError("The file is no longer there. Write the CV again.")
+                db.save_tailored_cv(conn, pid, jid, {**made, "attach": attach})
+                return {"message": "This job's email now carries the CV written for it." if attach
+                        else "This job's email carries your usual CV."}
             if path == "/api/note":
                 db.set_application_status_if_missing(conn, pid, jid)
                 db.set_note(conn, pid, jid, str(body.get("note") or ""))
@@ -617,6 +679,14 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 if self._allowed(need_token=False):
                     self._send(200, _page(token), "text/html; charset=utf-8")
                 return
+            if parsed.path.startswith("/static/"):
+                if self._allowed(need_token=False):
+                    name = parsed.path[len("/static/"):]
+                    if name in STATIC:
+                        self._send(200, _static(name), STATIC[name])
+                    else:
+                        self.send_error(404)
+                return
             if parsed.path == "/api/digest":  # a download link cannot carry a header, so the token is in the link
                 if not self._allowed(need_token=False):
                     return
@@ -634,6 +704,14 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                            {"Content-Disposition": f'attachment; filename="job-matches-{date.today()}.md"'})
                 return
             if not self._allowed(need_token=True):
+                return
+            if parsed.path == "/api/cv":
+                try:
+                    file = written_cv(int(q.get("id", 0)))
+                except (ActionError, ValueError) as e:
+                    self._json({"error": str(e)}, 400)
+                    return
+                self._send(200, file.read_bytes(), "application/pdf", {"Content-Disposition": f'inline; filename="{file.name}"'})
                 return
             routes = {
                 "/api/state": state,
@@ -682,7 +760,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 self._answer(lambda: {"task": start_task(body)})
             elif path == "/api/task/stop":
                 self._answer(lambda: {"stopped": runner.stop()})
-            elif path in ("/api/status", "/api/note", "/api/draft", "/api/send", "/api/followup-done", "/api/contact", "/api/hr-contacts", "/api/delete",
+            elif path in ("/api/status", "/api/note", "/api/draft", "/api/send", "/api/followup-done", "/api/contact", "/api/hr-contacts", "/api/delete", "/api/cv",
                           "/api/schedule", "/api/template", "/api/config"):
                 self._answer(lambda: change(path, body))
             else:

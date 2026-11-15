@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from importlib import resources
 from typing import Any, Iterable
 
@@ -143,7 +144,7 @@ def close_dead_runs(conn) -> list[int]:
 def finish_run(conn, run_id: int, *, status: str, stats: dict, error: str | None = None) -> None:
     conn.execute(
         """UPDATE runs SET status = %s, finished_at = now(), jobs_found = %s, jobs_new = %s,
-               jobs_scored = %s, tokens_used = %s, error = %s
+               jobs_scored = %s, tokens_used = %s, error = %s, cost_usd = %s, usage = %s
            WHERE id = %s""",
         (
             status,
@@ -152,6 +153,8 @@ def finish_run(conn, run_id: int, *, status: str, stats: dict, error: str | None
             stats.get("scored", 0),
             stats.get("tokens", 0),
             error,
+            stats.get("cost"),
+            Jsonb(stats["usage"]) if stats.get("usage") else None,
             run_id,
         ),
     )
@@ -171,6 +174,41 @@ def list_runs(conn, limit: int = 20) -> list[dict]:
 
 
 BATCH_SENT, BATCH_TAKEN = "scoring batch sent", "scoring batch collected"
+
+
+def site_health(conn, days: int = 60) -> dict[str, dict]:
+    """How each site has done in recent searches, from what each search wrote down about it.
+
+    For a site name: `last` is "listed", "empty" or "failed" (its latest search), `reason` says
+    why it failed, `dry` counts its latest searches in a row that brought no job, `searches` how
+    many there were, and `delivered_at` is when it last listed any job.
+    """
+    rows = conn.execute(
+        """SELECT s.name, e.level, e.message, e.created_at FROM run_events e JOIN sources s ON s.id = e.source_id
+           WHERE e.created_at >= now() - make_interval(days => %s)
+             AND (e.level = 'error' OR e.message ~ ': [0-9]+ jobs [(]')
+           ORDER BY e.id DESC""", (days,)).fetchall()
+    out: dict[str, dict] = {}
+    still_dry: dict[str, bool] = {}
+    for r in rows:
+        failed = r["level"] == "error" and ": failed: " in r["message"]
+        listed = re.search(r": (\d+) jobs [(]", r["message"])
+        if not failed and not listed:
+            continue
+        jobs = 0 if failed else int(listed.group(1))
+        h = out.setdefault(r["name"], {"last": None, "reason": "", "dry": 0, "searches": 0, "delivered_at": None})
+        h["searches"] += 1
+        if h["last"] is None:
+            h["last"] = "failed" if failed else "listed" if jobs else "empty"
+            h["reason"] = r["message"].split(": failed: ", 1)[1].splitlines()[0][:200] if failed else ""
+        if jobs and h["delivered_at"] is None:
+            h["delivered_at"] = r["created_at"]
+        if still_dry.setdefault(r["name"], True):
+            if jobs:
+                still_dry[r["name"]] = False
+            else:
+                h["dry"] += 1
+    return out
 
 
 def pending_batches(conn) -> list[dict]:
@@ -437,6 +475,21 @@ def save_answers(conn, profile_id: int, job_id: int, answers: dict) -> None:
                  (Jsonb(answers), profile_id, job_id))
 
 
+def save_tailored_cv(conn, profile_id: int, job_id: int, made: dict | None) -> None:
+    """Keep the CV written for one job: its text, where its file is, the notes from checking it
+    against the resume, and whether the job's email carries it. None forgets it."""
+    set_application_status_if_missing(conn, profile_id, job_id)
+    conn.execute("UPDATE applications SET tailored_cv = %s, updated_at = now() WHERE profile_id = %s AND job_id = %s",
+                 (Jsonb(made) if made is not None else None, profile_id, job_id))
+
+
+def save_prep(conn, profile_id: int, job_id: int, prep: dict) -> None:
+    """Keep the interview preparation written for one job."""
+    set_application_status_if_missing(conn, profile_id, job_id)
+    conn.execute("UPDATE applications SET interview_prep = %s, updated_at = now() WHERE profile_id = %s AND job_id = %s",
+                 (Jsonb(prep), profile_id, job_id))
+
+
 def set_application_status_if_missing(conn, profile_id: int, job_id: int,
                                       note: str | None = None) -> bool:
     exists = conn.execute(
@@ -511,8 +564,32 @@ def mark_outreach_sent(conn, profile_id: int, job_id: int, *, again: bool = Fals
     belonged to the first email no longer counts."""
     conn.execute(
         """UPDATE applications SET outreach_sent_at = now(),
-               follow_up_sent_at = CASE WHEN %s THEN NULL ELSE follow_up_sent_at END
+               follow_up_sent_at = CASE WHEN %s THEN NULL ELSE follow_up_sent_at END,
+               reply_at = NULL, reply_kind = NULL, reply_subject = NULL
            WHERE profile_id = %s AND job_id = %s""", (again, profile_id, job_id))
+
+
+def awaiting_reply(conn, profile_id: int, days: int = 60) -> list[dict]:
+    """Emailed jobs still waiting for an answer: sent in the last `days` days, still 'applied', and
+    with no reply and no failed delivery recorded. An automatic reply is not an answer, so a
+    job that has only that is still waiting."""
+    return conn.execute(
+        """SELECT a.job_id, j.title, j.company, a.contact_email, a.outreach_subject, a.outreach_sent_at
+           FROM applications a JOIN jobs j ON j.id = a.job_id
+           WHERE a.profile_id = %s AND a.status = 'applied' AND a.outreach_sent_at IS NOT NULL
+             AND a.contact_email IS NOT NULL AND a.outreach_sent_at >= now() - make_interval(days => %s)
+             AND (a.reply_kind IS NULL OR a.reply_kind = 'automatic')
+           ORDER BY a.outreach_sent_at""", (profile_id, days)).fetchall()
+
+
+def save_replies(conn, profile_id: int, looked_for: list[int], found: dict[int, dict]) -> None:
+    """Record what a look in the inbox found, and that these jobs were looked for."""
+    with conn.transaction():
+        for job_id, r in found.items():
+            conn.execute("UPDATE applications SET reply_at = %s, reply_kind = %s, reply_subject = %s WHERE profile_id = %s AND job_id = %s",
+                         (r["at"], r["kind"], r["subject"], profile_id, job_id))
+        conn.execute("UPDATE applications SET replies_checked_at = now() WHERE profile_id = %s AND job_id = ANY(%s)",
+                     (profile_id, list(looked_for)))
 
 
 def mark_follow_up_sent(conn, profile_id: int, job_id: int) -> None:
@@ -529,13 +606,14 @@ def sends_today(conn, profile_id: int) -> int:
 
 
 def followups_due(conn, profile_id: int, after_days: int) -> list[dict]:
-    """Emailed jobs with no follow-up yet, sent at least `after_days` ago and still 'applied'."""
+    """Emailed jobs with no follow-up yet, sent at least `after_days` ago and still 'applied'.
+    One that a person answered, or whose address refused the email, is not followed up."""
     return conn.execute(
         """SELECT a.job_id, j.title, j.company, a.contact_email, a.outreach_sent_at,
                   a.follow_up_subject, a.follow_up_body
            FROM applications a JOIN jobs j ON j.id = a.job_id
            WHERE a.profile_id = %s AND a.status = 'applied' AND a.outreach_sent_at IS NOT NULL
-             AND a.follow_up_sent_at IS NULL
+             AND a.follow_up_sent_at IS NULL AND (a.reply_kind IS NULL OR a.reply_kind = 'automatic')
              AND a.outreach_sent_at <= now() - make_interval(days => %s)
            ORDER BY a.outreach_sent_at""", (profile_id, after_days)).fetchall()
 
@@ -546,7 +624,7 @@ def dashboard_rows(conn, profile_id: int) -> list[dict]:
         """SELECT j.id AS job_id, j.title, j.company, j.location, j.url, j.posted_at,
                   a.status, a.outreach_subject, a.outreach_body, a.contact_email,
                   a.outreach_sent_at, a.follow_up_sent_at, a.notes, a.contact_kind,
-                  a.contact_source, m.score, m.summary, m.salary_estimate
+                  a.contact_source, a.reply_kind, a.reply_at, m.score, m.summary, m.salary_estimate
            FROM applications a JOIN jobs j ON j.id = a.job_id
            LEFT JOIN job_matches m ON m.job_id = a.job_id AND m.profile_id = a.profile_id
            WHERE a.profile_id = %s

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 import httpx
 
-from . import db
+from . import costs, db
 from .browser import Browser
 from .config import AgentConfig
 from .filters import reject_reason
@@ -31,8 +31,11 @@ class RunSummary:
     screened_out: int = 0  # ruled out by the quick first check, so not given the full scoring
     skipped_unchanged: int = 0
     unread: int = 0  # job-board jobs left unscored because their own page has not been opened yet
+    batched: int = 0  # sent for scoring as a batch whose answers are collected by a later search
     shortlisted: int = 0
     tokens: int = 0
+    cost: float | None = None  # an estimate in US dollars; None when a model's price is not known
+    usage: dict = field(default_factory=dict)  # tokens and cost by model
     source_errors: dict[str, str] = field(default_factory=dict)
     stopped: str = ""  # why the run stopped early, when a spending limit was reached
 
@@ -98,13 +101,14 @@ class _PageReader:
 
 def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: httpx.Client | None = None,
               only_source: str | None = None, score: bool = True, collect: bool = True,
-              prescreen=None, reader=None, batch: bool = False) -> RunSummary:
+              prescreen=None, reader=None, batch: bool = False, leave_batch: bool = False) -> RunSummary:
     """One search. With collect=False no site is read: the stored jobs still waiting are scored.
 
     `prescreen` is a second, cheaper AI client: each job gets its quick look first, and only the
     ones it does not rule out get the full scoring. `reader` is a cheaper client too: it turns
     job-site pages into lists of jobs. `batch` sends the full scoring as one batch, which costs
-    half and is answered later; it is used when nobody is waiting for the result.
+    half and is answered later; it is used when nobody is waiting for the result. With
+    `leave_batch` the search does not wait for the answers at all: a later search stores them.
     """
     profile = db.active_profile(conn)
     if profile is None:
@@ -124,12 +128,20 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
         clients = {id(c): c for c in (llm, prescreen, reader) if c is not None}  # one model may serve two jobs
         return sum(getattr(c, "tokens_used", 0) for c in clients.values())
 
+    def spending() -> None:
+        """Put what the AI calls used so far, and what that cost, on the summary."""
+        summary.usage = costs.usage_of((llm, prescreen, reader), cfg.matching.prices)
+        summary.tokens, summary.cost = tokens_spent(), costs.total(summary.usage)
+
     def over_budget() -> str:
         m = cfg.matching
         tokens = tokens_spent()
         minutes = getattr(browser, "minutes_used", 0.0)
         if m.max_tokens_per_run and tokens >= m.max_tokens_per_run:
             return f"token limit reached ({tokens:,} of {m.max_tokens_per_run:,})"
+        spent = costs.total(costs.usage_of((llm, prescreen, reader), m.prices)) if m.max_cost_per_run else None
+        if spent is not None and spent >= m.max_cost_per_run:
+            return f"cost limit reached (about ${spent:.2f} of ${m.max_cost_per_run:.2f})"
         if m.max_browser_minutes_per_run and minutes >= m.max_browser_minutes_per_run:
             return f"browser time limit reached ({minutes:.1f} of {m.max_browser_minutes_per_run:g} minutes)"
         return ""
@@ -321,6 +333,10 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
             held = {cid: [job_id, p.content_hash] for cid, (job_id, p) in ids.items()}
             # Recorded before waiting: if this search is stopped, a later one still finds the batch.
             event(db.BATCH_SENT, data={"batch": batch_id, "model": llm.model, "jobs": held})
+            if leave_batch:
+                summary.batched += len(jobs)
+                event(f"{len(jobs)} jobs sent for scoring as a batch; their scores are stored by the next search, or by Score waiting jobs")
+                return
             wait = cfg.matching.batch_wait_minutes
             event(f"{len(jobs)} jobs sent for scoring as a batch; waiting up to {wait} minutes for the answers")
             deadline = time.monotonic() + wait * 60
@@ -374,7 +390,7 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
         if score:
             summary.shortlisted = db.shortlist_many(conn, profile["id"], strong)
 
-        summary.tokens = tokens_spent()
+        spending()
         summary.status = "partial" if summary.source_errors or summary.stopped else "succeeded"
         db.finish_run(conn, run_id, status=summary.status, stats=summary.__dict__,
                       error=db.partial_reason(list(summary.source_errors), summary.stopped) or None)
@@ -384,7 +400,7 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
         # shortlist the jobs already scored high enough, then record where the search ended.
         why = "; ".join(filter(None, [db.STOPPED_EARLY, db.partial_reason(list(summary.source_errors), summary.stopped)]))
         summary.status, summary.stopped = "partial", "stopped before it finished"
-        summary.tokens = tokens_spent()
+        spending()
         try:
             summary.shortlisted = db.shortlist_many(conn, profile["id"], strong)
             db.finish_run(conn, run_id, status="partial", stats=summary.__dict__, error=why)

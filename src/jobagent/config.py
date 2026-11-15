@@ -138,7 +138,13 @@ class OutreachPrefs(BaseModel):
     linkedin_url: str = ""       # shown in emails as a clickable "LinkedIn" link
     resume_path: str = ""        # CV file attached to Gmail drafts (`jsa email --gmail-drafts`)
     resume_variants: list[ResumeVariant] = Field(default_factory=list)  # other CVs, by keyword
+    # Where `jsa cv` keeps the CV it writes for one job, each in a folder of its own; relative to
+    # the folder jsa runs from.
+    tailored_folder: str = "resumes"
     follow_up_days: int = 6      # a follow-up is due this many days after an email was sent
+    # Look in the Gmail inbox for answers to the emails that were sent (`jsa replies`, and each
+    # morning). Read-only: who wrote, when and the subject line, never the text. Off by default.
+    check_replies: bool = False
     max_sends_per_day: int = 10  # `--send` stops at this many emails a day (0 = no limit)
     send_pause_seconds: int = 20  # wait between sent emails
     research: bool = True        # web-search recruiter advice per country (Claude only)
@@ -179,6 +185,12 @@ class MatchingPrefs(BaseModel):
     max_jobs_to_score: int = 100
     notify_min_score: int = 85             # message you about new jobs at or above this (0 = off)
     max_tokens_per_run: int = 0            # stop a run after this many AI tokens (0 = no limit)
+    # Stop a run once its AI calls have cost about this much, in US dollars (0 = no limit). Tokens
+    # of a cheap model and a dear one differ twentyfold in price, so this is the truer limit. It
+    # works for models with a known price: the list in costs.py, or `prices` below.
+    max_cost_per_run: float = 0
+    # Your own prices, in US dollars per million tokens: model: [input, output, cache read].
+    prices: dict[str, list[float]] = Field(default_factory=dict)
     max_browser_minutes_per_run: float = 0  # stop collecting after this much browser time
     concurrency: int = 4
     # A cheaper model that looks at each job first; only the ones it does not rule out get the
@@ -191,6 +203,9 @@ class MatchingPrefs(BaseModel):
     # within the hour). Claude only. The search waits up to batch_wait_minutes for the answers;
     # if they are not back by then, the next search picks them up.
     batch_scoring: bool = False
+    # The same for ordinary searches. Nobody waits here: the search ends once the jobs are sent,
+    # and their scores are stored by the next search or by `jsa score`.
+    batch_searches: bool = False
     batch_wait_minutes: int = 120
 
 
@@ -259,6 +274,8 @@ EDITABLE: dict[str, tuple[str, str, str, str, float | None, float | None]] = {
     "matching.notify_min_score": ("Scoring", "int", "Message me from score", "0 switches messages off.", 0, 100),
     "matching.max_jobs_to_score": ("Scoring", "int", "Most jobs scored in one search", "", 1, 5000),
     "matching.max_tokens_per_run": ("Scoring", "int", "AI budget for one search, in tokens", "0 means no limit.", 0, None),
+    "matching.max_cost_per_run": ("Scoring", "float", "AI budget for one search, in US dollars",
+                                  "An estimate from the token counts. 0 means no limit.", 0, 1000),
     "matching.max_browser_minutes_per_run": ("Scoring", "float", "Browser time for one search, in minutes",
                                              "0 means no limit.", 0, None),
     "matching.prescreen_model": ("Scoring", "text", "Cheaper model for a quick first check",
@@ -271,9 +288,14 @@ EDITABLE: dict[str, tuple[str, str, str, str, float | None, float | None]] = {
                                     "After that the next search picks the answers up.", 1, 1440),
     "matching.batch_scoring": ("Scoring", "bool", "Score the morning routine as a batch",
                                "Half the price. The answers come later, usually within the hour. Claude only.", None, None),
+    "matching.batch_searches": ("Scoring", "bool", "Score ordinary searches as a batch too",
+                                "Half the price. The search ends once the jobs are sent; their scores arrive with the "
+                                "next search, or with Score waiting jobs. Claude only.", None, None),
     "outreach.max_sends_per_day": ("Emails", "int", "Emails a day", "0 means no limit.", 0, 2000),
     "outreach.send_pause_seconds": ("Emails", "int", "Seconds between emails", "", 0, 3600),
     "outreach.follow_up_days": ("Emails", "int", "Follow up after, in days", "", 1, 90),
+    "outreach.check_replies": ("Emails", "bool", "Look in Gmail for replies",
+                               "Reads only who wrote, when and the subject line of answers to your emails. Nothing in Gmail is changed.", None, None),
     "outreach.notice_period": ("Emails", "text", "When you can join", "Used in emails, for example: immediately.", None, None),
     "outreach.email": ("Your details", "text", "Email", "In the sign-off of emails; your resume's when empty.", None, None),
     "outreach.linkedin_url": ("Your details", "text", "LinkedIn link", "", None, None),
