@@ -125,6 +125,12 @@ inboxes is rarely read and can get your Gmail account marked as spam.
 | Arrow beside it, **Morning routine** | Search, then a digest file, one summary email to yourself, and a backup. |
 | Arrow beside it, **Search one site** | Searches just the site you pick. |
 | **Add from a post** | Paste a LinkedIn post, WhatsApp message or email that asks for CVs. The role, company and email address are read from it, and the job is scored and shortlisted. Click **Add the job** to start. |
+| **Save to Job Search**, a bookmark in your own browser | Brings a job over from the page you are looking at, so you do not have to copy and paste. Set it up once: under **Settings**, **Save a job from your browser**, drag the **Save to Job Search** button to your browser's bookmarks bar. Then, on a job's page or a LinkedIn post, select the text of the post (or select nothing to take the whole page) and click the bookmark. Job Search opens in a new tab with the post and its link already in the **Add from a post** box. Check it and click **Add the job**; nothing is added before that. Job Search has to be running. |
+
+With **Score ordinary searches as a batch too** switched on (Settings, **Search and limits**), Find
+new jobs sends its scoring as a batch at half price and finishes without waiting. Next steps then
+says how many jobs are being scored as a batch; their scores arrive with the next search, or
+when you click **Collect the scores** there.
 
 ## The table
 
@@ -154,6 +160,8 @@ outside it. The arrows at the top, or the J and K keys, move to the next and pre
 | Email to the recruiter | The email is shown as a sheet of paper. The **To** line holds the address it will go to. If the agent found none, type one you found yourself (on LinkedIn or in the posting) and click **Save address**, or click **Look for one** to have the agent search the company's own site; empty the line and save to remove it. Below it are the subject and the text. Edit either on the sheet, then **Save draft**. **Send email** sends it after asking you to confirm. **Write it again** replaces the draft with a fresh one. **Preview**, at the top right of the section, shows it as the recruiter will see it; **Edit** brings the text back. Once the email is sent, a round postmark with the date appears on the sheet and **Send again** takes the place of **Send email**. When no email can be sent, the line under the buttons says why. The follow-up text is underneath. |
 | Cover letter | **Write a cover letter** for sites that ask for one, then **Copy**. It follows your own letter in `cover_letter_template.txt`, filled in for this job. |
 | Answers for the application form | For applying on a job site. At the top are your own details (name, email, phone, LinkedIn, when you can join, current and expected salary): click one to copy it. **Write the answers** then writes short answers for this job: why this role, why you, an introduction, key skills, and years per skill where your resume makes them clear. Each has a **Copy** button. Paste them into the site's form yourself and read each one first; nothing is filled in or submitted for you. Your details come from Settings, **Search and limits**, **Your details**. |
+| CV for this job | **Write a CV for this job** arranges your resume for this posting: the same facts, with the experience and skills this job asks for put first. What comes back is checked against your resume, and anything your resume does not say (a skill, an employer, a line with a figure that is not yours) is taken out and listed under "Checked against your resume". **Open the PDF** shows it; read it before you use it. It is saved in the `resumes` folder. The switch **Attach it to this job's email in place of your usual CV** is off until you turn it on, so until then the email carries your usual CV. **Write it again** makes a new one and switches the attaching off again; **Remove** deletes the file. |
+| Interview preparation | **Prepare for the interview** writes, for this job: what to revise first (what the posting asks for that your resume shows little of), likely technical questions, likely questions about your own work, and questions you can ask them. Click a question to see points for the answer, taken from your resume. |
 | Notes | Anything you want to remember: the recruiter's name, what was said, the next step. Click **Save note**. Nothing else changes your notes. |
 | History | Every status change and every email sent, with its date. |
 | Full job description | The original posting text. |
@@ -186,12 +194,12 @@ email and cover letter leave the name out: "applying for the Java Developer posi
 | Screen | What it shows | Buttons on it |
 |---|---|---|
 | **Shortlist** | Jobs worth acting on. The last column says what each one needs: no draft yet, no address yet, or ready to send. | Draft emails, Look for addresses, Save drafts to Gmail, Send ready emails |
-| **In progress** | Jobs you applied to, interviews and offers. In the Stage filter, **Set aside** shows jobs you skipped and rejections, and **General applications** shows the HR addresses you wrote to. | |
-| **Follow-ups** | Emails with no reply after the number of days you set. | Send follow-ups |
+| **In progress** | Jobs you applied to, interviews and offers. In the Stage filter, **Set aside** shows jobs you skipped and rejections, and **General applications** shows the HR addresses you wrote to. With replies switched on (see "Replies from recruiters"), a job a recruiter answered says **Replied** and one whose address refused the email says **Not delivered**. | Check for replies, when switched on |
+| **Follow-ups** | Emails with no reply after the number of days you set. | Send follow-ups; Check for replies, when switched on |
 | **All matches** | Every job that was scored, not only the shortlist. Starts at score 70 or more; change the Score filter to see the rest. Open one and click **Add to shortlist** to act on it. | Download digest |
 | **Insights** | Your last seven days, the skills job postings ask for most that your resume lacks, and which sites deliver. | |
-| **Activity** | Everything the running or last task reported, and a list of past searches. When a search is only **Partly finished**, the Problem column says why: a spending limit was reached, some sites could not be read, or it was stopped. | |
-| **Settings** | Setup, the morning routine, duplicate jobs, your templates, what is searched and the limits, the job sites, backups, and stopping the program. | |
+| **Activity** | Everything the running or last task reported, and a list of past searches. The **Cost** column is what the AI calls of that search cost, worked out from its token counts; point at it to see the amount for each model. It is an estimate, and your provider's bill is the real figure. When a search is only **Partly finished**, the Problem column says why: a spending limit was reached, some sites could not be read, or it was stopped. | |
+| **Settings** | Setup, the morning routine, duplicate jobs, your templates, what is searched and the limits, the job sites, saving a job from your browser, backups, and stopping the program. | |
 
 ## Sending emails
 
@@ -206,6 +214,26 @@ email and cover letter leave the name out: "applying for the Java Developer posi
   **Send again**, inside one job's panel, sends a second time, and it asks first.
 - If only a general inbox (such as info@) was found, **Send ready emails** leaves that job out. You can
   still open the job and send it yourself.
+- An email carries your usual CV. It carries the CV written for that job instead only when you
+  switched on **Attach it to this job's email** in the job's panel.
+
+## Replies from recruiters
+
+This is off until you switch on **Look in Gmail for replies** under **Settings**, **Search and
+limits**. Once it is on:
+
+- **Check for replies**, on the In progress and Follow-ups screens, looks in your Gmail inbox for
+  answers to the emails you sent. The morning routine does the same each day.
+- It reads only who wrote, when, and the subject line, and only of messages from an address you
+  wrote to, messages that answer one of your subject lines, and delivery failures. It never reads
+  the text of a message, never marks one as read, and changes nothing in Gmail.
+- A job a person answered is marked **Replied**, and Next steps says so. Read the reply in Gmail,
+  then record what happened on the job (interview, rejected). The status is yours to set.
+- A job whose address refused the email is marked **Not delivered**. Put another address in the To
+  line and use **Send again**.
+- Neither of those gets a follow-up. An automatic reply (out of office, "we received your
+  application") is shown in the job's panel but does not count as an answer, so its follow-up
+  still goes out when due.
 
 ## Running tasks
 
@@ -234,7 +262,8 @@ post) runs as a task.
 | Add from a post | Yes, a little | No |
 | Draft emails, Write it again | Yes | No |
 | Look for addresses | Yes | No |
-| Write a cover letter, Write the answers | Yes, a little | No |
+| Write a cover letter, Write the answers, Write a CV for this job, Prepare for the interview | Yes, a little | No |
+| Check for replies | No | No. It reads the sender, date and subject line of answers in your Gmail |
 | Choose your resume | Yes, a little | No |
 | Send ready emails, Send email, Send again, Send follow-ups | No | Yes, to recruiters |
 | Save drafts to Gmail | No | Saves drafts in your Gmail |
@@ -242,9 +271,14 @@ post) runs as a task.
 | Everything else (status, notes, saving a draft, deleting an entry, filters, Insights, digest, merging duplicates, changing settings, switching a site, backing up) | No | No |
 
 Each search stops by itself at the AI and browser limits set under **Settings**, **Search and
-limits**. Three settings there make a search cheaper, and all are off until you switch them on: a
-cheaper model for reading job-site pages, a cheaper model for a quick first check of each job, and
-scoring the morning routine as a batch at half price.
+limits**. The AI limit can be set in tokens or, more usefully, in US dollars (**AI budget for one
+search, in US dollars**): a cheap model's tokens cost a small fraction of a dear one's, so money is
+the truer limit. What each search cost is in the **Cost** column of Past searches on the Activity
+screen.
+
+Four settings there make a search cheaper, and all are off until you switch them on: a cheaper
+model for reading job-site pages, a cheaper model for a quick first check of each job, scoring the
+morning routine as a batch at half price, and scoring ordinary searches as a batch too.
 
 ## Settings
 
@@ -256,8 +290,9 @@ scoring the morning routine as a batch at half price.
 | Your templates, **Email** | The three templates share one box; the buttons at its top right switch between them. **Email** is the wording used for every recruiter email. Text in [square brackets] is filled in for each job; everything else is sent as you wrote it. Click **Save template**. |
 | Your templates, **General email** | Edit the email sent to HR addresses you added without a job posting. Click **Save template**. |
 | Your templates, **Cover letter** | Edit the letter used by **Write a cover letter**. It works like the email template: text in [square brackets] is filled in for each job. Click **Save template**. |
-| Search and limits | Change what is searched for and the limits: title words, places, the oldest posting, the lowest salary, the shortlist score, the AI and browser budgets, emails a day, the follow-up wait. Click **Save settings**. Your changes are kept in `config.overrides.yaml`; `config.yaml` itself is never rewritten. A value that differs from the file is marked **changed**, and **Go back to config.yaml** drops your changes. Under **Your details** are your email, LinkedIn link, phone and salary figures, which a job's panel offers for copying into a site's application form. Under Scoring are the three ways to spend less: **Cheaper model for a quick first check** and **Cheaper model for reading job-site pages** (for example `claude-haiku-5-5` in each), and **Score the morning routine as a batch**. |
-| Sites | One switch per job site. A site that is off is skipped by every search. A switch takes effect at once. Type in **Find a site** to narrow the list. At the top, **Job boards, read with a browser** lists the boards that need one, each with a choice: the usual browser, **This Mac**, or **Browserbase**. Some boards refuse the browser on this Mac and accept Browserbase; choosing Browserbase only for those keeps its browser time for them. The **Browser for job sites** line under Setup says which boards are on Browserbase. |
+| Search and limits | Change what is searched for and the limits: title words, places, the oldest posting, the lowest salary, the shortlist score, the AI and browser budgets, emails a day, the follow-up wait. Click **Save settings**. Your changes are kept in `config.overrides.yaml`; `config.yaml` itself is never rewritten. A value that differs from the file is marked **changed**, and **Go back to config.yaml** drops your changes. Under **Your details** are your email, LinkedIn link, phone and salary figures, which a job's panel offers for copying into a site's application form. Under Scoring are the AI budget in tokens and in US dollars, and the ways to spend less: **Cheaper model for a quick first check** and **Cheaper model for reading job-site pages** (for example `claude-haiku-5-5` in each), **Score the morning routine as a batch** and **Score ordinary searches as a batch too**. Under Emails is **Look in Gmail for replies**, which is off until you switch it on. |
+| Sites | One switch per job site. A site that is off is skipped by every search. A switch takes effect at once. Type in **Find a site** to narrow the list. At the top, **Job boards, read with a browser** lists the boards that need one, each with a choice: the usual browser, **This Mac**, or **Browserbase**. Some boards refuse the browser on this Mac and accept Browserbase; choosing Browserbase only for those keeps its browser time for them. The **Browser for job sites** line under Setup says which boards are on Browserbase. A site whose last search **failed**, or that has listed **no jobs** in its last three searches or more, carries that mark; point at it to see why and when it last listed jobs. **Sites with a problem** shows only those, and **Switch these off** turns them all off at once, after asking. |
+| Save a job from your browser | The **Save to Job Search** button, to drag to your browser's bookmarks bar once. "Finding jobs" above says how it is used. |
 | Backups | **Back up now** copies the whole database into the `backups` folder. The morning routine also makes one each day, and the newest 7 are kept. The card shows when the last one was made. Bringing a backup back is done from the terminal; `jsa backup` prints the command, and [GUIDE.md](GUIDE.md) has it. |
 | Close the program | **Stop Job Search**. |
 

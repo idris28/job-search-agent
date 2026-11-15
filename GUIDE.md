@@ -78,10 +78,10 @@ the website; this table maps its buttons to commands:
 | **Actions**, in the menu on the left | One-click actions from any screen: add a post, add HR addresses, draft, look for addresses, save drafts to Gmail, send, follow up, morning routine, digest. **Light** and **Dark** at the bottom switch the look | `jsa add`, `jsa add-contacts`, `jsa email`, `jsa contacts`, `jsa send`, `jsa followups`, `jsa daily`, `jsa digest` |
 | The filter bar and table | Filter by country, score, posting age and next step; search by name; click a column heading to sort; click a job to open it in a panel on the right | `jsa jobs` |
 | **Shortlist** | Draft emails, look for addresses, save drafts to Gmail, send the ready emails | `jsa email`, `jsa contacts`, `jsa send --gmail-drafts`, `jsa send` |
-| A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; an **Apply on the job site** button that opens the posting and asks afterwards whether you applied; buttons for applied, skipped, interview, offer, rejected; ready-to-paste answers for the site's application form; **Send again** for an email that already went; **Delete entry** for something you added yourself | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa answers`, `jsa apply`, `jsa delete` |
-| **In progress**, **Follow-ups** | Applications under way (choose "Set aside" in the Stage filter for skipped and rejected jobs); follow-ups that are due, with a button to send them | `jsa applications`, `jsa followups` |
+| A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; an **Apply on the job site** button that opens the posting and asks afterwards whether you applied; buttons for applied, skipped, interview, offer, rejected; ready-to-paste answers for the site's application form; a CV written for that job; interview preparation; **Send again** for an email that already went; **Delete entry** for something you added yourself | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa answers`, `jsa cv`, `jsa prep`, `jsa apply`, `jsa delete` |
+| **In progress**, **Follow-ups** | Applications under way (choose "Set aside" in the Stage filter for skipped and rejected jobs); follow-ups that are due, with a button to send them; when replies are switched on, which emails were answered or not delivered, and a button to look in Gmail | `jsa applications`, `jsa followups`, `jsa replies` |
 | **All matches** | Every scored job, with the score filter and a digest download | `jsa jobs`, `jsa digest` |
-| **Add from a post** | Paste a LinkedIn post; it is read, scored and shortlisted | `jsa add` |
+| **Add from a post** | Paste a LinkedIn post; it is read, scored and shortlisted. The **Save to Job Search** bookmark (Settings) fills the box from the page open in your own browser | `jsa add` |
 | The panels beside and below the table | One mark for each job on your lists, coloured by stage; your top matches; where the jobs are by country; and the next steps worth taking, each with a button | |
 | **Insights** | Your week, the skills you miss most, which sites deliver | `jsa progress`, `jsa gaps` |
 | **Activity** | The full output of the running or last task, and past searches with the reason any was only partly finished | `jsa runs` |
@@ -118,6 +118,7 @@ Good to know:
 | `jsa run` | Collects jobs from every job board in `config.yaml`, filters and scores them, and prints the best new ones. Uses AI calls, and Browserbase time unless the browser is local. |
 | `jsa run --source "Bayt - Java"` | Runs only the one source with that name. |
 | `jsa run --no-score` | Collects jobs but skips scoring, so no scoring calls are made. |
+| `jsa run`, with `matching.batch_searches: true` | Sends the scoring as one batch at half price and ends at once. The scores are stored by the next run or by `jsa score`. Claude only. |
 | `jsa score` | Scores stored jobs that were never scored, without reading any site again. A run scores at most `matching.max_jobs_to_score` jobs, so the rest wait; this picks them up, newest first. On the website: **Score waiting jobs**. |
 | `jsa score --batch` | The same, sent as one batch: half the price, with the answers coming later, usually within the hour. Claude only. If they are not back within `matching.batch_wait_minutes` (120), the next search picks them up; the jobs are not scored twice. |
 | `jsa add` | Adds a job from text you paste, such as a LinkedIn post asking for CVs by email. Paste the text, press Enter, then Ctrl-D. It reads the role, company and email address, scores the job and shortlists it. |
@@ -136,7 +137,7 @@ Good to know:
 | `jsa show 343 --full` | Also prints the full job description. |
 | `jsa digest --out digests/today.md` | Writes a readable summary of the top matches to a file. Without `--out` it prints to the screen. |
 | `jsa digest --run-id 3` | Only jobs first seen in run number 3. |
-| `jsa runs` | Shows past runs: when, how many jobs found and scored, tokens used, and the reason a run failed or was only partly finished. |
+| `jsa runs` | Shows past runs: when, how many jobs found and scored, tokens used, what the AI calls cost in US dollars (an estimate), and the reason a run failed or was only partly finished. |
 | `jsa gaps` | Lists the skills job postings ask for most often that your resume doesn't show. `--days`, `--min-score` and `--limit` adjust it. |
 | `jsa progress` | A summary of the last 7 days: shortlisted, applied, emails and follow-ups sent, interviews, your reply rate, and results per site. `--days 30` widens it. |
 | `jsa dedupe` | Shows jobs that are stored more than once. Changes nothing. |
@@ -156,10 +157,13 @@ Good to know:
 | `jsa contacts 343` | The same for specific jobs. |
 | `jsa email --general` | Also uses a general inbox (such as `info@`) found by `jsa contacts`. Without it, general inboxes are never emailed. |
 | `jsa answers 343` | Writes short answers for the job site's application form (why this role, why you, an introduction, key skills) from your resume and the posting, and saves them with the job. You paste them into the form yourself; nothing is submitted. Uses one AI call. On the website: **Write the answers** in the job's panel. |
+| `jsa cv 343` | Writes a CV for one job: your resume's own facts, with what the posting asks for first. It is checked against your resume, and what your resume does not say is taken out and listed. The PDF goes to `resumes/job-343/`. The job's email carries your usual CV until you switch on **Attach it to this job's email** in the job's panel. Uses one AI call. On the website: **Write a CV for this job**. |
+| `jsa prep 343` | Writes interview preparation for one job: what to revise first, likely questions with points for each answer from your resume, and questions to ask. Uses one AI call. On the website: **Prepare for the interview**. |
 | `jsa cover-letter 343` | Writes a cover letter for one job and saves it with the application. It fills in your own letter from `cover_letter_template.txt` (text in [square brackets] is replaced for the job); without that file it writes a short built-in letter. |
 | `jsa followups` | Lists emails sent `outreach.follow_up_days` or more days ago that have had no follow-up. |
 | `jsa followups --send` | Sends the stored follow-up email for each one that is due. |
 | `jsa followups --done 343` | Records a follow-up you sent yourself, so it stops being listed. |
+| `jsa replies` | Looks in your Gmail inbox for answers to the emails you sent, and records which jobs were answered and which addresses refused the email. Read-only: the sender, date and subject line, never the text, and nothing in Gmail is changed. It runs only when `outreach.check_replies` is `true` (on the website: **Look in Gmail for replies** under Settings). Answered and undelivered emails get no follow-up. |
 
 An email is **ready** only when the posting shows an email address, the posting is still open, and
 no blank in the template was left unfilled. Other jobs are listed with their link so you can apply
@@ -189,7 +193,7 @@ The statuses are: `shortlisted`, `applied`, `interviewing`, `offer`, `rejected`,
 
 | Command | What it does |
 |---|---|
-| `jsa daily` | Runs the search, writes `digests/<date>.md`, lists follow-ups due, and emails you one summary if Gmail is set up. |
+| `jsa daily` | Runs the search, writes `digests/<date>.md`, lists follow-ups due, and emails you one summary if Gmail is set up. With `outreach.check_replies` on, it first looks in Gmail for replies, so an answered email is not listed for a follow-up. |
 | `jsa backup` | Copies the whole database into the `backups` folder, and the code's history beside it. The newest 7 are kept. `jsa daily` does this by itself at its end. It prints the command that brings a backup back. On the website: Settings, **Back up now**. |
 | `jsa schedule install --time 08:00` | Tells macOS to run `jsa daily` at that time every day. Run it from the project folder. |
 | `jsa schedule status` | Shows whether the schedule is installed and when it runs. |
@@ -249,10 +253,15 @@ commands here too.
 | `outreach.follow_up_days` | Days after an email before a follow-up is due (6). |
 | `outreach.max_sends_per_day`, `send_pause_seconds` | Sending limits: emails per day (10) and the wait between them (20 seconds). |
 | `matching.max_tokens_per_run`, `max_browser_minutes_per_run` | Spending limits for one run. |
+| `matching.max_cost_per_run` | Stops a run once its AI calls have cost about this many US dollars (0, so off). Truer than the token limit, because a cheap model's tokens cost far less. |
+| `matching.prices` | Your own prices for a model, in US dollars per million tokens: `model: [input, output, cache read]`. Only needed for a model the built-in list does not know, or when prices change. |
 | `matching.notify_min_score` | You get a message when a new job scores this or more (85). |
 | `matching.prescreen_model` | A cheaper AI model for a quick first check of each job (none, so off). Jobs it rules out skip the full scoring. For Claude: `claude-haiku-5-5`. |
 | `matching.reader_model` | A cheaper AI model for reading job-site pages into lists of jobs (none, so off). Scoring and emails keep the main model. For Claude: `claude-haiku-5-5`. |
 | `matching.batch_scoring`, `batch_wait_minutes` | Score the morning routine as one batch at half price (off), and how long a search waits for the answers (120 minutes). |
+| `matching.batch_searches` | Score ordinary searches as a batch too (off). The search ends once the jobs are sent; the next search stores their scores. |
+| `outreach.check_replies` | Look in Gmail for answers to your emails (off). Read-only. |
+| `outreach.tailored_folder` | Where the CVs written for single jobs are kept (`resumes`). |
 | `backup.daily`, `backup.keep`, `backup.folder` | Back up after the morning routine (on), how many backups are kept (7), and the folder they go to (`backups`). |
 | `sources` | Job boards and company career pages to search. On the website each one has a switch under Settings, **Sites**. A job board can also name its browser there (`browser: browserbase` or `browser: local` in the file), so Browserbase time is spent only on the boards that refuse the browser on this Mac. |
 
@@ -272,7 +281,7 @@ page. Treat an estimate as a rough guide, not a fact; it never lowers a score on
 ## What costs money
 
 - **AI model calls** (Claude): `jsa contacts`, the "add a job" form on the web page, `jsa daily`, `jsa run` (reading pages and scoring), `jsa score`, `jsa email`, `jsa add`,
-  `jsa cover-letter`, `jsa answers` and `jsa profile import`.
+  `jsa cover-letter`, `jsa answers`, `jsa cv`, `jsa prep` and `jsa profile import`.
 - **Browserbase time**: `jsa daily`, `jsa run`, and the live posting check in `jsa email`. None of it
   is used when `.env` has `JOBAGENT_BROWSER=local`: the pages open in Chromium on this Mac. A job
   board set to Browserbase under Settings, **Sites**, still uses Browserbase time, and only that
@@ -281,10 +290,12 @@ page. Treat an estimate as a rough guide, not a fact; it never lowers a score on
 Three settings lower the AI cost of a search, and all are off until you switch them on. A cheaper
 model can read the job-site pages (`matching.reader_model`) and can rule out the clear misses before
 the full scoring (`matching.prescreen_model`), and the scoring can go as one batch at half price in
-exchange for a wait (`jsa score --batch`, or `matching.batch_scoring` for the morning routine).
+exchange for a wait (`jsa score --batch`, `matching.batch_scoring` for the morning routine, or
+`matching.batch_searches` for ordinary searches). `jsa runs` and the Activity screen show what each
+search cost, and `matching.max_cost_per_run` stops a search at an amount you choose.
 
 Everything else (`jobs`, `show`, `apply`, `status`, `applications`, `digest`, `runs`, `migrate`,
-`backup`) is free.
+`backup`, `replies`) is free.
 
 ## Which companies are searched
 

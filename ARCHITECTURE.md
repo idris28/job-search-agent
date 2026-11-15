@@ -158,7 +158,8 @@ sequenceDiagram
 Not in the diagram:
 
 - `jsa web` (or the Job Search app) is a separate, long-running page: `web.py` serves
-  `static/app.html` and a JSON API on `http://127.0.0.1:8765`. Quick changes (status, notes, saving
+  `static/app.html`, the stylesheet and six scripts beside it, and a JSON API on
+  `http://127.0.0.1:8765`. Quick changes (status, notes, saving
   or sending one draft) happen in the request. Anything slow is started as a `jsa` child process by
   `TaskRunner`, one at a time; so the page runs exactly the same code as the terminal commands.
   Each open page holds one long-lived connection (`/api/events`, Server-Sent Events) over which
@@ -206,7 +207,11 @@ Not in the diagram:
 | Database | `src/jobagent/db.py`, `migrations/` | PostgreSQL: jobs, scores, applications, send times, runs |
 | Preview | `src/jobagent/report.py` | Terminal tables, the Markdown digest, the HTML email preview |
 | Gmail | `src/jobagent/mailer.py` | Builds the message; saves it to Drafts or sends it |
-| Web app | `src/jobagent/web.py`, `static/app.html`, `Job Search.app` | Every command as a button: a JSON API, a runner that executes `jsa` commands as tasks, and a double-click launcher |
+| Web app | `src/jobagent/web.py`, `static/`, `Job Search.app` | Every command as a button: a JSON API, a runner that executes `jsa` commands as tasks, and a double-click launcher. The page is `app.html` with `app.css` and six plain scripts loaded in order (`base`, `chrome`, `lists`, `drawer`, `pages`, `actions`); the key the page sends with each request is written into `app.html` only |
+| Costs | `src/jobagent/costs.py` | What a run's AI calls cost, from the token counts of each model and a price list; also the dollar limit for one run |
+| CV for one job | `src/jobagent/tailor.py` | Checks the CV the model wrote against the resume text, takes out what the resume does not say, and prints the rest to a PDF |
+| Replies | `src/jobagent/replies.py` | A read-only look in the Gmail inbox for answers to sent emails: sender, date and subject line only |
+| Pictures | `tools/take_screenshots.py` | Retakes every picture in `screenshots/` on a demo copy with made-up data, and checks the words in them before replacing the old ones |
 | Shared actions | `src/jobagent/actions.py` | Add a pasted job, add HR addresses and send a stored draft, used by both the commands and the web page |
 | Contact check | `src/jobagent/contacts.py` | Confirms a found application address is printed on the company's own page |
 | Notifications | `src/jobagent/notifier.py` | Sends strong new matches to Telegram, or to your own email |
@@ -254,6 +259,15 @@ Not in the diagram:
   full scoring, and the scoring can go as one batch at half price. A batch is
   recorded in `run_events` before the run waits for it, so if the wait runs out or the run is
   stopped, the next run collects the answers, and its jobs are not sent again meanwhile.
+- **What the model writes about you is checked against your resume.** A CV for one job goes
+  through `tailor.check` before it is saved: a skill or employer the resume does not name, and a
+  line with a figure the resume does not give, are removed and listed. The email keeps your usual
+  CV until you switch the written one on.
+- **The mailbox is only read, and only when asked.** `replies.py` opens the inbox read-only and
+  fetches header lines with `BODY.PEEK`, so nothing is marked as read; it is off by default, and it
+  never changes a job's status.
+- **Spending is counted in money as well as tokens.** Each AI client keeps its tokens by kind, a
+  batch's apart, and `costs.py` turns them into dollars for the run's record and for the limit.
 - **The page is told; it does not keep asking.** One counter moves when a task prints or changes
   state, another when anything stored changes, and every open page waits on both.
 - **Settings changed on the page never rewrite your file.** They are stored beside `config.yaml`

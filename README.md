@@ -78,8 +78,11 @@ Everything lives in `config.yaml` (see `config.example.yaml`):
 - `matching.prescreen_model` (empty, so off) names a cheaper model that takes a quick first look at
   each job; only the jobs it does not rule out get the full scoring.
 - `matching.reader_model` (empty, so off) names a cheaper model that reads the job-site pages.
-- `matching.batch_scoring` (off) makes `jsa daily` send its scoring as one batch at half price.
-  All three are described under "Spending less on AI" below.
+- `matching.batch_scoring` (off) makes `jsa daily` send its scoring as one batch at half price, and
+  `matching.batch_searches` (off) does the same for `jsa run`.
+  These are described under "Spending less on AI" below.
+- `matching.max_cost_per_run` (0, so off) stops a run once its AI calls have cost about this many
+  US dollars.
 
 Most of these can also be changed on the website, under Settings: **Search and limits**, and
 **Sites** to switch a job site on or off. The page never rewrites `config.yaml`. What you change
@@ -109,13 +112,16 @@ jsa jobs --min-score 75          # best matches across all runs
 jsa show 42 --full               # one job, with matched skills, gaps, red flags
 jsa cover-letter 42              # draft, saved on the application record
 jsa answers 42                   # short answers for the site's application form, to paste in yourself
+jsa cv 42                        # your resume arranged for this job, checked against it, as a PDF in resumes/
+jsa prep 42                      # interview preparation: likely questions, points for each answer, what to revise
+jsa replies                      # look in Gmail for answers to your emails (only when switched on)
 jsa email                        # recruiter emails for your top shortlisted jobs
 jsa email 94 96                  # ...or for specific jobs; --no-browse skips the live check
 jsa status 42 applied --note "via referral"
 jsa applications                 # your pipeline
 jsa delete 42                    # remove a pasted post or HR address you added (asks first)
 jsa digest --out digests/today.md
-jsa runs                         # run history, tokens used, and why a run was only partial
+jsa runs                         # run history, tokens used, what it cost, and why a run was only partial
 jsa backup                       # copy the database, and the code's history, into backups/
 ```
 
@@ -161,6 +167,16 @@ summarises the week and shows which sources deliver. `jsa dedupe [--apply]` merg
   within the hour. The run waits up to `matching.batch_wait_minutes` (120). If the answers are not
   back by then the run ends as `partial`, and the next run of any kind stores them. Jobs in a batch
   that is still running are not scored a second time.
+- *Batch scoring for ordinary searches.* With `matching.batch_searches: true`, `jsa run` sends its
+  scoring as a batch too and ends at once, without waiting. The scores are stored by the next
+  run, or by `jsa score`; the page's Next steps says how many jobs are being scored.
+
+**What a search cost.** Each run's summary, `jsa runs` and the Past searches table on the page give
+the cost of its AI calls in US dollars, for each model. It is worked out from the token counts
+(input, output, read from the cache, written to the cache, and those of a batch at half price)
+and the price list in `src/jobagent/costs.py`. For a model that is not on the list, or when prices
+change, give your own under `matching.prices` (`model: [input, output, cache read]`, in dollars per
+million tokens). It is an estimate: the provider's bill is what counts.
 
 **A browser per job board.** `JOBAGENT_BROWSER` names the usual browser. A `generic` source can
 name its own with `browser: browserbase` or `browser: local` (in `config.yaml`, or under Settings,
@@ -184,6 +200,15 @@ on this Mac, so keep the folder somewhere else as well if a lost disk worries yo
 **Follow-ups.** When `--send` sends an email, the time is recorded. `jsa followups` lists the emails
 that are `outreach.follow_up_days` (6) old with no follow-up yet; `jsa followups --send` sends the
 stored follow-up text, and `--done <id>` records one you sent by hand.
+
+**Replies.** Off unless `outreach.check_replies: true` (or **Look in Gmail for replies** under
+Settings). Then `jsa replies`, **Check for replies** on the page and `jsa daily` look in the Gmail
+inbox for answers to the emails that were sent. The inbox is opened read-only; only the sender,
+the date and the subject line are read, and only of messages from an address that was written
+to, messages under one of the sent subject lines, and delivery failures. A job a person answered
+is marked Replied and one whose address refused the email is marked Not delivered; neither gets
+a follow-up. An automatic reply is recorded but does not count as an answer. The job's status is
+never changed: what a reply means is yours to say.
 
 **Sending limits.** `--send` and `followups --send` stop at `outreach.max_sends_per_day` (10) emails a
 day and wait `outreach.send_pause_seconds` (20) between them.
@@ -247,6 +272,29 @@ next to your own details (name, email, phone, LinkedIn, when you can join, curre
 salary, from `outreach` in the settings). You paste them into the site's form in your own
 browser; the program fills in and submits nothing.
 
+**A CV for one job.** `jsa cv <id>` (or **Write a CV for this job** in a job's panel) has the model
+arrange your resume for that posting: every job you held, with the lines and skills this posting
+asks for put first. Before anything is saved, what the model wrote is checked against the resume
+text (`tailor.py`): a skill or an employer the resume does not name is dropped, a line with a
+figure the resume does not give is dropped, and a changed job title or date is flagged. Each of
+these is listed for you. The result is a plain one-column PDF in `resumes/job-<id>/`, named
+`outreach.resume_filename`. An email keeps carrying your usual CV until you switch on **Attach it
+to this job's email** in the job's panel.
+
+**Interview preparation.** `jsa prep <id>` (or **Prepare for the interview**) writes what to revise
+first, likely technical questions, likely questions about your own work with points for each
+answer from the resume, and questions to ask. It is saved with the job.
+
+**Site health.** Under Settings, **Sites**, a site whose last search failed, or that has listed no
+job in its last three searches, is marked, and **Sites with a problem** lists them with one button
+to switch them all off. It is read from what each run wrote down about each site.
+
+**Saving a job from your own browser.** Settings has a **Save to Job Search** button to drag to the
+bookmarks bar. Clicked on a job's page, it opens the Job Search page with the selected text (or
+the whole page's), the title and the link in the **Add from a post** box. The text travels in the
+part of the address after `#`, which no server is sent, and is removed from the address at once.
+Nothing is added until you click **Add the job**.
+
 **Cover letters.** `jsa cover-letter <id>` fills in `cover_letter_template.txt` for the job, the same
 way as the email template below; remove the file or set `outreach.cover_letter_template_file: ""`
 for a short built-in letter.
@@ -302,8 +350,8 @@ TEST_DATABASE_URL=postgresql://... pytest         # plus database and pipeline t
 With `TEST_DATABASE_URL` set, `tests/test_page.py` also drives the website in a real browser: every
 screen at a wide and a narrow window, the table, a job's panel, tasks, settings, live updates, and
 what the page says when the resume or a database update is missing. It needs Playwright's Chromium
-(`playwright install chromium`) and is skipped without it. No test calls a paid service or starts a
-real `jsa` task.
+(`playwright install chromium`) and is skipped without it. No test calls a paid service, opens a
+mailbox or starts a real `jsa` task.
 
 ## Layout
 
@@ -317,7 +365,11 @@ src/jobagent/
   contacts.py   check a found application address against the company's own page
   notifier.py   Telegram or email message about strong new matches
   web.py        local web app: JSON API, and a runner that executes jsa commands as tasks
-  static/       the page itself (app.html)
+  static/       the page: app.html, its stylesheet (app.css) and six scripts
+                (base, chrome, lists, drawer, pages, actions)
+  costs.py      what a run's AI calls cost, from token counts and a price list
+  tailor.py     a CV for one job: checks what the model wrote against the resume, makes the PDF
+  replies.py    a read-only look in Gmail for answers to the emails that were sent
   scheduler.py  macOS launchd job for `jsa daily`
   backup.py     pg_dump copy of the database, plus a git bundle of the code
   browser.py    Browserbase session (or local Chromium) behind one fetch() interface
@@ -329,6 +381,8 @@ src/jobagent/
   filters.py    rule-based pre-filter
   db.py         Postgres queries and migration runner
   models.py     JobPosting and LLM output schemas
+tools/
+  take_screenshots.py   retakes every picture in screenshots/ on a demo copy with made-up data
 ```
 
 ## Documents
@@ -337,6 +391,6 @@ src/jobagent/
 |---|---|
 | `GUIDE.md` | every `jsa` command, and which button on the website does the same |
 | `WEBSITE_GUIDE.md` | using the website, screen by screen |
-| `screenshots/README.md` | the website in pictures: one for each screen and function, taken on a demo copy with made-up jobs |
+| `screenshots/README.md` | the website in pictures: one for each screen and function, taken on a demo copy with made-up jobs. `tools/take_screenshots.py` retakes them all |
 | `ARCHITECTURE.md` | how the parts fit together; `app-flow.html` and `architecture-live.html` are the same as pictures |
 | `DESIGN.md` | how the website looks and reads: colours, type, spacing, wording |
