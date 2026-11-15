@@ -82,7 +82,7 @@ Stop asks first. What the task already saved is kept.
 
 ### Activity: the last task and past searches
 
-The finished task's full output, and each past search with its result, counts, AI tokens and, when it was only partly finished, why.
+The finished task's full output, and each past search with its result, counts, AI tokens, what the AI calls cost and, when it was only partly finished, why.
 
 ![Activity: the last task and past searches](13-activity-finished.png)
 
@@ -188,83 +188,107 @@ Your own details and short answers written for this job, each with a Copy button
 
 ![Answers for the application form](29-job-application-answers.png)
 
+### CV for this job
+
+Your resume arranged for this posting: the same facts, with what this job asks for first. It is checked against your resume, and what your resume does not say is taken out and listed. Open the PDF to read it; the switch attaches it to this job's email in place of your usual CV.
+
+![CV for this job](30-job-cv.png)
+
+### Interview preparation, before it is written
+
+Prepare for the interview writes likely questions for this job.
+
+![Interview preparation, before it is written](31-job-interview-prep-empty.png)
+
 ### Notes, history and the full job description
 
 Your own notes, every status change and email with its date, and the original posting text.
 
-![Notes, history and the full job description](30-job-description.png)
+![Notes, history and the full job description](32-job-description.png)
 
 ### Send email asks first
 
 The question names the address. Only Send email in this box sends it.
 
-![Send email asks first](31-send-email-question.png)
+![Send email asks first](33-send-email-question.png)
 
 ### A job with no draft yet
 
 Draft the email writes one from your template and resume.
 
-![A job with no draft yet](32-job-no-draft.png)
+![A job with no draft yet](34-job-no-draft.png)
 
 ### A draft with no address
 
 The line under the buttons says why there is no Send email. Type an address and Save address, or Look for one.
 
-![A draft with no address](33-job-no-address.png)
+![A draft with no address](35-job-no-address.png)
 
 ### A job you applied to
 
 Once a job is applied, the buttons record what happened next: Got an interview, Rejected, and later Got an offer.
 
-![A job you applied to](34-job-top-applied.png)
+![A job you applied to](36-job-top-applied.png)
 
 ### An email that already went
 
 The round mark is the day it was sent. Send again writes to the same address once more, after asking.
 
-![An email that already went](35-job-email-sent.png)
+![An email that already went](37-job-email-sent.png)
 
 ### Send again asks first
 
 It names the day the first email went and the address. Send ready emails never writes to the same job twice; only this does.
 
-![Send again asks first](36-send-again-question.png)
+![Send again asks first](38-send-again-question.png)
 
 ### A follow-up that is due
 
 The stored follow-up text sits under the email. I followed up myself records one you sent by hand.
 
-![A follow-up that is due](37-job-follow-up-due.png)
+![A follow-up that is due](39-job-follow-up-due.png)
+
+### Interview preparation
+
+What to revise first, likely technical questions and questions about your work, each with points for the answer from your resume (click a question to see them), and questions to ask them.
+
+![Interview preparation](40-job-interview-prep.png)
 
 ### Notes and history
 
 Notes are yours alone. History lists every status change and email with its date.
 
-![Notes and history](38-job-notes-history.png)
+![Notes and history](41-job-notes-history.png)
 
 ### A message after an action
 
 A short message at the bottom right confirms what was done, or says what went wrong and what to do.
 
-![A message after an action](39-message.png)
+![A message after an action](42-message.png)
 
 ### Leaving with unsaved changes
 
 The page asks before it throws away something you typed.
 
-![Leaving with unsaved changes](40-unsaved-changes-question.png)
+![Leaving with unsaved changes](43-unsaved-changes-question.png)
 
 ### After Apply on the job site
 
 The posting opens in a new tab. When you come back, the page asks whether you applied, and Yes moves the job to In progress.
 
-![After Apply on the job site](41-did-you-apply.png)
+![After Apply on the job site](44-did-you-apply.png)
 
 ### Delete entry
 
 Only something you added yourself, and have not emailed, can be deleted. It asks first.
 
-![Delete entry](42-delete-entry-question.png)
+![Delete entry](45-delete-entry-question.png)
+
+### The CV that was written
+
+One plain column under the usual headings, as a PDF. It is kept in the resumes folder, in a folder of its own for each job.
+
+![The CV that was written](46-cv-for-one-job.png)
 
 ## Sending emails
 
@@ -272,119 +296,137 @@ Only something you added yourself, and have not emailed, can be deleted. It asks
 
 Sends every email that has both a draft and an address, after asking, within the daily limit.
 
-![Send ready emails](43-send-ready-emails-question.png)
+![Send ready emails](47-send-ready-emails-question.png)
 
 ### The Shortlist buttons
 
 Draft emails, Look for addresses, Save drafts to Gmail and Send ready emails, each with how many jobs it applies to.
 
-![The Shortlist buttons](44-shortlist-toolbar.png)
+![The Shortlist buttons](48-shortlist-toolbar.png)
 
 ## The other screens
 
 ### In progress
 
-Jobs you applied to, interviews and offers. The round mark at the end of a row is the day you emailed.
+Jobs you applied to, interviews and offers. The round mark at the end of a row is the day you emailed. With Look in Gmail for replies switched on, a job a recruiter answered says Replied, and one whose address refused the email says Not delivered.
 
-![In progress](45-in-progress.png)
+![In progress](49-in-progress.png)
+
+### A reply found in Gmail
+
+The panel says when the reply came and its subject line. Read it in Gmail, then record what happened. Only the sender, the date and the subject line are read, and nothing in Gmail is changed.
+
+![A reply found in Gmail](50-job-reply.png)
 
 ### In progress: General applications
 
 The HR addresses you wrote to, each with its address and the day.
 
-![In progress: General applications](46-in-progress-general.png)
+![In progress: General applications](51-in-progress-general.png)
 
 ### In progress: Set aside
 
 Jobs you skipped and rejections.
 
-![In progress: Set aside](47-in-progress-set-aside.png)
+![In progress: Set aside](52-in-progress-set-aside.png)
 
 ### Follow-ups
 
-Emails with no reply after the number of days you set.
+Emails with no reply after the number of days you set. A job that was answered, or whose address refused the email, is not followed up. Check for replies looks in Gmail now; it shows only when that is switched on in Settings.
 
-![Follow-ups](48-follow-ups.png)
+![Follow-ups](53-follow-ups.png)
 
 ### Send follow-ups
 
 The stored follow-up text goes to each recruiter who has not replied, after asking.
 
-![Send follow-ups](49-send-follow-ups-question.png)
+![Send follow-ups](54-send-follow-ups-question.png)
 
 ### All matches
 
 Every scored job, not only the shortlist. Download digest saves the best ones as a file.
 
-![All matches](50-all-matches.png)
+![All matches](55-all-matches.png)
 
 ### Insights
 
 Your last seven days, the skills postings ask for most that your resume lacks, and which sites deliver.
 
-![Insights](51-insights.png)
+![Insights](56-insights.png)
 
 ## Settings
 
 ### Settings, the whole screen
 
-Setup, the morning routine, duplicate jobs, your templates, what is searched and the limits, the job sites, backups, and stopping the program.
+Setup, the morning routine, duplicate jobs, your templates, what is searched and the limits, the job sites, saving a job from your browser, backups, and stopping the program.
 
-![Settings, the whole screen](52-settings.png)
+![Settings, the whole screen](57-settings.png)
 
 ### Setup
 
 A green dot for what is ready, red for what is missing, grey for something optional. Keys and passwords stay in the .env file and are never shown.
 
-![Setup](53-settings-setup.png)
+![Setup](58-settings-setup.png)
 
 ### Every morning
 
 Pick a time and click Run every morning; the Mac then runs the morning routine daily while it is awake.
 
-![Every morning](54-settings-every-morning.png)
+![Every morning](59-settings-every-morning.png)
 
 ### Duplicate jobs
 
 If the same job is stored twice, Merge folds the copies together and keeps your score and status.
 
-![Duplicate jobs](55-settings-duplicate-jobs.png)
+![Duplicate jobs](60-settings-duplicate-jobs.png)
 
 ### Your templates: Email
 
 The wording used for every recruiter email. Text in [square brackets] is filled in for each job.
 
-![Your templates: Email](56-settings-templates-email.png)
+![Your templates: Email](61-settings-templates-email.png)
 
 ### Your templates: Cover letter
 
 The buttons at the top right switch between the email, general email and cover letter templates.
 
-![Your templates: Cover letter](57-settings-templates-cover-letter.png)
+![Your templates: Cover letter](62-settings-templates-cover-letter.png)
 
 ### Search and limits
 
 What is searched for and the limits. A value that differs from config.yaml is marked changed; Go back to config.yaml drops your changes.
 
-![Search and limits](58-settings-search-and-limits.png)
+![Search and limits](63-settings-search-and-limits.png)
 
 ### Sites
 
-A job board can be given its own browser, so Browserbase time goes only to the boards that refuse the browser on this Mac. Below, one switch per job site: a site that is off is skipped by every search.
+A job board can be given its own browser, so Browserbase time goes only to the boards that refuse the browser on this Mac. Below, one switch per job site: a site that is off is skipped by every search. A site whose last search failed, or that has listed no job in its last three searches, is marked.
 
-![Sites](59-settings-sites.png)
+![Sites](64-settings-sites.png)
+
+### Sites with a problem
+
+The button lists only the sites that are on but have failed or gone quiet. Switch these off turns them all off at once, after asking; hover over a mark to see why.
+
+![Sites with a problem](65-settings-sites-problems.png)
+
+### Save a job from your browser
+
+Drag the button to your bookmarks bar once. Then, on any job page or LinkedIn post in your own browser, click the bookmark: Job Search opens with the post filled in, and nothing is added until you choose Add the job.
+
+![Save a job from your browser](66-settings-save-from-browser.png)
 
 ### Backups
 
 Back up now copies the whole database into the backups folder. The morning routine also makes one each day.
 
-![Backups](60-settings-backups.png)
+![Backups](67-settings-backups.png)
 
 ### Stop Job Search
 
 Stops the program completely, after asking. Double-click Job Search to start it again.
 
-![Stop Job Search](61-stop-job-search-question.png)
+![Stop Job Search](68-stop-job-search-question.png)
 
 ## On a narrow window
 
@@ -392,19 +434,19 @@ Stops the program completely, after asking. Double-click Job Search to start it 
 
 The same screens on a phone-sized window.
 
-![A narrow window](62-narrow-shortlist.png)
+![A narrow window](69-narrow-shortlist.png)
 
 ### The menu on a narrow window
 
 It opens from the button with three lines at the top left.
 
-![The menu on a narrow window](63-narrow-menu.png)
+![The menu on a narrow window](70-narrow-menu.png)
 
 ### A job on a narrow window
 
 The panel fills the window.
 
-![A job on a narrow window](64-narrow-job.png)
+![A job on a narrow window](71-narrow-job.png)
 
 ## When something is missing
 
@@ -412,16 +454,17 @@ The panel fills the window.
 
 With no resume imported, the page says so at the top and offers the button. Nothing else starts until then.
 
-![Before the first search](65-first-run-no-resume.png)
+![Before the first search](72-first-run-no-resume.png)
 
 ### After an update of the program
 
 When new features need a change to the database, a bar at the top offers Update the database.
 
-![After an update of the program](66-database-needs-an-update.png)
+![After an update of the program](73-database-needs-an-update.png)
 
 ### When PostgreSQL is not running
 
 The page says the database is not answering. Start PostgreSQL, then reload.
 
-![When PostgreSQL is not running](67-database-not-answering.png)
+![When PostgreSQL is not running](74-database-not-answering.png)
+
