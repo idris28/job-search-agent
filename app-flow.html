@@ -46,13 +46,13 @@ flowchart TD
     P -->|"jsa run"| R1["cmd_run()<br/>load config.yaml, create AI and browser"]
     R1 --> R2["run_agent()<br/>pipeline.py"]
     R2 --> DB1[("PostgreSQL<br/>active_profile, start_run")]
-    DB1 --> B1{"For each source:<br/>spending limit reached?"}
-    B1 -->|"yes"| X3(["Source skipped, run marked partial"])
+    DB1 --> B1{"For each job board:<br/>spending limit reached?"}
+    B1 -->|"yes"| X3(["Board skipped, run marked partial"])
     B1 -->|"no"| K1{"Job board or<br/>company feed?"}
     K1 -->|"job board"| W1[["Browser: Browserbase or local<br/>fetch search page"]]
     W1 --> A1[["AI model<br/>extract_listings: jobs, links, posted age<br/>(the cheaper page model when one is set)"]]
     A1 --> W2[["Browser<br/>open job pages not read yet, newest first,<br/>up to max_detail_pages, each page once"]]
-    K1 -->|"company feed"| FD[["Greenhouse, Lever, Ashby,<br/>Amazon, Microsoft, Workday<br/>HTTP feed, no browser"]]
+    K1 -->|"company feed"| FD[["Greenhouse, Lever, Ashby,<br/>Amazon, Microsoft, Workday<br/>HTTP feed, no browser,<br/>six read at the same time"]]
     W2 --> DB2[("PostgreSQL<br/>upsert_job: once per job,<br/>also across boards")]
     FD --> DB2
     DB2 --> F{"reject_reason()<br/>location, title, bank, too old?"}

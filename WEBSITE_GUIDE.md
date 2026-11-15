@@ -49,7 +49,7 @@ what is missing, grey for something optional that is not set up.
 ## A normal day
 
 1. **Find new jobs.** Click the **Find new jobs** button. A blue line moves under the Found and Scored
-   numbers while it works, and the strip under them shows progress. A full search takes several minutes.
+   numbers while it works, and the strip under them shows progress. A full search takes a few minutes: the company sites are read side by side, the job boards one after another.
 2. **Look at the shortlist.** Jobs scoring 75 or more land on **Shortlist**, newest first (75 is
    the shortlist score; change it under Settings, **Search and limits**). Click a
    job to open it in a panel on the right and read why it matched.

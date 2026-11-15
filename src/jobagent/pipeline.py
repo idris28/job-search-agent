@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import queue
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -38,6 +39,7 @@ class RunSummary:
 
 WAITING_DAYS = 7  # a stored job counts as still open if a search saw it this recently
 SCREENED_SCORE = 20  # the score recorded for a job the quick first check ruled out
+SITES_AT_ONCE = 6  # how many company career sites are read at the same time
 BATCH_POLL_SECONDS = 30  # how often a search asks whether its scoring batch has been answered
 
 
@@ -143,35 +145,15 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
         if reader is not None and collect:
             page_llm = _PageReader(reader, llm, lambda m: event(m, level="warning"))
             event(f"Job-site pages are read by {reader.model}")
-        for scfg in cfg.sources if collect else []:
-            if not scfg.enabled or (only_source and scfg.name != only_source):
-                continue
-            summary.stopped = summary.stopped or over_budget()
-            if summary.stopped:
-                event(f"{scfg.name}: skipped, {summary.stopped}", level="warning")
-                continue
-            source_id = db.upsert_source(conn, scfg.kind, scfg.name, scfg.identity_url,
-                                         scfg.model_dump(mode="json"))
-            # A job board may name its own browser; the others are read with the one set in .env.
-            ctx = SourceContext(http=http, browser=browser.of(scfg.browser) if hasattr(browser, "of") else browser, llm=page_llm,
-                                log=lambda m, sid=source_id: event(m, source_id=sid),
-                                prefs=cfg.search)
-            # A job board's list gives a title, a company and a place. The job's own page is opened
-            # once, and until it has been the job is not scored: a title alone tells too little.
-            board = scfg.kind == "generic" and scfg.max_detail_pages > 0
-            if board:
-                ctx.recall = lambda job: _recalled(conn, job)
-                ctx.unread = [_posting(r) for r in db.unread_postings(conn, WAITING_DAYS, source_id=source_id)]
-            try:
-                postings = build_source(scfg).fetch(ctx)
-            except Exception as e:  # noqa: BLE001 - one bad source must not kill the run
-                summary.source_errors[scfg.name] = str(e)
-                event(f"{scfg.name}: failed: {e}", level="error", source_id=source_id)
-                continue
+        chosen = [s for s in cfg.sources if s.enabled and not (only_source and s.name != only_source)] if collect else []
+        site_id = {s.name: db.upsert_source(conn, s.kind, s.name, s.identity_url, s.model_dump(mode="json")) for s in chosen}
+        found: dict[str, list[tuple[int, JobPosting]]] = {}  # per site, so the jobs keep the order of the settings
+        began = time.monotonic()
 
-            new_here = 0
+        def store(scfg, postings, board: bool = False) -> None:
+            new_here, kept = 0, []
             for p in postings:
-                job_id, is_new = db.upsert_job(conn, p, source_id, run_id)
+                job_id, is_new = db.upsert_job(conn, p, site_id[scfg.name], run_id)
                 new_here += is_new
                 why = reject_reason(p, cfg.search)
                 if why:
@@ -179,10 +161,90 @@ def run_agent(conn, cfg: AgentConfig, llm, browser: Browser | None, *, http: htt
                 elif board and not p.is_read:
                     summary.unread += 1
                 else:
-                    candidates.append((job_id, p))
+                    kept.append((job_id, p))
+            found[scfg.name] = kept
             summary.found += len(postings)
             summary.new += new_here
-            event(f"{scfg.name}: {len(postings)} jobs ({new_here} new)", source_id=source_id)
+            event(f"{scfg.name}: {len(postings)} jobs ({new_here} new)", source_id=site_id[scfg.name])
+
+        def failed(scfg, e: Exception) -> None:  # one bad source must not kill the run
+            summary.source_errors[scfg.name] = str(e)
+            event(f"{scfg.name}: failed: {e}", level="error", source_id=site_id[scfg.name])
+
+        # Company career sites are read over plain HTTP, several at the same time, while the job
+        # boards are read one after another in the browser. Reading costs no AI and no browser
+        # time, so a spending limit does not hold these sites back. Only this thread touches the
+        # database: what a site being read has to say is queued, and written down here.
+        feeds = [s for s in chosen if s.kind != "generic"]
+        said: queue.SimpleQueue = queue.SimpleQueue()
+        pool = ThreadPoolExecutor(max_workers=SITES_AT_ONCE, thread_name_prefix="site") if feeds else None
+
+        def read_feed(scfg):
+            ctx = SourceContext(http=http, browser=None, llm=page_llm, prefs=cfg.search,
+                                log=lambda m, sid=site_id[scfg.name]: said.put((m, sid)))
+            return build_source(scfg).fetch(ctx)
+
+        reading = {s.name: pool.submit(read_feed, s) for s in feeds}
+        taken = 0  # company sites stored so far; they are stored in the order of the settings
+
+        def write_down() -> None:
+            while not said.empty():
+                message, sid = said.get()
+                event(message, source_id=sid)
+
+        def take_in(wait: bool = False) -> None:
+            """Store what the company sites have brought so far; with `wait`, everything left."""
+            nonlocal taken
+            while taken < len(feeds):
+                scfg = feeds[taken]
+                if not wait and not reading[scfg.name].done():
+                    break
+                try:
+                    postings = reading[scfg.name].result()
+                except Exception as e:  # noqa: BLE001
+                    write_down()
+                    failed(scfg, e)
+                else:
+                    write_down()
+                    store(scfg, postings)
+                taken += 1
+            write_down()
+
+        try:
+            for scfg in chosen:
+                if scfg.kind != "generic":
+                    continue
+                summary.stopped = summary.stopped or over_budget()
+                if summary.stopped:
+                    event(f"{scfg.name}: skipped, {summary.stopped}", level="warning")
+                    continue
+                source_id = site_id[scfg.name]
+                # A job board may name its own browser; the others are read with the one set in .env.
+                ctx = SourceContext(http=http, browser=browser.of(scfg.browser) if hasattr(browser, "of") else browser, llm=page_llm,
+                                    log=lambda m, sid=source_id: event(m, source_id=sid),
+                                    prefs=cfg.search)
+                # A job board's list gives a title, a company and a place. The job's own page is opened
+                # once, and until it has been the job is not scored: a title alone tells too little.
+                board = scfg.max_detail_pages > 0
+                if board:
+                    ctx.recall = lambda job: _recalled(conn, job)
+                    ctx.unread = [_posting(r) for r in db.unread_postings(conn, WAITING_DAYS, source_id=source_id)]
+                try:
+                    postings = build_source(scfg).fetch(ctx)
+                except Exception as e:  # noqa: BLE001
+                    failed(scfg, e)
+                else:
+                    store(scfg, postings, board)
+                take_in()
+            take_in(wait=True)
+        finally:
+            if pool is not None:  # a stopped search must not wait for sites still being read
+                pool.shutdown(wait=False, cancel_futures=True)
+        for scfg in chosen:
+            candidates += found.get(scfg.name, [])
+        summary.source_errors = {s.name: summary.source_errors[s.name] for s in chosen if s.name in summary.source_errors}
+        if len(chosen) > 1:
+            event(f"{len(chosen)} sites read in {(time.monotonic() - began) / 60:.1f} minutes")
 
         # 2. Score -------------------------------------------------------------
         workers = max(1, cfg.matching.concurrency)

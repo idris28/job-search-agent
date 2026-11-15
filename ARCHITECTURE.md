@@ -33,7 +33,7 @@ sequenceDiagram
     CLI->>Pipe: run_agent(config, AI, browser)
     Pipe->>DB: active_profile(), start_run() - also takes this run's lock
     loop each source in config.yaml
-        Note over Pipe: Skipped if the token or browser-minute limit is reached
+        Note over Pipe: Company feeds are read several at a time, job boards one after another. A board is skipped once the token or browser-minute limit is reached
         Pipe->>Src: build_source().fetch()
         alt job board (Naukri, Naukrigulf, Bayt)
             Src->>Web: fetch(search page)
@@ -225,7 +225,11 @@ Not in the diagram:
   without a run, and why re-running never scores or emails a job twice.
 - **One job, one row.** A job is identified by its company (without "Pvt Ltd" and similar), the
   meaningful words of its title, and its country, so the same job on two boards is stored once.
-- **Spending is bounded.** A run stops collecting at the browser-minute limit and stops scoring at
+- **Sites are read side by side.** Company career feeds are plain HTTP, so six are read at the
+  same time on worker threads while the job boards go one after another in the browser. Only the
+  run's own thread touches the database and the browser: a feed's results and log lines are
+  handed back and stored in the order of the settings, whichever answered first.
+- **Spending is bounded.** A run stops reading job boards at the browser-minute limit and stops scoring at
   the token limit; what is left waits for the next run.
 - **Nothing reaches a recruiter by accident.** A draft is saved before delivery is attempted,
   delivery happens only with `--gmail-drafts` or `--send`, and sending stops at the daily cap.

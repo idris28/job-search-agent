@@ -78,14 +78,18 @@ def test_run_stops_scoring_at_the_token_limit(conn):
     assert run["status"] == "partial" and run["error"] == "Stopped early: token limit reached (200 of 150)"
 
 
-def test_run_stops_collecting_at_the_browser_time_limit(conn):
+def test_the_browser_time_limit_holds_back_job_boards_but_not_company_sites(conn):
     db.save_profile(conn, "Alex", "resume", {})
     browser = FakeBrowser({})
     browser.minutes_used = 12.0
     cfg = AgentConfig(matching=MatchingPrefs(max_browser_minutes_per_run=10),
-                      sources=[SourceConfig(kind="greenhouse", name="Acme", board="acme")])
+                      sources=[SourceConfig(kind="generic", name="Board", urls=["https://board.example/jobs"]),
+                               SourceConfig(kind="greenhouse", name="Acme", board="acme")])
     s = run_agent(conn, cfg, FakeLLM(), browser, http=many_jobs(3))
-    assert "browser time limit reached" in s.stopped and s.found == 0
+    assert "browser time limit reached" in s.stopped and s.status == "partial"
+    assert browser.visited == []  # the board, which needs the browser, was not opened
+    assert s.found == 3           # a company site costs no browser time and no AI, so it is still read
+    assert s.scored == 0          # scoring stops at a limit that was reached; the jobs wait for the next search
 
 
 # --- 6 and 8. sending, the daily cap and follow-ups ---------------------------------

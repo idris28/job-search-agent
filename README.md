@@ -267,7 +267,9 @@ re-scored when its text changes. A job board's list gives just a title, a compan
 job from a board is not scored until its own page has been read. Each run opens up to
 `max_detail_pages` such pages per board, only for jobs the rule filters would keep: first the ones
 listed now, then ones listed in the last 7 days and still unread. The rest wait for the next run,
-and a page is never opened twice. A board that lists nothing is not asked for job pages. One failing source marks the run `partial` and the rest
+and a page is never opened twice. A board that lists nothing is not asked for job pages. Company
+career sites are read six at the same time while the job boards are read one after another, which
+brought 69 sites from about 194 seconds to 46 in one measurement. One failing source marks the run `partial` and the rest
 continue. A run that is stopped (Ctrl-C, or **Stop** on the page) is also marked `partial`: it
 shortlists what it had already scored and records where it ended. A run whose program was closed
 before it could do that is given its end the next time runs are listed or a new run starts.
