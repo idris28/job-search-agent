@@ -483,6 +483,13 @@ def save_tailored_cv(conn, profile_id: int, job_id: int, made: dict | None) -> N
                  (Jsonb(made) if made is not None else None, profile_id, job_id))
 
 
+def save_linkedin(conn, profile_id: int, job_id: int, messages: dict) -> None:
+    """Keep the LinkedIn messages written for one job."""
+    set_application_status_if_missing(conn, profile_id, job_id)
+    conn.execute("UPDATE applications SET linkedin = %s, updated_at = now() WHERE profile_id = %s AND job_id = %s",
+                 (Jsonb(messages), profile_id, job_id))
+
+
 def save_prep(conn, profile_id: int, job_id: int, prep: dict) -> None:
     """Keep the interview preparation written for one job."""
     set_application_status_if_missing(conn, profile_id, job_id)

@@ -112,6 +112,7 @@ jsa jobs --min-score 75          # best matches across all runs
 jsa show 42 --full               # one job, with matched skills, gaps, red flags
 jsa cover-letter 42              # draft, saved on the application record
 jsa answers 42                   # short answers for the site's application form, to paste in yourself
+jsa linkedin 42                  # a LinkedIn connection note and message for the recruiter, to send yourself
 jsa cv 42                        # your resume arranged for this job, checked against it, as a PDF in resumes/
 jsa prep 42                      # interview preparation: likely questions, points for each answer, what to revise
 jsa replies                      # look in Gmail for answers to your emails (only when switched on)
@@ -268,6 +269,13 @@ because job sites block automated browsers (Bayt and Google both refused one in 
 **General applications.** `jsa add-contacts` (or "Add HR addresses" on the website) puts HR addresses
 that have no posting on the shortlist. Their emails are drafted from `general_email_template.txt`
 and sent under the same daily limit as any other.
+
+**LinkedIn messages.** `jsa linkedin <id>` (or **Write LinkedIn messages** in a job's panel) writes
+a connection note, cut to LinkedIn's 300 characters at the end of a sentence, and a direct message
+of 60 to 110 words, for the recruiter of that job. Both lead with the current title, years and the
+skills the posting asks for, use the recruiter's name only when the posting or the draft names
+them, and say when you can join (`outreach.notice_period`). They are saved with the job and copied
+from the panel; you send them on LinkedIn yourself.
 
 **Application answers.** `jsa answers <id>` (or **Write the answers** in a job's panel) writes
 short answers to what a job site's form usually asks: why this role, why you, an introduction, key

@@ -314,6 +314,8 @@ body.reading .drawer{transform:none;visibility:visible}
 .steps li{margin-bottom:8px;max-width:72ch;padding-left:4px}
 .steps li:last-child{margin-bottom:0}
 .steps .btn{margin-left:8px;vertical-align:middle;cursor:grab;text-decoration:none}
+.qh .cnt{margin-left:8px;font-style:normal;font-size:12px;color:var(--t3);font-variant-numeric:tabular-nums}
+.qh .cnt.over{color:var(--bad)}
 .qa{margin-bottom:16px}
 .qh{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px}
 .qh span{font-size:13px;color:var(--t2)}

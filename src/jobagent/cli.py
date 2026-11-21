@@ -326,6 +326,25 @@ def cmd_cv(args, settings):
           "\"Attach it to this job's email\" in the job's panel.)")
 
 
+def cmd_linkedin(args, settings):
+    """Write a connection note and a direct message for the recruiter of one job. The person
+    sends them on LinkedIn; the program never signs in there."""
+    from .models import NOTE_LIMIT, fit_note
+
+    cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
+    with _conn(settings) as conn:
+        p, text, job = _job_for_writing(conn, args.job_id)
+        app = db.get_application(conn, p["id"], args.job_id) or {}
+        prefs = {"notice_period": cfg.outreach.notice_period}
+        written = _llm(settings).linkedin_messages(p["resume_text"], text, app.get("recruiter_name"), prefs)
+        messages = {"note": fit_note(written.note), "message": written.message.strip()}
+        db.save_linkedin(conn, p["id"], args.job_id, messages)
+    print(f"LinkedIn messages for #{args.job_id} ({job['title']})")
+    print(f"\nConnection note ({len(messages['note'])} of {NOTE_LIMIT} characters):\n{messages['note']}")
+    print(f"\nMessage ({len(messages['message'].split())} words):\n{messages['message']}")
+    print("\n(Saved with the job. Send them yourself on LinkedIn; read them first.)")
+
+
 def cmd_prep(args, settings):
     """Write interview preparation for one job: likely questions with points for each answer,
     questions to ask, and what to revise first."""
@@ -1135,6 +1154,11 @@ def build_parser() -> argparse.ArgumentParser:
     cv = sub.add_parser("cv", help="write a CV for one job from your resume, as a PDF")
     cv.add_argument("job_id", type=int)
     cv.set_defaults(fn=cmd_cv)
+
+    li = sub.add_parser("linkedin", help="write a LinkedIn connection note and message for one job's recruiter")
+    li.add_argument("job_id", type=int)
+    li.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
+    li.set_defaults(fn=cmd_linkedin)
 
     pr = sub.add_parser("prep", help="write interview preparation for one job")
     pr.add_argument("job_id", type=int)

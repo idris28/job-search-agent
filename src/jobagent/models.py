@@ -190,6 +190,28 @@ class InterviewPrep(BaseModel):
     revise: list[str] = Field(description="Up to 6 topics to revise first: what the posting asks for that the resume shows little of")
 
 
+class LinkedInMessages(BaseModel):
+    """What to send a recruiter on LinkedIn for one job. The person sends it themselves."""
+
+    note: str = Field(description="The note sent with a connection request, at most 280 characters")
+    message: str = Field(description="A direct message or InMail, 60 to 110 words")
+
+
+NOTE_LIMIT = 300  # LinkedIn takes at most this many characters in the note of a connection request
+
+
+def fit_note(text: str, limit: int = NOTE_LIMIT) -> str:
+    """The note cut to LinkedIn's limit at the end of a sentence, or failing that at a word."""
+    text = " ".join(text.split()) if "\n" not in text else text.strip()
+    if len(text) <= limit:
+        return text
+    head = text[:limit]
+    end = max(head.rfind(". "), head.rfind("? "), head.rfind(".\n"))
+    if end >= limit // 2:
+        return head[:end + 1].rstrip()
+    return head[:head.rfind(" ")].rstrip(" ,;:") if " " in head else head
+
+
 # The answers in the order the page shows them, with the name of each.
 ANSWER_NAMES = [("why_this_role", "Why this role"), ("why_you", "Why you"), ("about_you", "About you"),
                 ("key_skills", "Key skills"), ("experience", "Experience")]

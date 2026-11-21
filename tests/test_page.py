@@ -579,6 +579,34 @@ def test_a_picture_of_a_post_is_read_into_the_box_and_added_only_when_you_say(co
     assert site.sideways() <= 0 and site.refusals() == 0
 
 
+def test_linkedin_messages_are_written_shown_counted_and_copied(conn, open_site):
+    pid, ids = seed(conn, 1)
+    site = open_site()
+    page, block = site.page, site.page.locator("#detail #liblock")
+    copied = lambda: page.evaluate("navigator.clipboard.readText()")  # noqa: E731
+    page.locator(f'tr.row[data-job="{ids[0]}"]').click()
+    expect(block).to_contain_text("You send them yourself on LinkedIn")
+    block.locator('[data-act="linkedin"]').click()
+    expect(page.locator("#live b")).to_contain_text(f"Write LinkedIn messages for #{ids[0]}")
+    expect(page.locator("#live b")).to_contain_text("done")
+
+    note, message = "Hi, I saw the Java Engineer role. I have 8 years of Java and Spring Boot. Glad to connect.", "Hi, I am applying for the Java Engineer role. May I send my CV?"
+    db.save_linkedin(conn, pid, ids[0], {"note": note, "message": message})
+    page.keyboard.press("Escape")
+    page.locator(f'tr.row[data-job="{ids[0]}"]').click()
+    expect(block.locator(".qh .cnt")).to_have_text([f"{len(note)} of 300 characters", "14 words"])
+    expect(block.locator(".desc")).to_have_text([note, message])
+    block.locator('[data-act="copy-li"][data-to="note"]').click()
+    site.toast("Connection note copied")
+    assert copied() == note
+    block.locator('[data-act="copy-li"][data-to="message"]').click()
+    site.toast("Message copied")
+    assert copied() == message
+    expect(block).to_contain_text("choose Connect, then Add a note")
+    expect(block.locator('[data-act="linkedin"]')).to_have_text("Write them again")
+    assert site.sideways() <= 0 and site.refusals() == 0
+
+
 def test_hr_addresses_are_added_listed_and_can_be_deleted(conn, open_site):
     seed(conn, 2)
     site = open_site()

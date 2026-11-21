@@ -106,6 +106,7 @@ function renderDetail(keep) {
       ${m.missing_skills.length ? `<p class="lbl">Asked for, not on your resume</p>${chips(m.missing_skills, "c-slate")}` : ""}
       ${m.red_flags.length ? `<p class="lbl">Check before applying</p>${chips(m.red_flags, "c-red")}` : ""}</div>` : ""}
     <div class="block"><h3>Email to the recruiter${seg}</h3>${mail}</div>
+    <div class="block" id="liblock"><h3>LinkedIn message</h3>${liBlock(a)}</div>
     <div class="block"><h3>Cover letter</h3>${a && a.cover_letter ? `<div class="mail desc">${esc(a.cover_letter)}</div><div class="acts"><button class="btn sm" data-act="copy-cover">${ic("copy")}Copy</button><button class="btn sm ghost" data-act="cover">Write it again</button></div>`
       : `<p>For sites that ask for one</p><button class="btn" data-act="cover">Write a cover letter</button>`}</div>
     <div class="block"><h3>Answers for the application form</h3>
@@ -121,6 +122,15 @@ function renderDetail(keep) {
     ${j.description ? `<div class="block"><details><summary>Full job description</summary><div class="desc">${esc(j.description)}</div></details></div>` : ""}`;
   fit(); fitAddr();
   if (!keep) { el.scrollTop = 0; $("[data-act=back]", el).focus({ preventScroll: true }); }
+}
+function liBlock(a) {  // a connection note and a direct message for the recruiter, which the person sends on LinkedIn
+  const li = a && a.linkedin;
+  if (!li) return `<p>A short note to send with a connection request, and a message for a recruiter you are connected to, written from your resume and this posting. You send them yourself on LinkedIn</p><button class="btn" data-act="linkedin">Write LinkedIn messages</button>`;
+  const words = t => t.trim().split(/\s+/).length;
+  const part = (key, label, count) => `<div class="qa"><div class="qh"><span>${label} <em class="cnt${key === "note" && li.note.length > 300 ? " over" : ""}">${count}</em></span><button class="btn sm ghost" data-act="copy-li" data-to="${key}">${ic("copy")}Copy</button></div><p class="desc">${esc(li[key])}</p></div>`;
+  return part("note", "Connection note", `${li.note.length} of 300 characters`) + part("message", "Message", `${words(li.message)} words`)
+    + `<p class="faint">On LinkedIn, choose Connect, then Add a note, and paste the note. A free account can add a note to only a few requests a month, so keep it for the jobs you care most about. Send the message once you are connected, or as an InMail</p>`
+    + `<div class="acts"><button class="btn sm ghost" data-act="linkedin">Write them again</button></div>`;
 }
 function cvBlock(a) {  // the CV written for this job: the resume's own facts, what the posting asks for first
   const cv = a && a.cv;

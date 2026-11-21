@@ -197,6 +197,12 @@ def seed(conn):
                          "For eight years I have built Java and Spring Boot services, most recently the order and billing services of a large retailer. "
                          "Your posting asks for microservices at scale and a move to Dubai, both of which suit me.\n\nYours sincerely,\nAlex Morgan")
 
+    db.save_linkedin(conn, pid, ids[0], {
+        "note": "Hi, I saw the Senior Technical Software Engineer role at Skyline Aviation Group. I am a Senior Java Engineer with 8 years of "
+                "Java 17, Spring Boot and microservices, and can join immediately. I would be glad to connect.",
+        "message": "Hi, I am applying for the Senior Technical Software Engineer role at Skyline Aviation Group. I am a Senior Java Engineer "
+                   "with 8 years of Java 17, Spring Boot, microservices and PostgreSQL, and I cut page load time from 4 seconds to 1 on a "
+                   "large retailer's order service. I am ready to relocate to Dubai and can join immediately. May I send you my CV?"})
     db.save_answers(conn, pid, ids[0], {
         "why_this_role": "The posting asks for Java 17 and Spring Boot services used by millions of people, which is the work I have done for eight years. "
                          "A move to Dubai suits me, and the relocation support makes it practical.",
@@ -331,7 +337,7 @@ with sync_playwright() as pw:
         index.append((group[0], file, title, text))
         print("  ", file)
 
-    def tall(height=3400):
+    def tall(height=4400):  # tall enough for every block of a job's panel
         page.set_viewport_size({"width": 1440, "height": height})
         settle(300)
 
@@ -486,9 +492,12 @@ with sync_playwright() as pw:
     settle(400)
     shot("job-email-preview", "Preview", "Preview shows the email as the recruiter will see it. Edit brings the text back.", target=blocks.nth(1), pad=8)
     panel.locator('[data-act="sheet"][data-to="edit"]').click()
-    shot("job-cover-letter", "Cover letter", "For sites that ask for one. Copy puts it on the clipboard; Write it again makes a new one.", target=blocks.nth(2), pad=8)
+    shot("job-cover-letter", "Cover letter", "For sites that ask for one. Copy puts it on the clipboard; Write it again makes a new one.",
+         target=panel.locator('.block:has(h3:text-is("Cover letter"))'), pad=8)
     shot("job-application-answers", "Answers for the application form", "Your own details and short answers written for this job, each with a Copy button, to paste into the site's form yourself. Nothing is submitted for you.",
-         target=blocks.nth(3), pad=8)
+         target=panel.locator('.block:has(h3:text-is("Answers for the application form"))'), pad=8)
+    shot("job-linkedin", "LinkedIn message", "A note for a connection request, within LinkedIn's 300 characters, and a message for a recruiter "
+         "you are connected to, each with a Copy button and its length. You send them yourself on LinkedIn.", target=panel.locator("#liblock"), pad=8)
     shot("job-cv", "CV for this job", "Your resume arranged for this posting: the same facts, with what this job asks for first. It is checked against your resume, and what "
          "your resume does not say is taken out and listed. Open the PDF to read it; the switch attaches it to this job's email in place of your usual CV.",
          target=panel.locator("#cvblock"), pad=8)

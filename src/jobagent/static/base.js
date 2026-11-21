@@ -23,7 +23,7 @@ const VIEWS = {
   settings: ["Settings", "Setup, the morning routine, your templates and limits"],
 };
 const HOT = { score: ["scored", "shortlisted"], run: ["found", "scored"], daily: ["found", "scored", "shortlisted"], add: ["found", "scored", "shortlisted"], contacts: ["shortlisted"], email: ["shortlisted"],
-              send: ["shortlisted", "emailed", "applied"], "gmail-drafts": ["shortlisted"], "cover-letter": ["shortlisted"], answers: ["shortlisted"], followups: ["due"] };
+              send: ["shortlisted", "emailed", "applied"], "gmail-drafts": ["shortlisted"], "cover-letter": ["shortlisted"], answers: ["shortlisted"], linkedin: ["shortlisted"], followups: ["due"] };
 const STATUS_C = { shortlisted: "c-paper", applied: "c-blue", interviewing: "c-amber", offer: "c-green", rejected: "c-red", skipped: "c-aside", withdrawn: "c-aside" };
 const COUNTRIES = [["UAE", /\b(uae|united arab emirates|dubai|abu dhabi|sharjah|ajman)\b/], ["Saudi Arabia", /\b(saudi|ksa|riyadh|jeddah|dammam|khobar)\b/], ["Qatar", /\b(qatar|doha)\b/],
   ["India", /\b(india|ahmedabad|gandhinagar|bengaluru|bangalore|pune|hyderabad|mumbai|chennai|gurugram|gurgaon|noida|delhi|kolkata)\b/]];

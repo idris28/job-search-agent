@@ -39,7 +39,7 @@ MAX_PICTURE, MAX_PICTURES = 3_700_000, 10
 
 # Every action the page can start as a task.
 TASKS = ("migrate", "run", "score", "daily", "email", "contacts", "send", "gmail-drafts", "followups",
-         "replies", "cover-letter", "answers", "cv", "prep", "dedupe", "notify-test", "add", "backup")
+         "replies", "cover-letter", "answers", "linkedin", "cv", "prep", "dedupe", "notify-test", "add", "backup")
 
 
 class Feed:
@@ -409,6 +409,8 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             label, argv = f"Write a cover letter for #{ids[0]}", ["cover-letter", ids[0]]
         elif action == "answers" and len(ids) == 1:
             label, argv = f"Write application answers for #{ids[0]}", ["answers", ids[0]]
+        elif action == "linkedin" and len(ids) == 1:
+            label, argv = f"Write LinkedIn messages for #{ids[0]}", ["linkedin", ids[0]]
         elif action == "cv" and len(ids) == 1:
             label, argv = f"Write a CV for #{ids[0]}", ["cv", ids[0]]
         elif action == "prep" and len(ids) == 1:

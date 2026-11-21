@@ -56,6 +56,9 @@ const A = {
   cover: () => startTask({ action: "cover-letter", job_ids: [S.sel] }),
   "copy-cover": () => navigator.clipboard.writeText(S.detail.application.cover_letter).then(() => toast("Cover letter copied")),
   answers: () => startTask({ action: "answers", job_ids: [S.sel] }),
+  linkedin: () => startTask({ action: "linkedin", job_ids: [S.sel] }),
+  "copy-li": b => navigator.clipboard.writeText(S.detail.application.linkedin[b.dataset.to])
+    .then(() => toast(`${b.dataset.to === "note" ? "Connection note" : "Message"} copied`), () => toast("Copying did not work. Select the text and copy it", true)),
   cv: async () => { const c = S.detail.application && S.detail.application.cv;
     if (c && c.found && !await ask("Write the CV again?", "The file is replaced, and this job's email goes back to your usual CV until you switch the new one on.", "Write it again")) return;
     startTask({ action: "cv", job_ids: [S.sel] }); },

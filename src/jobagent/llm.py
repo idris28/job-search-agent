@@ -10,7 +10,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from .config import OutreachPrefs, SearchPrefs
-from .models import (ApplicationAnswers, CandidateProfile, ExtractedListings, InterviewPrep, JobPosting, MatchResult,
+from .models import (ApplicationAnswers, CandidateProfile, ExtractedListings, InterviewPrep, JobPosting, LinkedInMessages, MatchResult,
                      TailoredResume,
                      PastedJob, Prescreen, RecruiterEmail, RecruiterReview, TemplateEmail)
 
@@ -110,6 +110,28 @@ Rules:
 - revise: the topics to read up on first, the most important first: what the posting asks for
   that the RESUME shows little or nothing of. Name the topic and, in a few words, what to cover.
 - Plain words, no exclamation marks, no greeting."""
+
+LINKEDIN_INSTRUCTIONS = """You write two short LinkedIn messages from a job candidate to the
+recruiter for one job. The candidate copies them into LinkedIn and sends them; recruiters there read
+on a phone, in a few seconds.
+
+note: sent with a connection request. At most 280 characters, counting spaces.
+message: a direct message (or InMail) once connected. 60 to 110 words.
+
+Rules for both:
+- Open with "Hi <first name>," when RECRUITER gives a name, otherwise "Hi,". Never guess a name.
+- Say the role, as the posting names it, and the company when the posting names one. If it does
+  not ("(not named in the posting)", "Confidential"), write no company name or stand-in.
+- Lead with what fits: the candidate's current title and years, and two or three skills the
+  posting asks for that the RESUME shows, in the posting's words. The message may add one result
+  from the resume that this posting cares about, with its figure as the resume gives it.
+- Use only facts in the RESUME and the PREFERENCES. Never invent an employer, a number or a skill.
+- When the PREFERENCES give a notice period, the message says when the candidate can join.
+- End with one easy next step: the note asks to connect; the message offers to send the CV or to
+  talk briefly.
+- Plain words. No exclamation marks, no emoji, no hashtags, no links, no subject line, no
+  sign-off block (LinkedIn shows the sender's name). No "I hope you are well", no "I came across",
+  no claim that cannot be checked ("passionate", "perfect fit", "proven track record")."""
 
 COVER_LETTER_INSTRUCTIONS = """Write a concise, specific cover letter (under 250 words) for this
 candidate and job. Lead with the strongest 2-3 relevant achievements from the resume, mapped to the
@@ -466,6 +488,14 @@ class BaseLLM:
         resume = f"RESUME:\n{resume_text}\n\n"  # the same for every job, so sent as a cached prefix
         return self._parse(APPLICATION_ANSWERS_INSTRUCTIONS, f"JOB POSTING:\n{job_text}", ApplicationAnswers,
                            cached_prefix=resume)
+
+    def linkedin_messages(self, resume_text: str, job_text: str, recruiter_name: str | None = None,
+                          prefs: dict | None = None) -> LinkedInMessages:
+        """A connection note and a direct message for the recruiter of one job, for the person to send."""
+        given = {k: v for k, v in (prefs or {}).items() if v}
+        return self._parse(LINKEDIN_INSTRUCTIONS,
+                           f"RECRUITER: {recruiter_name or '(not named)'}\n\nPREFERENCES:\n{json.dumps(given) if given else '(none)'}"
+                           f"\n\nJOB POSTING:\n{job_text}", LinkedInMessages, cached_prefix=f"RESUME:\n{resume_text}\n\n")
 
     def tailored_resume(self, resume_text: str, job_text: str) -> TailoredResume:
         """The resume arranged for one job: the same facts, what the posting asks for first.
