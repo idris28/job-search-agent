@@ -246,6 +246,11 @@ job boards. `search.max_age_days` (7 in the example) drops older postings, and l
 email (paste, then Ctrl-D, or pass a text file). It reads the role, company and email address,
 scores the job and shortlists it; `jsa email <id> --send` then emails that address. Pasting a post
 you added before updates that job; if its email has gone, the command says when and sends nothing.
+`jsa add post.png` takes a picture of the post instead (PNG, JPG, WebP or GIF): the AI model reads
+its text, the command prints it, and the job is added from it. On the website, a picture is pasted,
+dropped or chosen in the **Add from a post** box, and its text fills the box for you to check
+before you click **Add the job**; a tall screenshot is sent in pieces so the small print stays
+readable.
 
 **Sending.** `jsa email --send` sends each ready email from your Gmail with the CV from
 `outreach.resume_path` attached, then marks the job applied so it is not emailed twice by accident (a deliberate second email goes

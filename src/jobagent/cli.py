@@ -868,12 +868,22 @@ def cmd_add(args, settings, *, read=None):
     """Add a job from pasted text (for example a LinkedIn post that says to email a CV)."""
     from .actions import ActionError, add_pasted_job
 
-    text = (Path(args.file).read_text(encoding="utf-8") if args.file
-            else (read or sys.stdin.read)()).strip()
+    from .llm import picture_kind
+
+    raw = Path(args.file).read_bytes() if args.file else None
+    kind = picture_kind(raw) if raw else None
+    llm = _llm(settings) if kind else None
+    if kind:  # a screenshot or photo of the post: its text is read first, and shown
+        text = llm.read_pictures([(raw, kind)])
+        if not text:
+            sys.exit("No text was found in that picture. Try a clearer screenshot.")
+        print(f"Text read from the picture (check the email address):\n{text}\n")
+    else:
+        text = (raw.decode("utf-8") if raw is not None else (read or sys.stdin.read)()).strip()
     if not text:
         sys.exit("Nothing to add: paste the post text, then press Ctrl-D (or pass a file).")
     cfg = AgentConfig.load(args.config) if Path(args.config).exists() else AgentConfig()
-    llm = _llm(settings)
+    llm = llm or _llm(settings)
     with _conn(settings) as conn:
         try:
             job_id, is_new, found, m = add_pasted_job(conn, llm, cfg, text, args.url)
@@ -1158,7 +1168,7 @@ def build_parser() -> argparse.ArgumentParser:
     apl.set_defaults(fn=cmd_apply)
 
     ad = sub.add_parser("add", help="add a job from pasted text, e.g. a LinkedIn post")
-    ad.add_argument("file", nargs="?", help="text file with the post (default: paste, then Ctrl-D)")
+    ad.add_argument("file", nargs="?", help="text file, or a picture (PNG, JPG, WebP, GIF), of the post (default: paste, then Ctrl-D)")
     ad.add_argument("--url", help="link to the post, if you have one")
     ad.add_argument("--config", default=os.getenv("JOBAGENT_CONFIG", "config.yaml"))
     ad.set_defaults(fn=cmd_add)

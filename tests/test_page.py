@@ -521,6 +521,64 @@ def test_a_reply_found_in_gmail_shows_on_the_job_and_the_check_is_offered_only_w
     assert site.sideways() <= 0 and site.refusals() == 0 and on.refusals() == 0
 
 
+def test_a_picture_of_a_post_is_read_into_the_box_and_added_only_when_you_say(conn, open_site, monkeypatch, tmp_path):
+    import base64
+
+    seed(conn, 1)
+    calls = []
+
+    class Reader:
+        def read_pictures(self, pictures):
+            calls.append(pictures)
+            return f"Post text {len(calls)}"
+
+    monkeypatch.setattr("jobagent.llm.make_llm", lambda settings: Reader())
+    site = open_site()
+    page = site.page
+    # A tall phone screenshot, drawn in the browser: 1170 wide, 4000 high.
+    tall = tmp_path / "post.png"
+    maker = site.context.new_page()
+    maker.set_viewport_size({"width": 1170, "height": 4000})
+    maker.set_content("<body style='margin:0;background:#fff;font:40px sans-serif'>We are hiring<br>careers@acme.example</body>")
+    tall.write_bytes(maker.screenshot())
+    maker.close()
+
+    page.locator('.head [data-act="add"]').click()
+    box = page.locator("#adddlg")
+    expect(box.locator("#addpicask")).to_contain_text("Only have a picture of the post? Paste it here, drop it on this box, or choose a picture")
+    page.fill("#addurl", "https://www.linkedin.com/posts/example")
+    box.locator("#addpicfile").set_input_files(str(tall))
+    expect(page.locator("#addtext")).to_have_value("Post text 1")
+    site.toast("Text read from the picture. Check it, the email address above all")
+    expect(box.locator("#addpicbusy")).to_be_hidden()
+    pieces = calls[0]
+    assert [kind for _, kind in pieces] == ["image/png"] * 3  # cut into three pieces, not shrunk to an unreadable strip
+    sizes = [(int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")) for data, _ in pieces]  # from each PNG's header
+    assert sizes == [(1000, 1400), (1000, 1400), (1000, 3419 - 2 * 1340)]
+
+    # Pasted and dropped pictures are read too, and their text goes under what is already there.
+    png = base64.b64encode(tall.read_bytes()).decode()
+    put = """async ([png, how]) => {
+        const bytes = Uint8Array.from(atob(png), c => c.charCodeAt(0)), dt = new DataTransfer();
+        dt.items.add(new File([bytes], "shot.png", { type: "image/png" }));
+        const box = document.querySelector('#adddlg');
+        if (how === 'paste') document.querySelector('#addtext').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+        else { box.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true })); box.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); }
+    }"""
+    page.evaluate(put, [png, "paste"])
+    expect(page.locator("#addtext")).to_have_value("Post text 1\n\nPost text 2")
+    page.evaluate(put, [png, "drop"])
+    expect(page.locator("#addtext")).to_have_value("Post text 1\n\nPost text 2\n\nPost text 3")
+    expect(box).not_to_have_class(re.compile("dropping"))
+
+    box.locator("#addpicfile").set_input_files({"name": "notes.png", "mimeType": "image/png", "buffer": b"not really a picture"})
+    site.toast("notes.png could not be opened. Use a PNG, JPG, WebP or GIF file", bad=True)
+    assert len(calls) == 3 and conn.execute("SELECT count(*) AS n FROM jobs").fetchone()["n"] == 1  # nothing added yet
+    box.locator('[data-act="add-go"]').click()
+    expect(page.locator("#live b")).to_contain_text("Add a job from a post")
+    assert site.sideways() <= 0 and site.refusals() == 0
+
+
 def test_hr_addresses_are_added_listed_and_can_be_deleted(conn, open_site):
     seed(conn, 2)
     site = open_site()

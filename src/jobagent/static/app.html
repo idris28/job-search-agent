@@ -163,8 +163,10 @@
 <dialog id="ask"><h2></h2><p></p><div class="foot"><button class="btn" value="no">Cancel</button><button class="btn primary" value="yes"></button></div></dialog>
 <dialog id="adddlg">
   <h2>Add a job from a post</h2>
-  <p>Paste a LinkedIn post, a WhatsApp message or an email. The role, company and email address are read from it, then the job is scored and shortlisted.</p>
+  <p>Paste a LinkedIn post, a WhatsApp message or an email, as text or as a picture. The role, company and email address are read from it, then the job is scored and shortlisted.</p>
   <textarea class="field short" id="addtext" style="min-height:168px" aria-label="Post text" placeholder="Paste the post here"></textarea>
+  <p class="picline"><span id="addpicask">Only have a picture of the post? Paste it here, drop it on this box, or <button class="link strong" data-act="add-picture">choose a picture</button></span><span id="addpicbusy" hidden></span></p>
+  <input type="file" id="addpicfile" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
   <input class="field" id="addurl" aria-label="Link to the post" placeholder="Link to the post (optional)">
   <p style="margin:8px 0 0">Only have HR email addresses, with no job post? <button class="link strong" data-act="hr">Add HR addresses</button></p>
   <div class="foot"><button class="btn" data-act="close-add">Cancel</button><button class="btn primary" data-act="add-go">Add the job</button></div>

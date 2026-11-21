@@ -94,7 +94,7 @@ The strip says done and the lists refresh by themselves.
 
 ### Add from a post
 
-Paste a LinkedIn post, a WhatsApp message or an email. The role, company and address are read from it, and the job is scored and shortlisted.
+Paste a LinkedIn post, a WhatsApp message or an email. The role, company and address are read from it, and the job is scored and shortlisted. Only have a picture of the post? Paste it, drop it on the box, or choose it, and its text is written into the box for you to check.
 
 ![Add from a post](15-add-from-a-post.png)
 

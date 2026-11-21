@@ -125,6 +125,7 @@ inboxes is rarely read and can get your Gmail account marked as spam.
 | Arrow beside it, **Morning routine** | Search, then a digest file, one summary email to yourself, and a backup. |
 | Arrow beside it, **Search one site** | Searches just the site you pick. |
 | **Add from a post** | Paste a LinkedIn post, WhatsApp message or email that asks for CVs. The role, company and email address are read from it, and the job is scored and shortlisted. Click **Add the job** to start. |
+| A picture of a post, in **Add from a post** | When the post is a picture (a screenshot, a photo, an image someone sent you), paste it into the box, drop it on the box, or click **choose a picture**. The AI model reads the text in it and writes it into the box, under anything already there, so a post split over two screenshots can be added one after the other. Check the text, the email address above all, because a misread letter would send the email to the wrong place. Then click **Add the job**; nothing is added before that. A tall phone screenshot is cut into pieces so the small print stays readable. PNG, JPG, WebP and GIF pictures work; reading one costs about a cent. |
 | **Save to Job Search**, a bookmark in your own browser | Brings a job over from the page you are looking at, so you do not have to copy and paste. Set it up once: under **Settings**, **Save a job from your browser**, drag the **Save to Job Search** button to your browser's bookmarks bar. Then, on a job's page or a LinkedIn post, select the text of the post (or select nothing to take the whole page) and click the bookmark. Job Search opens in a new tab with the post and its link already in the **Add from a post** box. Check it and click **Add the job**; nothing is added before that. Job Search has to be running. |
 
 With **Score ordinary searches as a batch too** switched on (Settings, **Search and limits**), Find
@@ -259,7 +260,7 @@ post) runs as a task.
 | Find new jobs, Run the morning routine, Search one site | Yes | The morning routine emails you a summary |
 | Collect only, score later | Yes, but less: no scoring | No |
 | Score waiting jobs | Yes: AI only, no browser | No |
-| Add from a post | Yes, a little | No |
+| Add from a post, and reading a picture of a post | Yes, a little | No |
 | Draft emails, Write it again | Yes | No |
 | Look for addresses | Yes | No |
 | Write a cover letter, Write the answers, Write a CV for this job, Prepare for the interview | Yes, a little | No |

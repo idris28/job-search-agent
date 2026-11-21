@@ -273,6 +273,31 @@ email as that recruiter would, against the job posting and the resume.
 - rewrite_instructions: specific edits that would raise the score. Empty if score >= 9.
 Be honest and strict; do not inflate scores."""
 
+PICTURE_TEXT_INSTRUCTIONS = """You are given one or more pictures a job seeker saved, in order:
+usually screenshots or photos of a job post, a WhatsApp message or an email. Write out the text in
+them, so that it can be read as if it had been pasted.
+
+Rules:
+- Copy the words exactly as they appear. Do not summarise, translate, correct or add anything.
+- Copy email addresses, phone numbers and links character for character. They matter most.
+- Keep the line breaks and the order of the text. Leave out the parts of an app's screen around the
+  post (buttons such as Like, Comment and Share, reaction counts, menus, the time on the phone).
+- When the pictures are pieces of one tall screenshot, cut with a small overlap, a line can appear
+  at the bottom of one piece and again at the top of the next: write it once.
+- Plain text only, no Markdown, and nothing of your own before or after it.
+- If there is no readable text in the pictures, reply with exactly: NO TEXT"""
+
+# The kinds of picture both providers read, told apart by their first bytes.
+PICTURE_KINDS = ((b"\x89PNG\r\n\x1a\n", "image/png"), (b"\xff\xd8\xff", "image/jpeg"), (b"GIF87a", "image/gif"), (b"GIF89a", "image/gif"))
+
+
+def picture_kind(data: bytes) -> str | None:
+    """The media type of a PNG, JPEG, GIF or WebP picture, from its first bytes; None for anything else."""
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return next((kind for start, kind in PICTURE_KINDS if data.startswith(start)), None)
+
+
 PASTED_JOB_INSTRUCTIONS = """You are given text a job seeker pasted, usually a social media post
 by a recruiter or employee announcing a vacancy. Extract the one job it describes. Use only what
 the text says: do not guess a company, location or email address. Copy the email address exactly.
@@ -326,6 +351,10 @@ class BaseLLM:
     def _text(self, instructions: str, user_input: str) -> str:
         raise NotImplementedError
 
+    def _pictures_text(self, instructions: str, pictures: list[tuple[bytes, str]]) -> str:
+        """The model's text answer about `pictures`, each given as (bytes, media type)."""
+        raise NotImplementedError
+
     # --- tasks ---------------------------------------------------------------
 
     def extract_profile(self, resume_text: str) -> CandidateProfile:
@@ -367,6 +396,11 @@ class BaseLLM:
     def find_contact(self, company: str, location: str | None) -> dict | None:
         """A published application address for a company; providers without web search return None."""
         return None
+
+    def read_pictures(self, pictures: list[tuple[bytes, str]]) -> str:
+        """The text in pictures of a job post, in order, as if it had been pasted; "" when there is none."""
+        text = self._pictures_text(PICTURE_TEXT_INSTRUCTIONS, pictures).strip()
+        return "" if text.upper().strip(" .") == "NO TEXT" else text
 
     def read_pasted_job(self, text: str) -> PastedJob:
         return self._parse(PASTED_JOB_INSTRUCTIONS, f"PASTED TEXT:\n{text[:15000]}", PastedJob)
@@ -482,6 +516,15 @@ class OpenAILLM(BaseLLM):
         resp = self.client.responses.create(
             model=self.model, instructions=instructions, input=user_input,
         )
+        self._count(resp)
+        return resp.output_text.strip()
+
+    def _pictures_text(self, instructions: str, pictures: list[tuple[bytes, str]]) -> str:
+        import base64
+
+        content = [{"type": "input_image", "image_url": f"data:{kind};base64,{base64.b64encode(data).decode()}"} for data, kind in pictures]
+        resp = self.client.responses.create(model=self.model, instructions=instructions, input=[
+            {"role": "user", "content": [*content, {"type": "input_text", "text": "Write out the text in these pictures."}]}])
         self._count(resp)
         return resp.output_text.strip()
 

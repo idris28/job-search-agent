@@ -33,6 +33,8 @@ from .report import _paragraphs_html, digest_markdown
 
 MAX_LINES = 4000
 MAX_UPLOAD = 10 * 1024 * 1024
+# Claude takes a picture of up to 5 MB once it is written out as base64, which is a third longer.
+MAX_PICTURE, MAX_PICTURES = 3_700_000, 10
 
 
 # Every action the page can start as a task.
@@ -435,6 +437,43 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             f.write(data)
             return f.name
 
+    def read_pictures(body: dict) -> dict:
+        """The text in pictures of a job post, for the Add from a post box. The person checks it
+        and adds the job; nothing is stored here."""
+        import base64
+        import binascii
+
+        from . import llm
+
+        given = body.get("pictures")
+        if not isinstance(given, list) or not given:
+            raise ActionError("Choose a picture of the post first.")
+        if len(given) > MAX_PICTURES:
+            raise ActionError(f"That is too many pictures at once ({MAX_PICTURES} at most). Add them a few at a time.")
+        pictures = []
+        for p in given:
+            try:
+                data = base64.b64decode(str(p), validate=True)
+            except (binascii.Error, ValueError):
+                raise ActionError("A picture could not be read. Choose it again.") from None
+            kind = llm.picture_kind(data)
+            if kind is None:
+                raise ActionError("That is not a picture the program can read. Use a PNG, JPG, WebP or GIF file.")
+            if len(data) > MAX_PICTURE:
+                raise ActionError("That picture is too large. Take a smaller screenshot, or cut it in two.")
+            pictures.append((data, kind))
+        try:
+            model = llm.make_llm(settings)
+        except ConfigError as e:
+            raise ActionError(str(e)) from None
+        try:
+            text = model.read_pictures(pictures)
+        except Exception as e:  # noqa: BLE001 - say why on the page
+            raise ActionError(f"The picture could not be read: {_first_line(e)}") from None
+        if not text:
+            raise ActionError("No text was found in that picture. Try a clearer screenshot.")
+        return {"text": text[:20000], "message": "Text read from the picture"}
+
     def import_resume(filename: str, data: bytes) -> dict:
         suffix = Path(filename).suffix.lower()
         if suffix not in (".pdf", ".txt", ".md"):
@@ -736,6 +775,13 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
                 return
             raw = self.rfile.read(length)
             path = urlparse(self.path).path
+            if path == "/api/read-picture":  # reads, stores nothing, so other pages are not told of a change
+                try:
+                    body = json.loads(raw or b"{}")
+                except ValueError:
+                    body = {}
+                self._answer(lambda: read_pictures(body if isinstance(body, dict) else {}))
+                return
             if path == "/api/profile":
                 self._answer(lambda: {"task": import_resume(self.headers.get("X-Filename") or "", raw)})
                 return

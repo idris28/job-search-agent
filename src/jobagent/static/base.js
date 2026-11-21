@@ -89,6 +89,48 @@ const healthMark = x => { const h = x.health;
 // the link, and opens this page with them after the #, a part of the address that is never sent to any server.
 const clipper = () => "javascript:" + `(()=>{var s=String(getSelection()).trim(),t=(s||document.body.innerText||'').slice(0,12000),`
   + `u='${location.origin}/#clip='+encodeURIComponent(JSON.stringify({u:location.href,h:document.title,t:t}));window.open(u,'_blank')||(location.href=u)})()`;
+// A picture of a post. The model reads text best at full size, so a tall phone screenshot is cut into
+// pieces with a small overlap instead of being shrunk; the model writes the overlapping line once.
+const PIECE = { width: 1000, height: 1400, overlap: 60, most: 8 };
+async function pieces(file) {
+  let bmp;
+  try { bmp = await createImageBitmap(file); } catch { throw new Error(`${file.name || "That picture"} could not be opened. Use a PNG, JPG, WebP or GIF file`); }
+  const most = PIECE.most * (PIECE.height - PIECE.overlap) + PIECE.overlap;
+  const scale = Math.min(1, PIECE.width / bmp.width, most / bmp.height), w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale), out = [];
+  for (let y = 0; ; y += PIECE.height - PIECE.overlap) {
+    const ph = Math.min(PIECE.height, h - y), c = document.createElement("canvas");
+    c.width = w; c.height = ph;
+    c.getContext("2d").drawImage(bmp, 0, y / scale, bmp.width, ph / scale, 0, 0, w, ph);
+    out.push(await asBase64(c));
+    if (y + ph >= h) break;
+  }
+  if (bmp.close) bmp.close();
+  return out;
+}
+async function asBase64(canvas) {
+  const blob = (type, q) => new Promise(r => canvas.toBlob(r, type, q));
+  let b = await blob("image/png");
+  if (b.size > 3.5e6) b = await blob("image/jpeg", 0.92);  // a photo rather than a screenshot
+  const url = await new Promise((ok, no) => { const f = new FileReader(); f.onload = () => ok(f.result); f.onerror = no; f.readAsDataURL(b); });
+  return url.slice(url.indexOf(",") + 1);
+}
+async function readPictures(files) {  // fill the Add from a post box with the text of the pictures; the person checks it and adds the job
+  const pics = [...files].filter(f => f.type.startsWith("image/"));
+  if (!pics.length) return toast("That is not a picture. Use a PNG, JPG, WebP or GIF file", true);
+  if (S.reading) return toast("A picture is being read. Wait for it to finish", true);
+  const dlg = $("#adddlg"), go = $('[data-act="add-go"]', dlg), busy = $("#addpicbusy");
+  S.reading = true; go.disabled = true; dlg.classList.add("reading"); $("#addpicask").hidden = true; busy.hidden = false;
+  busy.textContent = `Reading ${pics.length === 1 ? "the picture" : pics.length + " pictures"}. This takes a few seconds`;
+  try {
+    const parts = [];
+    for (const f of pics) parts.push(...await pieces(f));
+    if (parts.length > 10) throw new Error("That is too much at once. Add the pictures a few at a time");
+    const r = await api("/api/read-picture", { pictures: parts }), box = $("#addtext");
+    box.value = (box.value.trim() ? box.value.trim() + "\n\n" : "") + r.text;
+    toast("Text read from the picture. Check it, the email address above all, then add the job");
+  } catch (e) { fail(e); }
+  finally { S.reading = false; go.disabled = false; dlg.classList.remove("reading"); $("#addpicask").hidden = false; busy.hidden = true; }
+}
 function takeClip() {  // a post brought over by that bookmark: fill the Add from a post box and leave the adding to the person
   if (!location.hash.startsWith("#clip=")) return;
   const raw = location.hash.slice(6); let c = null;

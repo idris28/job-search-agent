@@ -31,7 +31,8 @@ const A = {
   add: () => { $("#adddlg").showModal(); $("#addtext").focus(); },
   "clip-drag": () => toast("Drag this button to your bookmarks bar, then click it on a job's page"),
   "close-add": () => $("#adddlg").close(),
-  "add-go": () => { const text = $("#addtext").value.trim(); if (!text) return toast("Paste the post text first", true);
+  "add-picture": () => $("#addpicfile").click(),
+  "add-go": () => { if (S.reading) return toast("A picture is being read. Wait for it to finish", true); const text = $("#addtext").value.trim(); if (!text) return toast("Paste the post text first", true);
     $("#adddlg").close(); startTask({ action: "add", text, url: $("#addurl").value.trim() }); $("#addtext").value = ""; $("#addurl").value = ""; },
   resume: () => $("#resumefile").click(),
   "draft-all": () => { const l = ids(r => !r.has_draft && !isGeneral(r)).slice(0, 10).concat(ids(r => !r.has_draft && isGeneral(r))); l.length ? startTask({ action: "email", job_ids: l }) : toast("Every shortlisted job already has a draft"); },
@@ -203,6 +204,7 @@ document.addEventListener("change", e => {
   }).catch(e => { el.value = (S.cfg.sites.find(x => x.name === el.dataset.browser) || {}).browser || ""; fail(e); });
   if (el.dataset.cfg && el.type === "checkbox") S.formDirty = true;
   if (id === "setstatus" && el.value) change("/api/status", { job_id: S.sel, status: el.value });
+  if (id === "addpicfile" && el.files.length) { readPictures(el.files); el.value = ""; return; }
   if (id === "resumefile" && el.files[0]) { const f = el.files[0];
     startTask({ action: "profile", raw: { body: f, headers: { "X-Filename": encodeURIComponent(f.name) } } }); el.value = ""; }
 });
@@ -231,6 +233,14 @@ $("#palette").addEventListener("click", e => { if (e.target.id === "palette") e.
 if (!/Mac/.test(navigator.platform)) $("#kbd").textContent = "Ctrl";
 setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark", true);
 
+// A picture pasted or dropped on the Add from a post box is read; pasted text goes in as it always did.
+$("#adddlg").addEventListener("paste", e => {
+  const files = [...(e.clipboardData ? e.clipboardData.files : [])].filter(f => f.type.startsWith("image/"));
+  if (files.length && !e.clipboardData.getData("text/plain").trim()) { e.preventDefault(); readPictures(files); }
+});
+$("#adddlg").addEventListener("dragover", e => { if ([...e.dataTransfer.types].includes("Files")) { e.preventDefault(); $("#adddlg").classList.add("dropping"); } });
+$("#adddlg").addEventListener("dragleave", e => { if (!e.relatedTarget || !$("#adddlg").contains(e.relatedTarget)) $("#adddlg").classList.remove("dropping"); });
+$("#adddlg").addEventListener("drop", e => { e.preventDefault(); $("#adddlg").classList.remove("dropping"); if (e.dataTransfer.files.length) readPictures(e.dataTransfer.files); });
 addEventListener("hashchange", takeClip);
 (async () => {
   await refresh();

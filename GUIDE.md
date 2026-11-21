@@ -81,7 +81,7 @@ the website; this table maps its buttons to commands:
 | A job, once opened | Score, matched skills and gaps, the email draft to edit and send, cover letter, notes, history; an **Apply on the job site** button that opens the posting and asks afterwards whether you applied; buttons for applied, skipped, interview, offer, rejected; ready-to-paste answers for the site's application form; a CV written for that job; interview preparation; **Send again** for an email that already went; **Delete entry** for something you added yourself | `jsa show`, `jsa status`, `jsa cover-letter`, `jsa answers`, `jsa cv`, `jsa prep`, `jsa apply`, `jsa delete` |
 | **In progress**, **Follow-ups** | Applications under way (choose "Set aside" in the Stage filter for skipped and rejected jobs); follow-ups that are due, with a button to send them; when replies are switched on, which emails were answered or not delivered, and a button to look in Gmail | `jsa applications`, `jsa followups`, `jsa replies` |
 | **All matches** | Every scored job, with the score filter and a digest download | `jsa jobs`, `jsa digest` |
-| **Add from a post** | Paste a LinkedIn post; it is read, scored and shortlisted. The **Save to Job Search** bookmark (Settings) fills the box from the page open in your own browser | `jsa add` |
+| **Add from a post** | Paste a LinkedIn post, as text or as a picture; it is read, scored and shortlisted. A picture's text is written into the box first, for you to check. The **Save to Job Search** bookmark (Settings) fills the box from the page open in your own browser | `jsa add` |
 | The panels beside and below the table | One mark for each job on your lists, coloured by stage; your top matches; where the jobs are by country; and the next steps worth taking, each with a button | |
 | **Insights** | Your week, the skills you miss most, which sites deliver | `jsa progress`, `jsa gaps` |
 | **Activity** | The full output of the running or last task, and past searches with the reason any was only partly finished | `jsa runs` |
@@ -124,6 +124,7 @@ Good to know:
 | `jsa add` | Adds a job from text you paste, such as a LinkedIn post asking for CVs by email. Paste the text, press Enter, then Ctrl-D. It reads the role, company and email address, scores the job and shortlists it. |
 | `jsa add`, for a post you added before | Updates the job already stored instead of adding a second one. If its email has gone, it says when and to which address, and sends nothing by itself; a second email goes only from the website, with **Send again** in that job's panel. |
 | `jsa add post.txt --url <link>` | The same, from a saved text file, keeping the post's link. |
+| `jsa add post.png` | The same, from a picture of the post (PNG, JPG, WebP or GIF). The AI model reads the text in it and the command prints that text before adding the job; check the email address in it. |
 | `jsa add-contacts hr.txt --country "Saudi Arabia"` | Adds HR addresses as general applications: one address per line, optionally with the employer's name (`Acme Gulf, hr@acme.sa`). Nothing is scored or sent. Each lands on the shortlist; `jsa email` then drafts it from `general_email_template.txt`. On the website: **Add HR addresses**. |
 
 ### Looking at jobs

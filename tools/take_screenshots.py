@@ -422,7 +422,7 @@ with sync_playwright() as pw:
     page.fill("#addtext", "WE ARE HIRING | SENIOR JAVA DEVELOPER\nLocation: Dubai, UAE\nExperience: 5+ years\n\nJava, Spring Boot, Microservices, Kafka, Docker\n\nInterested candidates, share your CV at: careers@acmegulf.example")
     page.fill("#addurl", "https://www.linkedin.com/posts/example")
     settle(300)
-    shot("add-from-a-post", "Add from a post", "Paste a LinkedIn post, a WhatsApp message or an email. The role, company and address are read from it, and the job is scored and shortlisted.")
+    shot("add-from-a-post", "Add from a post", "Paste a LinkedIn post, a WhatsApp message or an email. The role, company and address are read from it, and the job is scored and shortlisted. Only have a picture of the post? Paste it, drop it on the box, or choose it, and its text is written into the box for you to check.")
     page.locator('#adddlg [data-act="close-add"]').click()
 
     # ---- HR addresses

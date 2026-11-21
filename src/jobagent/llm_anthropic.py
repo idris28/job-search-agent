@@ -75,6 +75,19 @@ class ClaudeLLM(BaseLLM):
         self._check(resp)
         return "".join(b.text for b in resp.content if b.type == "text").strip()
 
+    def _pictures_text(self, instructions: str, pictures: list[tuple[bytes, str]]) -> str:
+        import base64
+
+        request = self._common(instructions, "")
+        request["messages"] = [{"role": "user", "content": [
+            *({"type": "image", "source": {"type": "base64", "media_type": kind, "data": base64.b64encode(data).decode()}}
+              for data, kind in pictures),
+            {"type": "text", "text": "Write out the text in these pictures."}]}]
+        resp = self.client.beta.messages.create(**request)
+        self._count(resp)
+        self._check(resp)
+        return "".join(b.text for b in resp.content if b.type == "text").strip()
+
     # --- batch scoring -----------------------------------------------------------------
     #
     # The Message Batches API takes the same requests, answers them later (most within the hour,
