@@ -97,6 +97,7 @@ function renderPage() {
         : `Browserbase for ${esc(g.browser.hosted.join(", "))}; this Mac for the rest`)}
       ${row(g.gmail.ready, "Gmail", g.gmail.ready ? `Sends from ${esc(g.gmail.address)}` : "Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to .env to send from this page")}
       ${row(g.cv.found, "CV to attach", g.cv.found ? esc(g.cv.path) : g.cv.path ? `Not found: ${esc(g.cv.path)}` : "Set outreach.resume_path in config.yaml")}
+      ${row(g.phone.length ? true : null, "From your phone", g.phone.length ? `Open ${g.phone.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a>`).join(" or ")} on a device signed in to your Tailscale` : "Not set up. PHONE_GUIDE.md in the project folder says how")}
       ${row(g.telegram ? true : null, "Phone notifications", g.telegram ? "Telegram is set up" : g.gmail.ready ? "Strong matches are emailed to you. Add Telegram keys to .env for phone alerts." : "Not set up", `<button class="btn sm" data-act="notify-test">${ic("bell")}Send a test</button>`)}
     </section>
     <section class="card pad">${cardHead("Every morning")}<p class="sub">${sch.installed ? `The morning routine runs daily at <b>${esc(sch.time)}</b> while this Mac is awake${sch.loaded ? "" : " (it is installed but not loaded; set it again)"}` : "Let the search run by itself each morning: it searches, writes a digest and emails you one summary"}</p>

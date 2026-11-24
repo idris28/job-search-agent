@@ -1,5 +1,7 @@
 # AI Job Search Agent
 
+[![Tests](https://github.com/idris28/job-search-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/idris28/job-search-agent/actions/workflows/tests.yml)
+
 A personal job search assistant. It reads job boards and company career sites every morning,
 scores each job against your resume with Claude (or OpenAI), and keeps your shortlist,
 applications and follow-ups in PostgreSQL. For the jobs worth acting on it writes the recruiter
@@ -92,6 +94,7 @@ jsa profile import path/to/resume.pdf
 | `BROWSERBASE_API_KEY` (+ optional `BROWSERBASE_PROJECT_ID`) | job boards read with Browserbase (see "A browser per job board") | browserbase.com → Settings |
 | `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` (optional) | sending emails, Gmail drafts, the morning summary, reading replies | a Google app password: myaccount.google.com/apppasswords |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | phone notifications | a bot from @BotFather |
+| `JOBAGENT_WEB_HOSTS` (optional) | opening the website from your phone: the Mac's Tailscale name | [PHONE_GUIDE.md](PHONE_GUIDE.md) |
 
 The main model is set only in `.env`; nothing is hard-coded. Claude calls use structured outputs
 and server-side refusal fallback, so a declined request is retried on a fallback model.
@@ -108,6 +111,10 @@ background task at a time, with live progress and a Stop button.
 
 [WEBSITE_GUIDE.md](WEBSITE_GUIDE.md) explains it screen by screen, and [GUIDE.md](GUIDE.md) maps
 every button to its command.
+
+**From your phone.** With Tailscale on the Mac and the phone, the same website opens on your phone
+from anywhere, over a private link between your own devices; it is not put on the internet.
+[PHONE_GUIDE.md](PHONE_GUIDE.md) sets it up step by step.
 
 ### The terminal
 
@@ -410,6 +417,9 @@ what the page says when the resume or a database update is missing. It needs Pla
 and is skipped without it. No test calls a paid service, opens a mailbox or starts a real `jsa`
 task. Never point `TEST_DATABASE_URL` at the database you use.
 
+On GitHub, `.github/workflows/tests.yml` runs all of them on every push to `main`, against a
+throwaway PostgreSQL that GitHub starts for the run; the badge at the top shows the latest result.
+
 ## Layout
 
 ```
@@ -453,4 +463,5 @@ Job Search.app  double-click launcher for the website (macOS)
 | [screenshots/README.md](screenshots/README.md) | the website in pictures, one for each screen and function |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | how the parts fit together; `app-flow.html` and `architecture-live.html` show it as pictures |
 | [DESIGN.md](DESIGN.md) | how the website looks and reads: colours, type, spacing, wording |
+| [PHONE_GUIDE.md](PHONE_GUIDE.md) | opening the website from your phone, through Tailscale |
 | [GITHUB_GUIDE.md](GITHUB_GUIDE.md) | putting the project on GitHub, step by step, and sending later changes |

@@ -1,0 +1,47 @@
+# Runs every test on each push to main, on a throwaway PostgreSQL that GitHub starts for the run.
+# Nothing here uses your keys: the tests call no paid service and send nothing.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jobagent
+          POSTGRES_PASSWORD: jobagent
+          POSTGRES_DB: jobagent_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U jobagent"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://jobagent:jobagent@localhost:5432/jobagent_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install the project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Install Chromium for the page tests and the CV PDFs
+        run: playwright install --with-deps chromium
+      - name: Run the tests
+        run: pytest -q

@@ -37,6 +37,16 @@ def load_dotenv(path: str | Path = ".env") -> None:
         os.environ.setdefault(key.strip(), value)
 
 
+def web_hosts(text: str) -> list[str]:
+    """Host names from a comma-separated list, as a browser sends them: lower case, no scheme, path or port."""
+    out = []
+    for part in text.split(","):
+        host = part.strip().lower().removeprefix("https://").removeprefix("http://").split("/", 1)[0].rsplit(":", 1)[0]
+        if host and host not in out and re.fullmatch(r"[a-z0-9.-]+", host):
+            out.append(host)
+    return out
+
+
 class Settings(BaseModel):
     database_url: str | None = None
     # Which AI to use is configured only in .env: LLM_PROVIDER, LLM_MODEL, LLM_EFFORT.
@@ -52,6 +62,9 @@ class Settings(BaseModel):
     telegram_chat_id: str | None = None
     browserbase_project_id: str | None = None
     browser: Literal["browserbase", "local"] = "browserbase"
+    # Other names the website answers to besides 127.0.0.1 and localhost: the Mac's Tailscale name,
+    # for opening the page from your phone (JOBAGENT_WEB_HOSTS, separated by commas).
+    web_hosts: list[str] = Field(default_factory=list)
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -70,6 +83,7 @@ class Settings(BaseModel):
             telegram_chat_id=_env("TELEGRAM_CHAT_ID"),
             browserbase_project_id=_env("BROWSERBASE_PROJECT_ID"),
             browser=os.getenv("JOBAGENT_BROWSER", "browserbase"),  # type: ignore[arg-type]
+            web_hosts=web_hosts(_env("JOBAGENT_WEB_HOSTS") or ""),
         )
 
     def resolved_llm_provider(self) -> str:

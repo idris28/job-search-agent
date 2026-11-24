@@ -334,6 +334,7 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
             "gmail": {"address": settings.gmail_address,
                       "ready": bool(settings.gmail_address and settings.gmail_app_password)},
             "telegram": bool(settings.telegram_bot_token and settings.telegram_chat_id),
+            "phone": [f"https://{h}" for h in settings.web_hosts],
             "cv": {"path": o.resume_path, "found": bool(cv and cv.is_file())},
             "template": {"file": o.template_file, "found": bool(template and template.is_file()),
                          "text": template.read_text(encoding="utf-8") if template and template.is_file() else ""},
@@ -656,8 +657,9 @@ def serve(settings, cfg, port: int = 8765, *, config_path: str | None = None,
         def _allowed(self, *, need_token: bool) -> bool:
             # The Host check stops another site reaching this page through a DNS trick; the token
             # stops any other page on this Mac's browser from reading or changing anything.
-            host = (self.headers.get("Host") or "").rsplit(":", 1)[0]
-            if host not in ("127.0.0.1", "localhost"):
+            # Through Tailscale the page is also reached by the Mac's own name, from your other devices only.
+            host = (self.headers.get("Host") or "").rsplit(":", 1)[0].lower()
+            if host not in ("127.0.0.1", "localhost", *settings.web_hosts):
                 self.send_error(403)
                 return False
             if need_token and not secrets.compare_digest(self.headers.get("X-Token") or "", token):

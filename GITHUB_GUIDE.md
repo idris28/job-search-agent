@@ -96,6 +96,14 @@ cd "/path/to/job-search-agent" && git push
 
 `git status` then says `Your branch is up to date with 'origin/main'`.
 
+Each push to `main` also runs all the tests on GitHub (`.github/workflows/tests.yml`). The result
+shows as a tick or a cross beside the latest commit, under the repository's **Actions** tab, and in
+the badge at the top of the README. To see it from the Terminal:
+
+```bash
+gh run list --limit 3
+```
+
 ## If you prefer the GitHub website to the gh tool
 
 1. On github.com, click **New** (the plus at the top right, then **New repository**).

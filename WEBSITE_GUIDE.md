@@ -286,7 +286,7 @@ morning routine as a batch at half price, and scoring ordinary searches as a bat
 
 | Section | What you can do |
 |---|---|
-| Setup | See what is ready, import a newer resume, send a test notification. |
+| Setup | See what is ready, import a newer resume, send a test notification. **From your phone** shows the address to open on your phone once it is set up ([PHONE_GUIDE.md](PHONE_GUIDE.md)). |
 | Every morning | Pick a time and click **Run every morning**. The Mac then runs the morning routine daily at that time, as long as it is awake. **Switch it off** removes it. **Run it now** runs it once. |
 | Duplicate jobs | If the same job is stored twice, **Merge** folds the copies together and keeps your score and status. This cannot be undone. |
 | Your templates, **Email** | The three templates share one box; the buttons at its top right switch between them. **Email** is the wording used for every recruiter email. Text in [square brackets] is filled in for each job; everything else is sent as you wrote it. Click **Save template**. |
