@@ -32,8 +32,8 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql://jobagent:jobagent@localhost:5432/jobagent_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
