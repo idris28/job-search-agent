@@ -10,3 +10,5 @@ digests/
 backups/
 resumes/
 config.overrides.yaml
+# Old copies of your own settings
+config.yaml.*

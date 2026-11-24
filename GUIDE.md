@@ -53,7 +53,8 @@ job is never scored or emailed twice.
 
 ## Before you start
 
-Run every command from the project folder. You can do that in one line:
+Run every command from the project folder. You can do that in one line, with the folder's path in place of
+`/path/to/job-search-agent`:
 
 ```bash
 cd "/path/to/job-search-agent" && .venv/bin/jsa <command>

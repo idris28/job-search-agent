@@ -406,4 +406,5 @@ tools/
 | `WEBSITE_GUIDE.md` | using the website, screen by screen |
 | `screenshots/README.md` | the website in pictures: one for each screen and function, taken on a demo copy with made-up jobs. `tools/take_screenshots.py` retakes them all |
 | `ARCHITECTURE.md` | how the parts fit together; `app-flow.html` and `architecture-live.html` are the same as pictures |
+| `GITHUB_GUIDE.md` | putting the project on GitHub, step by step, and sending later changes |
 | `DESIGN.md` | how the website looks and reads: colours, type, spacing, wording |
